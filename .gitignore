@@ -1,0 +1,21 @@
+# Downloaded installation media
+*.iso
+*.wim
+*.esd
+
+# Runtime files
+*.log
+*.partial
+*.tmp
+
+# Future .NET build output
+bin/
+obj/
+.vs/
+
+# Local editor and operating system files
+.idea/
+.vscode/
+Thumbs.db
+Desktop.ini
+
