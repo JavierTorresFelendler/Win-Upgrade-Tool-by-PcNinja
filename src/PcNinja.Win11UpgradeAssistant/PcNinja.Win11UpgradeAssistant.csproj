@@ -1,17 +1,23 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <OutputType>WinExe</OutputType>
+    <OutputType>Exe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\PcNinja.ico</ApplicationIcon>
     <AssemblyName>PcNinja-Win11-Upgrade-Assistant</AssemblyName>
     <RootNamespace>PcNinja.Win11UpgradeAssistant</RootNamespace>
-    <Version>1.0.0-rc.1</Version>
-    <AssemblyVersion>1.0.0.0</AssemblyVersion>
-    <FileVersion>1.0.0.0</FileVersion>
-    <InformationalVersion>1.0.0-rc.1</InformationalVersion>
+    <Product>PcNinja Windows 11 Upgrade Assistant</Product>
+    <Company>PcNinja</Company>
+    <Authors>PcNinja</Authors>
+    <Description>Standalone Windows 11 upgrade assistant for advanced home users.</Description>
+    <Copyright>Copyright © 2026 PcNinja</Copyright>
+    <Version>1.1.0-rc.2</Version>
+    <AssemblyVersion>1.1.0.0</AssemblyVersion>
+    <FileVersion>1.1.0.0</FileVersion>
+    <InformationalVersion>1.1.0-rc.2</InformationalVersion>
     <PublishSingleFile>true</PublishSingleFile>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <SelfContained>true</SelfContained>
@@ -21,5 +27,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\PcNinja.Win11Upgrade.Core\PcNinja.Win11Upgrade.Core.csproj" />
+    <EmbeddedResource Include="Assets\Ninja-DMT-header.png" LogicalName="PcNinja.Win11UpgradeAssistant.Assets.Ninja-DMT-header.png" />
   </ItemGroup>
 </Project>

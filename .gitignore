@@ -13,6 +13,7 @@ bin/
 obj/
 .vs/
 artifacts/
+.artifacts/
 
 # Local editor and operating system files
 .idea/

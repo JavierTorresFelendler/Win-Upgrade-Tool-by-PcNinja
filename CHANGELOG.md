@@ -1,5 +1,30 @@
 # Changelog
 
+## 1.1.0-rc.2
+
+- Added a dark PcNinja-branded interface, mascot, window icon, and EXE icon.
+- Added CLI support to the same standalone EXE with text and JSON output.
+- Added `status`, `scan`, `validate`, `upgrade`, and `log-path` CLI commands.
+- Added explicit CLI confirmation, `--yes`, `--dry-run`, and `--no-restart`.
+- Added stable CLI exit codes for arguments, validation, download, elevation,
+  cancellation, and Setup failures.
+- Fixed Windows 11 systems being reported as Windows 10 by normalizing build
+  22000 and newer as Windows 11.
+- Fixed automatic downloads failing during final rename while the partial file
+  was still open.
+- Preserved the ISO filename supplied by the server or redirected URL.
+- Added non-destructive `(Copy 1)`, `(Copy 2)`, and later collision naming.
+- Kept the exact downloaded path throughout validation, mounting, and Setup.
+- Added Content-Length completion checks and retained `.partial` files on error.
+- Added DISM validation of `install.wim`, `install.esd`, or `install.swm`.
+- Added a 20 GB Windows system-drive check.
+- Added selectable download storage, USB refresh, free-space, write-access, and
+  FAT32 checks.
+- Added Refresh for newly downloaded, mounted, or connected media without
+  restarting the application.
+- Changed automatic-download failure fallback to the normal PcNinja browser
+  page while retaining the Microsoft page as a separate option.
+
 ## 1.0.0-rc.1
 
 - Replaced the PowerShell/CMD POC with a portable self-contained Windows EXE.
