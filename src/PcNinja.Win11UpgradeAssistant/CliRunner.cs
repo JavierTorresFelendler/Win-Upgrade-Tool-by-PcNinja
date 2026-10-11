@@ -26,7 +26,6 @@ internal static class CliRunner
             if (options.Command == "log-path") { Console.WriteLine(AppLog.Path); return Success; }
 
             var engine = new UpgradeEngine();
-            engine.ValidateSupportedComputer();
             return options.Command switch
             {
                 "status" => ShowStatus(engine, options.Json),
@@ -50,10 +49,15 @@ internal static class CliRunner
     private static int ShowStatus(UpgradeEngine engine, bool json)
     {
         var storage = engine.CheckSystemDriveSpace();
+        string? supportError = null;
+        try { engine.ValidateSupportedComputer(); }
+        catch (Exception ex) { supportError = ex.Message; }
         var value = new
         {
             version = Version,
             operatingSystem = engine.GetOperatingSystemDescription(),
+            upgradeSupported = supportError is null,
+            supportError,
             isAdministrator = Program.IsAdministrator(),
             systemDrive = storage.RootPath,
             systemDriveFreeBytes = storage.AvailableBytes,
@@ -62,9 +66,10 @@ internal static class CliRunner
         };
         Write(value, json,
             $"PcNinja Windows 11 Upgrade Assistant {Version}\n" +
-            $"OS: {value.operatingSystem}\nAdministrator: {value.isAdministrator}\n" +
+            $"OS: {value.operatingSystem}\nUpgrade supported: {value.upgradeSupported}" +
+            (supportError is null ? "" : $" ({supportError})") + $"\nAdministrator: {value.isAdministrator}\n" +
             $"System storage: {storage.Message}\nLog: {AppLog.Path}");
-        return storage.IsValid ? Success : ValidationFailed;
+        return Success;
     }
 
     private static int ShowScan(UpgradeEngine engine, bool json)
@@ -90,6 +95,9 @@ internal static class CliRunner
 
     private static async Task<int> ValidateOrUpgradeAsync(UpgradeEngine engine, CliOptions options, bool startSetup)
     {
+        try { engine.ValidateSupportedComputer(); }
+        catch (Exception ex) { return Fail(ValidationFailed, ex.Message, options.Json); }
+
         if (!Program.IsAdministrator())
             return Fail(AdministratorRequired,
                 "Run this command from an elevated Command Prompt or PowerShell window.", options.Json);

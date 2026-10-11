@@ -44,6 +44,14 @@ public sealed class UpgradeEngine
     public static string FormatOperatingSystemDescription(string productName, string? displayVersion,
         int build, bool is64Bit, string? editionId = null)
     {
+        if (productName.Contains("Server", StringComparison.OrdinalIgnoreCase))
+        {
+            var serverName = productName.StartsWith("Microsoft ", StringComparison.OrdinalIgnoreCase)
+                ? productName[10..].Trim()
+                : productName.Trim();
+            var serverVersion = string.IsNullOrWhiteSpace(displayVersion) ? "" : $" {displayVersion.Trim()}";
+            return $"{serverName}{serverVersion} (build {build}, {(is64Bit ? "x64" : "x86")})";
+        }
         var family = build >= 22000 ? "Windows 11" : "Windows 10";
         var edition = ExtractEdition(productName);
         if (string.IsNullOrWhiteSpace(edition)) edition = FormatEditionId(editionId);

@@ -16,6 +16,11 @@ var normalizedWindows10 = UpgradeEngine.FormatOperatingSystemDescription(
 if (!normalizedWindows10.StartsWith("Windows 10 Home 22H2", StringComparison.Ordinal))
     failures.Add($"Windows 10 build normalization failed: {normalizedWindows10}");
 
+var normalizedServer = UpgradeEngine.FormatOperatingSystemDescription(
+    "Windows Server 2022 Datacenter", "21H2", 20348, true);
+if (!normalizedServer.StartsWith("Windows Server 2022 Datacenter 21H2", StringComparison.Ordinal))
+    failures.Add($"Windows Server reporting failed: {normalizedServer}");
+
 var collisionFolder = Path.Combine(Path.GetTempPath(), $"PcNinja-Collision-{Guid.NewGuid():N}");
 Directory.CreateDirectory(collisionFolder);
 try
@@ -59,6 +64,7 @@ if (failures.Count > 0)
 Console.WriteLine($"PASS: OS detection: {os}");
 Console.WriteLine($"PASS: Windows 11 normalization: {normalizedWindows11}");
 Console.WriteLine($"PASS: Windows 10 normalization: {normalizedWindows10}");
+Console.WriteLine($"PASS: Windows Server reporting: {normalizedServer}");
 Console.WriteLine("PASS: ISO collision naming.");
 Console.WriteLine($"PASS: Microsoft signer: {signer}");
 Console.WriteLine("PASS: Unsigned file rejected.");
