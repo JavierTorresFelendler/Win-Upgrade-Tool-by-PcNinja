@@ -1,59 +1,92 @@
 # PcNinja Windows 11 Upgrade Assistant
 
-Private proof of concept for guiding advanced home users through an in-place
-Windows 11 upgrade on unsupported x64 hardware.
+Standalone Windows application for guiding advanced home users through an
+in-place Windows 11 upgrade on unsupported x64 hardware.
 
 > [!WARNING]
-> This repository is an internal POC. It is not ready for public distribution.
-> The `/product server` behavior used for client upgrades is undocumented and
-> may change in future Windows releases.
+> RC1 is a private proof of concept. It uses the undocumented `/product server`
+> compatibility behavior with Windows client setup. Back up important files
+> before using it. Microsoft can change this behavior in future releases.
 
-## Current workflow
+## Download
 
-1. The launcher requests Administrator permission.
-2. The user can select an existing Windows 11 x64 ISO or ask the assistant to
-   open [11oem.pcninja.pro](https://11oem.pcninja.pro) to download one.
-3. The user selects the ISO file from the local computer.
-4. The assistant mounts the selected ISO and validates Microsoft's signature on
-   `setup.exe`.
-5. The CMD helper starts the in-place upgrade.
-6. Windows Setup controls the normal restart process.
-
-## Running the POC
-
-1. Save your work and back up important files.
-2. Double-click `Start-PcNinja-Win11-Upgrade.cmd`.
-3. Approve the Administrator prompt.
-4. Choose an existing ISO or open the optional PcNinja download page.
-5. Select the ISO and follow the final confirmation prompt.
-
-Runtime logs are written to:
+Download the latest private release from the repository's **Releases** page.
+The release contains one portable, self-contained x64 EXE:
 
 ```text
-C:\PcNinja\Win11UpgradeAssistant\Upgrade-Assistant.log
+PcNinja-Win11-Upgrade-Assistant-RC1.exe
 ```
 
-## Upgrade command
+No PowerShell or CMD files are required in the release package. Windows asks
+for Administrator permission when the EXE starts.
 
-```cmd
+## One-screen workflow
+
+The application shows the current Windows version and all source choices on
+one screen:
+
+1. Use a suitable ISO found next to the EXE.
+2. Download the configured PcNinja ISO automatically.
+3. Select an ISO that was downloaded elsewhere.
+4. Use a Windows ISO that is already mounted.
+
+If automatic download is unavailable, the application offers the official
+[Microsoft Windows 11 download page](https://www.microsoft.com/software-download/windows11)
+and retains the local ISO picker.
+
+Before starting Setup, the application validates:
+
+- Windows 10 or Windows 11 client on x64 hardware
+- ISO file existence and plausible size
+- `setup.exe` at the root of the mounted source
+- a valid Microsoft Authenticode signature on `setup.exe`
+- absence of `Autounattend.xml`
+
+## Upgrade and restart behavior
+
+The upgrade command is:
+
+```text
 setup.exe /product server /auto upgrade /eula accept /dynamicupdate disable /compat ignorewarning
 ```
 
-The helper deliberately does not use `/noreboot` and does not issue a
-`shutdown` command. Windows Setup owns the natural restart sequence.
+Users can clear **Allow Windows Setup to restart the computer automatically**.
+That adds `/noreboot`. The application never calls `shutdown.exe` and never
+forces a restart after a failed Setup process.
+
+Logs are written to:
+
+```text
+C:\ProgramData\PcNinja\Win11UpgradeAssistant\Upgrade-Assistant.log
+```
+
+## Architecture
+
+- `src/PcNinja.Win11Upgrade.Core` — reusable ISO, validation, mounting,
+  download, and Windows Setup engine.
+- `src/PcNinja.Win11UpgradeAssistant` — standalone WinForms user interface.
+
+This separation is intentional: the standalone product can remain independent
+while the Core project is later integrated into another PcNinja update tool.
+
+## Build
+
+Requirements: .NET 8 SDK or later on Windows.
+
+```powershell
+dotnet publish src\PcNinja.Win11UpgradeAssistant\PcNinja.Win11UpgradeAssistant.csproj -c Release -r win-x64 --self-contained true
+```
+
+The GitHub release workflow builds the same single-file EXE and publishes its
+SHA-256 checksum when a `v*` tag is pushed.
 
 ## Current scope
 
-- Windows 10 and Windows 11 client systems
+- Windows 10 and Windows 11 client editions
 - x64 only
-- Existing local ISO or an ISO downloaded through the optional PcNinja portal
+- Consumer Windows 11 x64 ISO media
 - In-place upgrade only
 - No Windows Server or LTSC support
+- English user interface in RC1
 
-The upgrade workflow does not depend on the PcNinja portal. If the portal is
-unavailable, the user can provide an ISO obtained from another trusted source.
-
-## Repository status
-
-The repository remains private while the workflow is validated. The intended
-next major milestone is a signed Windows EXE with a graphical interface.
+The repository remains private during RC testing.

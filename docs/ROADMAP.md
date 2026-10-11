@@ -1,31 +1,30 @@
 # Roadmap
 
-## POC validation
+## RC1 — standalone EXE
 
-- Test the download portal and ISO selection on Windows 10 and Windows 11.
-- Test successful upgrades on supported and unsupported x64 hardware.
-- Record Windows Setup exit codes and rollback behavior.
-- Improve user-facing error messages from real test results.
+- Validate the one-screen workflow on clean Windows 10 and Windows 11 systems.
+- Test automatic ISO download from a network without an existing Microsoft login.
+- Test local, mounted, successful upgrade, failed Setup, and `/noreboot` paths.
+- Record Setup exit codes and rollback behavior from real machines.
 
-## EXE application
+## Standalone product
 
-- Replace the PowerShell interface with a C#/.NET desktop application.
-- Add visible download and preparation progress.
-- Add a clear restart policy and upgrade status screen.
-- Store structured logs that can be exported for support.
-- Package the application for simple installation or portable use.
-
-## Private release candidates
-
-- Add automated build checks.
-- Create versioned private GitHub releases.
-- Test upgrade and rollback paths on virtual machines.
+- Add PcNinja branding and application icon.
 - Add code signing before public distribution.
+- Add resumable download and stronger ISO identity/hash validation.
+- Add structured support-log export.
+- Add localization after the English workflow is stable.
+
+## Integration into PcNinja update tool
+
+- Reference or extract `PcNinja.Win11Upgrade.Core` as a reusable component.
+- Keep the standalone application and integrated update-tool experience as
+  separate products and release artifacts.
+- Let the host update tool own navigation and presentation while Core owns
+  source validation, ISO mounting, and Setup execution.
 
 ## Public release
 
-- Complete security and privacy review.
-- Publish documentation and limitations.
-- Select an appropriate open-source or freeware license.
-- Publish signed binaries and checksums.
-
+- Complete security, privacy, and licensing review.
+- Replace the private ISO endpoint if public redistribution terms require it.
+- Publish signed binaries, checksums, documentation, and limitations.

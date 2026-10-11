@@ -12,10 +12,10 @@
 bin/
 obj/
 .vs/
+artifacts/
 
 # Local editor and operating system files
 .idea/
 .vscode/
 Thumbs.db
 Desktop.ini
-

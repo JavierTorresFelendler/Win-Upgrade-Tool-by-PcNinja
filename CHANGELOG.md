@@ -1,12 +1,23 @@
 # Changelog
 
+## 1.0.0-rc.1
+
+- Replaced the PowerShell/CMD POC with a portable self-contained Windows EXE.
+- Added one-screen WinForms interface with current Windows version details.
+- Added automatic discovery of an ISO next to the application.
+- Added automatic download through the configured private PcNinja endpoint.
+- Added graceful fallback to Microsoft's official download page.
+- Added selection of an existing local ISO.
+- Added discovery and selection of an already mounted Windows ISO.
+- Added visible download and preparation status.
+- Added Microsoft Authenticode verification for `setup.exe`.
+- Added optional `/noreboot` behavior controlled by the user.
+- Preserved the known-good unsupported-hardware Setup arguments.
+- Removed forced restart behavior and legacy script launchers.
+- Split the reusable upgrade engine from the standalone user interface.
+- Added portable EXE release automation and SHA-256 checksum generation.
+
 ## 0.1.0-poc
 
-- Added a CMD launcher for nontechnical users.
-- Added elevation and local transcript logging.
-- Added a choice between an existing ISO and the optional PcNinja download portal.
-- Kept the upgrade workflow usable when the PcNinja portal is unavailable.
-- Added an ISO file picker and automatic ISO mounting.
-- Added Microsoft Authenticode validation for `setup.exe`.
-- Preserved the known-good CMD upgrade command.
-- Delegated restart behavior to Windows Setup.
+- Added the original PowerShell interface and CMD Setup helper.
+- Added ISO selection, mounting, logging, and Setup launch validation.
