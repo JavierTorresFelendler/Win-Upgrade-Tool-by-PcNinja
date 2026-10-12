@@ -61,6 +61,13 @@ jobs:
         with:
           prerelease: true
           generate_release_notes: true
+          body: |
+            ## Documentation
+
+            - [Graphical workflow and overview](https://github.com/${{ github.repository }}/blob/main/README.md)
+            - [Complete CLI guide](https://github.com/${{ github.repository }}/blob/main/docs/CLI.md)
+
+            Run `PcNinja-Win11-Upgrade-Assistant-RC2.exe --help` for the syntax embedded in the downloaded EXE.
           files: |
             artifacts/PcNinja-Win11-Upgrade-Assistant-RC2.exe
             artifacts/SHA256SUMS.txt

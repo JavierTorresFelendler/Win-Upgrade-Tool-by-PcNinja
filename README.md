@@ -55,11 +55,16 @@ Before starting Setup, the application validates:
 Run the same EXE with `--help` for full syntax. Read-only commands do not require
 elevation:
 
+See the [complete CLI guide](docs/CLI.md) for mounted ISO drives, automatic
+downloads, validation-only runs, JSON output, confirmations, and exit codes.
+
 ```powershell
 .\PcNinja-Win11-Upgrade-Assistant-RC2.exe status --json
 .\PcNinja-Win11-Upgrade-Assistant-RC2.exe scan
 .\PcNinja-Win11-Upgrade-Assistant-RC2.exe validate --iso "D:\Windows11.iso"
+.\PcNinja-Win11-Upgrade-Assistant-RC2.exe validate --mounted E:\
 .\PcNinja-Win11-Upgrade-Assistant-RC2.exe upgrade --iso "D:\Windows11.iso" --no-restart
+.\PcNinja-Win11-Upgrade-Assistant-RC2.exe upgrade --mounted E:\ --no-restart
 .\PcNinja-Win11-Upgrade-Assistant-RC2.exe upgrade --download --destination "E:\PcNinja Downloads"
 ```
 
