@@ -4,7 +4,7 @@ Standalone Windows application for guiding advanced home users through an
 in-place Windows 11 upgrade on unsupported x64 hardware.
 
 > [!WARNING]
-> RC2 is prerelease software. It uses the undocumented `/product server`
+> RC3 is prerelease software. It uses the undocumented `/product server`
 > compatibility behavior with Windows client Setup. Back up important files
 > before using it. Microsoft can change this behavior in future releases.
 
@@ -13,7 +13,7 @@ in-place Windows 11 upgrade on unsupported x64 hardware.
 Download the latest private prerelease from the repository's **Releases** page:
 
 ```text
-PcNinja-Win11-Upgrade-Assistant-RC2.exe
+PcNinja-Win11-Upgrade-Assistant-RC3.exe
 ```
 
 The portable x64 EXE contains both the graphical application and the CLI. No
@@ -52,20 +52,30 @@ Before starting Setup, the application validates:
 
 ## CLI
 
-Run the same EXE with `--help` for full syntax. Read-only commands do not require
-elevation:
+The same EXE contains global help, per-command help, and a complete offline
+manual. It can also generate PowerShell Tab completion. Read-only commands do
+not require elevation:
 
 See the [complete CLI guide](docs/CLI.md) for mounted ISO drives, automatic
 downloads, validation-only runs, JSON output, confirmations, and exit codes.
 
 ```powershell
-.\PcNinja-Win11-Upgrade-Assistant-RC2.exe status --json
-.\PcNinja-Win11-Upgrade-Assistant-RC2.exe scan
-.\PcNinja-Win11-Upgrade-Assistant-RC2.exe validate --iso "D:\Windows11.iso"
-.\PcNinja-Win11-Upgrade-Assistant-RC2.exe validate --mounted E:\
-.\PcNinja-Win11-Upgrade-Assistant-RC2.exe upgrade --iso "D:\Windows11.iso" --no-restart
-.\PcNinja-Win11-Upgrade-Assistant-RC2.exe upgrade --mounted E:\ --no-restart
-.\PcNinja-Win11-Upgrade-Assistant-RC2.exe upgrade --download --destination "E:\PcNinja Downloads"
+.\PcNinja-Win11-Upgrade-Assistant-RC3.exe help
+.\PcNinja-Win11-Upgrade-Assistant-RC3.exe help all
+.\PcNinja-Win11-Upgrade-Assistant-RC3.exe help upgrade
+.\PcNinja-Win11-Upgrade-Assistant-RC3.exe status --json
+.\PcNinja-Win11-Upgrade-Assistant-RC3.exe scan
+.\PcNinja-Win11-Upgrade-Assistant-RC3.exe validate --iso "D:\Windows11.iso"
+.\PcNinja-Win11-Upgrade-Assistant-RC3.exe validate --mounted E:\
+.\PcNinja-Win11-Upgrade-Assistant-RC3.exe upgrade --iso "D:\Windows11.iso" --no-restart
+.\PcNinja-Win11-Upgrade-Assistant-RC3.exe upgrade --mounted E:\ --no-restart
+.\PcNinja-Win11-Upgrade-Assistant-RC3.exe upgrade --download --destination "E:\PcNinja Downloads"
+```
+
+Enable PowerShell completion for the current session:
+
+```powershell
+& .\PcNinja-Win11-Upgrade-Assistant-RC3.exe completion powershell | Out-String | Invoke-Expression
 ```
 
 Mount, validation, download-and-mount, and upgrade operations must be launched

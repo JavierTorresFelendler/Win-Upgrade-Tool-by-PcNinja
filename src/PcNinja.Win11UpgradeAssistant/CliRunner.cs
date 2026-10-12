@@ -13,15 +13,35 @@ internal static class CliRunner
     internal const int AdministratorRequired = 5;
     internal const int Cancelled = 6;
     internal const int SetupFailed = 7;
-    private const string Version = "1.1.0-rc.2";
+    private const string Version = CliHelp.Version;
 
     public static async Task<int> RunAsync(string[] args)
     {
         Console.OutputEncoding = System.Text.Encoding.UTF8;
         try
         {
+            if (CliHelp.TryGetRequestedTopic(args, out var helpTopic))
+            {
+                if (args.Length > 2)
+                    return Fail(InvalidArguments, "Help accepts one topic. Use 'help all' for the complete manual.", false);
+                if (!CliHelp.TryPrint(helpTopic))
+                    return Fail(InvalidArguments,
+                        $"Unknown help topic: {helpTopic}. Use 'help' to list available topics.", false);
+                return Success;
+            }
+
+            if (args[0].Equals("completion", StringComparison.OrdinalIgnoreCase))
+            {
+                if (args.Length != 2 || !args[1].Equals("powershell", StringComparison.OrdinalIgnoreCase))
+                    return Fail(InvalidArguments,
+                        "Usage: completion powershell. Run 'help completion' for setup instructions.", false);
+                var executableName = Path.GetFileName(Environment.ProcessPath)
+                    ?? "PcNinja-Win11-Upgrade-Assistant-RC3.exe";
+                Console.WriteLine(CliHelp.GetPowerShellCompletion(executableName));
+                return Success;
+            }
+
             var options = CliOptions.Parse(args);
-            if (options.Command == "help") { PrintHelp(); return Success; }
             if (options.Command == "version") { Console.WriteLine(Version); return Success; }
             if (options.Command == "log-path") { Console.WriteLine(AppLog.Path); return Success; }
 
@@ -32,7 +52,8 @@ internal static class CliRunner
                 "scan" or "refresh" or "rescan" => ShowScan(engine, options.Json),
                 "validate" => await ValidateOrUpgradeAsync(engine, options, false),
                 "upgrade" => await ValidateOrUpgradeAsync(engine, options, true),
-                _ => Fail(InvalidArguments, $"Unknown command: {options.Command}. Use --help for syntax.", options.Json)
+                _ => Fail(InvalidArguments,
+                    $"Unknown command: {options.Command}. Use 'help' to list commands.", options.Json)
             };
         }
         catch (CliArgumentException ex)
@@ -208,38 +229,6 @@ internal static class CliRunner
         else foreach (var value in values) Console.WriteLine($"  {value}");
     }
 
-    private static void PrintHelp()
-    {
-        Console.WriteLine("""
-PcNinja Windows 11 Upgrade Assistant 1.1.0-rc.2
-
-Usage:
-  PcNinja-Win11-Upgrade-Assistant.exe status [--json]
-  PcNinja-Win11-Upgrade-Assistant.exe scan [--json]
-  PcNinja-Win11-Upgrade-Assistant.exe validate --iso <path> [--json]
-  PcNinja-Win11-Upgrade-Assistant.exe validate --mounted <drive> [--json]
-  PcNinja-Win11-Upgrade-Assistant.exe upgrade --iso <path> [--no-restart] [--yes] [--json]
-  PcNinja-Win11-Upgrade-Assistant.exe upgrade --mounted <drive> [--no-restart] [--yes] [--json]
-  PcNinja-Win11-Upgrade-Assistant.exe upgrade --download [--destination <folder>] [--no-restart] [--yes] [--json]
-
-Commands:
-  status       Show Windows, storage, administrator, and log information.
-  scan         Rescan local ISO files, mounted media, and download drives.
-  validate     Mount and fully validate media without starting Windows Setup.
-  upgrade      Validate media and start the known-good Windows Setup command.
-  log-path     Print the log path.
-
-Options:
-  --dry-run       Validate only, even when the upgrade command is used.
-  --no-restart    Add /noreboot. PcNinja never calls shutdown.exe.
-  --yes           Explicitly skip the interactive final confirmation.
-  --json          Emit machine-readable final output.
-  --help, -h      Show this help.
-  --version       Show the version.
-
-Mounting and upgrade commands must be run as Administrator.
-""");
-    }
 }
 
 internal sealed record CliOptions(
@@ -256,8 +245,6 @@ internal sealed record CliOptions(
     public static CliOptions Parse(string[] args)
     {
         if (args.Length == 0) throw new CliArgumentException("No command was supplied.");
-        if (args.Any(arg => arg.Equals("--help", StringComparison.OrdinalIgnoreCase) || arg.Equals("-h", StringComparison.OrdinalIgnoreCase)))
-            return Empty("help");
         if (args[0].Equals("--version", StringComparison.OrdinalIgnoreCase)) return Empty("version");
 
         var command = args[0].ToLowerInvariant();
@@ -282,7 +269,8 @@ internal sealed record CliOptions(
                 case "--yes": yes = true; break;
                 case "--dry-run": dryRun = true; break;
                 case "--json": json = true; break;
-                default: throw new CliArgumentException($"Unknown option: {args[index]}");
+                default: throw new CliArgumentException(
+                    $"Unknown option for {command}: {args[index]}. Run '{command} --help' for valid options.");
             }
         }
 

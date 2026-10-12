@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.1.0-rc.3
+
+- Added a complete offline CLI manual embedded inside the standalone EXE.
+- Added `help`, `help <command>`, `<command> --help`, and `help all`.
+- Documented all source modes, validation checks, restart behavior, automation
+  confirmation, JSON output, Setup arguments, and exit-code behavior in-product.
+- Added `completion powershell` to generate native PowerShell Tab completion.
+- Added completion for commands, applicable options, mounted Windows media,
+  local ISO paths, and download destination directories.
+- Kept PowerShell profile changes under user control; the application prints the
+  completer but never silently edits `$PROFILE`.
+- Added release-pipeline checks for embedded mounted-media help and completion
+  script syntax.
+
 ## 1.1.0-rc.2
 
 - Added a dark PcNinja-branded interface, mascot, window icon, and EXE icon.

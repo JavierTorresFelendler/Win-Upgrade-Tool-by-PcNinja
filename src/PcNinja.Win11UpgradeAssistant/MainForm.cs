@@ -37,7 +37,7 @@ internal sealed class MainForm : Form
 
     public MainForm()
     {
-        Text = "PcNinja Windows 11 Upgrade Assistant - RC2";
+        Text = "PcNinja Windows 11 Upgrade Assistant - RC3";
         StartPosition = FormStartPosition.CenterScreen;
         MinimumSize = new Size(900, 760);
         Size = new Size(980, 820);
@@ -187,7 +187,7 @@ internal sealed class MainForm : Form
         var footer = new LinkLabel
         {
             AutoSize = true,
-            Text = $"Version 1.1.0-rc.2  |  View log: {AppLog.Path}",
+            Text = $"Version 1.1.0-rc.3  |  View log: {AppLog.Path}",
             LinkColor = Color.FromArgb(119, 174, 255),
             ActiveLinkColor = Accent,
             VisitedLinkColor = Color.FromArgb(168, 137, 255)
@@ -231,7 +231,7 @@ internal sealed class MainForm : Form
         text.Controls.Add(new Label
         {
             AutoSize = true,
-            Text = "PcNinja standalone RC2 for advanced Windows 10 and Windows 11 users",
+            Text = "PcNinja standalone RC3 for advanced Windows 10 and Windows 11 users",
             ForeColor = Muted,
             Margin = new Padding(1, 3, 0, 0)
         });

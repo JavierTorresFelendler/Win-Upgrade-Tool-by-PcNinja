@@ -1,5 +1,12 @@
 # Roadmap
 
+## RC3 - self-documenting CLI
+
+- Field-test global help, per-command help, the offline manual, and PowerShell
+  completion from a clean machine.
+- Verify mounted-drive and ISO-path completion when multiple sources exist.
+- Decide whether a reviewed opt-in `$PROFILE` installer is useful after RC3.
+
 ## RC2 - standalone GUI and CLI
 
 - Field-test automatic download through the current PcNinja endpoint.

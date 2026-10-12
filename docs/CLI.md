@@ -4,7 +4,9 @@ The graphical interface opens when the EXE is started without arguments. The
 same standalone EXE becomes a command-line tool when a command is supplied.
 
 ```powershell
-.\PcNinja-Win11-Upgrade-Assistant-RC2.exe --help
+.\PcNinja-Win11-Upgrade-Assistant-RC3.exe --help
+.\PcNinja-Win11-Upgrade-Assistant-RC3.exe help upgrade
+.\PcNinja-Win11-Upgrade-Assistant-RC3.exe help all
 ```
 
 ## Permissions
@@ -13,21 +15,44 @@ same standalone EXE becomes a command-line tool when a command is supplied.
 Commands that mount or validate installation media, download and mount an ISO,
 or start Windows Setup must run from an elevated Command Prompt or PowerShell.
 
+## Built-in help and PowerShell completion
+
+The EXE contains its own documentation and does not require GitHub access:
+
+```powershell
+.\PcNinja-Win11-Upgrade-Assistant-RC3.exe help
+.\PcNinja-Win11-Upgrade-Assistant-RC3.exe help validate
+.\PcNinja-Win11-Upgrade-Assistant-RC3.exe upgrade --help
+.\PcNinja-Win11-Upgrade-Assistant-RC3.exe help all
+```
+
+Enable Tab completion for the current PowerShell session:
+
+```powershell
+& .\PcNinja-Win11-Upgrade-Assistant-RC3.exe completion powershell |
+    Out-String | Invoke-Expression
+```
+
+Completion covers commands, options relevant to the selected command, mounted
+drives containing `setup.exe`, ISO paths, and destination directories. The EXE
+does not modify `$PROFILE`; run `help completion` before adding the generated
+script to a persistent profile.
+
 ## Inspect the computer and available sources
 
 Show the Windows version, system-drive storage, administrator state, and log
 path:
 
 ```powershell
-.\PcNinja-Win11-Upgrade-Assistant-RC2.exe status
-.\PcNinja-Win11-Upgrade-Assistant-RC2.exe status --json
+.\PcNinja-Win11-Upgrade-Assistant-RC3.exe status
+.\PcNinja-Win11-Upgrade-Assistant-RC3.exe status --json
 ```
 
 Rescan ISO files found beside the application, mounted Windows media, and
 available download drives:
 
 ```powershell
-.\PcNinja-Win11-Upgrade-Assistant-RC2.exe scan
+.\PcNinja-Win11-Upgrade-Assistant-RC3.exe scan
 ```
 
 A mounted Windows ISO appears under `Mounted Windows sources`. The drive must
@@ -42,22 +67,22 @@ Test-Path E:\setup.exe
 Validate the mounted media without starting Windows Setup:
 
 ```powershell
-.\PcNinja-Win11-Upgrade-Assistant-RC2.exe validate --mounted E:\
+.\PcNinja-Win11-Upgrade-Assistant-RC3.exe validate --mounted E:\
 ```
 
 Validate it and start the upgrade:
 
 ```powershell
-.\PcNinja-Win11-Upgrade-Assistant-RC2.exe upgrade --mounted E:\
+.\PcNinja-Win11-Upgrade-Assistant-RC3.exe upgrade --mounted E:\
 ```
 
 Prevent Windows Setup from restarting automatically:
 
 ```powershell
-.\PcNinja-Win11-Upgrade-Assistant-RC2.exe upgrade --mounted E:\ --no-restart
+.\PcNinja-Win11-Upgrade-Assistant-RC3.exe upgrade --mounted E:\ --no-restart
 ```
 
-The drive is intentionally explicit. RC2 never guesses which mounted source to
+The drive is intentionally explicit. RC3 never guesses which mounted source to
 use when more than one installation disc is present.
 
 ## Use a local ISO file
@@ -65,13 +90,13 @@ use when more than one installation disc is present.
 Mount and validate an exact ISO path without starting Setup:
 
 ```powershell
-.\PcNinja-Win11-Upgrade-Assistant-RC2.exe validate --iso "D:\ISO\Windows11.iso"
+.\PcNinja-Win11-Upgrade-Assistant-RC3.exe validate --iso "D:\ISO\Windows11.iso"
 ```
 
 Start an upgrade from that ISO:
 
 ```powershell
-.\PcNinja-Win11-Upgrade-Assistant-RC2.exe upgrade --iso "D:\ISO\Windows11.iso"
+.\PcNinja-Win11-Upgrade-Assistant-RC3.exe upgrade --iso "D:\ISO\Windows11.iso"
 ```
 
 ## Download an ISO automatically
@@ -79,13 +104,13 @@ Start an upgrade from that ISO:
 Download to the default suitable fixed drive, validate, and start the upgrade:
 
 ```powershell
-.\PcNinja-Win11-Upgrade-Assistant-RC2.exe upgrade --download
+.\PcNinja-Win11-Upgrade-Assistant-RC3.exe upgrade --download
 ```
 
 Select a download folder or removable NTFS/exFAT drive:
 
 ```powershell
-.\PcNinja-Win11-Upgrade-Assistant-RC2.exe upgrade --download --destination "E:\PcNinja Downloads"
+.\PcNinja-Win11-Upgrade-Assistant-RC3.exe upgrade --download --destination "E:\PcNinja Downloads"
 ```
 
 ## Validation, confirmation, and automation
@@ -94,14 +119,14 @@ Select a download folder or removable NTFS/exFAT drive:
 using the `upgrade` command:
 
 ```powershell
-.\PcNinja-Win11-Upgrade-Assistant-RC2.exe upgrade --iso "D:\ISO\Windows11.iso" --dry-run
+.\PcNinja-Win11-Upgrade-Assistant-RC3.exe upgrade --iso "D:\ISO\Windows11.iso" --dry-run
 ```
 
 An interactive upgrade requires typing `YES`. Automation must deliberately add
 `--yes` to bypass that prompt:
 
 ```powershell
-.\PcNinja-Win11-Upgrade-Assistant-RC2.exe upgrade --mounted E:\ --no-restart --yes
+.\PcNinja-Win11-Upgrade-Assistant-RC3.exe upgrade --mounted E:\ --no-restart --yes
 ```
 
 Add `--json` when the final result must be machine-readable. Progress and
