@@ -46,7 +46,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           & artifacts/PcNinja-Win11-Upgrade-Assistant-RC3.exe status --json
           if ($LASTEXITCODE -notin 0,3) { exit $LASTEXITCODE }
-          $help = & artifacts/PcNinja-Win11-Upgrade-Assistant-RC3.exe help upgrade
+          $help = & artifacts/PcNinja-Win11-Upgrade-Assistant-RC3.exe help upgrade | Out-String
           if ($LASTEXITCODE -ne 0 -or $help -notmatch '--mounted') { exit 1 }
           $completion = & artifacts/PcNinja-Win11-Upgrade-Assistant-RC3.exe completion powershell | Out-String
           [scriptblock]::Create($completion) | Out-Null
