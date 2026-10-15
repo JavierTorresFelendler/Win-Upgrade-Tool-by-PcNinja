@@ -1,5 +1,36 @@
 # Changelog
 
+## 1.1.0-rc.4
+
+- Restyled the single-screen GUI with one mascot, CPU/RAM/free-space details,
+  a green Start button beside Refresh, and exclusive selected-source highlighting.
+- Replaced the standalone header label with a clickable `www.pcninja.pro` link.
+- Added extracted Setup folder selection alongside already mounted media in
+  both GUI and CLI (`--mounted <drive-or-folder>`).
+- Built the app as a Windows GUI executable to prevent black startup windows;
+  CLI mode attaches to the caller's terminal and preserves redirected streams.
+- Added red Cancel during preparation, duplicate-click protection, safe helper
+  process cancellation, Setup-running lockout, and CLI Ctrl+C cancellation.
+- Preserved cancellation/error outcomes across the final refresh and custom
+  download folders across source rescans.
+- Reserved ISO download space and Windows upgrade workspace together when they
+  share a drive; rechecked Windows workspace immediately before Setup launch.
+- Filtered unsupported filesystems, undersized drives and detected reserved
+  partitions; applied the same validation to manually chosen download folders.
+- Added 60-second header and 90-second stalled-read timeouts.
+- Added guarded partial-download resume using strong ETag, Content-Range and
+  length checks; retained original names, exact paths and numbered collisions.
+- Added ISO SHA-256 calculation and optional trusted-hash comparison through
+  CLI `--sha256` or GUI/CLI environment setting `PCNINJA_ISO_SHA256`.
+- Limited browser fallback to network/service failures; local storage and
+  checksum errors stay in the app. Cancellation never opens a browser.
+- Shortened confirmation/success text and moved routine failures inline with
+  optional details. Added an editable message catalog for future wording review.
+- Made log write failures non-fatal; tolerated individual drives disappearing
+  during source scans; rejected ARM64 for the x64-only release.
+- Rejected repeated and command-inapplicable CLI options instead of ignoring them.
+- Added transfer fault tests, GUI action tests and documented RC4 limitations.
+
 ## 1.1.0-rc.3
 
 - Added a complete offline CLI manual embedded inside the standalone EXE.

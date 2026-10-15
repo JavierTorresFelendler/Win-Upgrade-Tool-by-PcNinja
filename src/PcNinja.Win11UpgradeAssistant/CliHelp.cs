@@ -2,7 +2,7 @@ namespace PcNinja.Win11UpgradeAssistant;
 
 internal static class CliHelp
 {
-    internal const string Version = "1.1.0-rc.3";
+    internal const string Version = "1.1.0-rc.4";
 
     private static readonly string[] Topics =
         ["status", "scan", "validate", "upgrade", "log-path", "completion"];
@@ -73,15 +73,15 @@ internal static class CliHelp
     };
 
     private const string General = """
-PcNinja Windows 11 Upgrade Assistant 1.1.0-rc.3
+PcNinja Windows 11 Upgrade Assistant 1.1.0-rc.4
 
 The graphical interface opens when the EXE is started without arguments.
 Supplying a command starts CLI mode.
 
 Usage:
-  PcNinja-Win11-Upgrade-Assistant-RC3.exe <command> [options]
-  PcNinja-Win11-Upgrade-Assistant-RC3.exe help <command>
-  PcNinja-Win11-Upgrade-Assistant-RC3.exe <command> --help
+  PcNinja-Win11-Upgrade-Assistant-RC4.exe <command> [options]
+  PcNinja-Win11-Upgrade-Assistant-RC4.exe help <command>
+  PcNinja-Win11-Upgrade-Assistant-RC4.exe <command> --help
 
 Commands:
   status       Show Windows, storage, administrator, and log information.
@@ -89,7 +89,7 @@ Commands:
   validate     Validate one exact ISO file or mounted Windows source.
   upgrade      Validate a source and start Windows Setup after confirmation.
   log-path     Print the application log path.
-  completion   Generate shell completion code. RC3 supports PowerShell.
+  completion   Generate shell completion code. RC4 supports PowerShell.
   help         Show general help or detailed help for one command.
 
 Global options:
@@ -98,10 +98,10 @@ Global options:
   --version       Show the application version.
 
 Learn more:
-  PcNinja-Win11-Upgrade-Assistant-RC3.exe help validate
-  PcNinja-Win11-Upgrade-Assistant-RC3.exe help upgrade
-  PcNinja-Win11-Upgrade-Assistant-RC3.exe help completion
-  PcNinja-Win11-Upgrade-Assistant-RC3.exe help all
+  PcNinja-Win11-Upgrade-Assistant-RC4.exe help validate
+  PcNinja-Win11-Upgrade-Assistant-RC4.exe help upgrade
+  PcNinja-Win11-Upgrade-Assistant-RC4.exe help completion
+  PcNinja-Win11-Upgrade-Assistant-RC4.exe help all
 
 Exit codes:
   0  Success
@@ -124,8 +124,8 @@ Show the detected Windows version, whether upgrades are supported, available
 space on the Windows drive, administrator state, and log path.
 
 Usage:
-  PcNinja-Win11-Upgrade-Assistant-RC3.exe status
-  PcNinja-Win11-Upgrade-Assistant-RC3.exe status --json
+  PcNinja-Win11-Upgrade-Assistant-RC4.exe status
+  PcNinja-Win11-Upgrade-Assistant-RC4.exe status --json
 
 This command does not require Administrator permission and can report an
 unsupported Windows Server or LTSC host without attempting an upgrade.
@@ -137,8 +137,8 @@ COMMAND: scan
 Rescan sources without changing the computer. Aliases: refresh, rescan.
 
 Usage:
-  PcNinja-Win11-Upgrade-Assistant-RC3.exe scan
-  PcNinja-Win11-Upgrade-Assistant-RC3.exe scan --json
+  PcNinja-Win11-Upgrade-Assistant-RC4.exe scan
+  PcNinja-Win11-Upgrade-Assistant-RC4.exe scan --json
 
 The output contains:
   Local ISO files          Suitable .iso files found beside the application.
@@ -146,9 +146,9 @@ The output contains:
   Download locations      Ready fixed or removable drives and free space.
 
 Example workflow for a mounted ISO:
-  PcNinja-Win11-Upgrade-Assistant-RC3.exe scan
-  PcNinja-Win11-Upgrade-Assistant-RC3.exe validate --mounted E:\
-  PcNinja-Win11-Upgrade-Assistant-RC3.exe upgrade --mounted E:\ --no-restart
+  PcNinja-Win11-Upgrade-Assistant-RC4.exe scan
+  PcNinja-Win11-Upgrade-Assistant-RC4.exe validate --mounted E:\
+  PcNinja-Win11-Upgrade-Assistant-RC4.exe upgrade --mounted E:\ --no-restart
 
 This command does not require Administrator permission.
 """;
@@ -159,20 +159,24 @@ COMMAND: validate
 Validate exactly one installation source without starting Windows Setup.
 
 Usage:
-  PcNinja-Win11-Upgrade-Assistant-RC3.exe validate --iso <exact-iso-path> [--json]
-  PcNinja-Win11-Upgrade-Assistant-RC3.exe validate --mounted <drive-root> [--json]
+  PcNinja-Win11-Upgrade-Assistant-RC4.exe validate --iso <exact-iso-path> [--sha256 <hash>] [--json]
+  PcNinja-Win11-Upgrade-Assistant-RC4.exe validate --mounted <drive-or-folder> [--json]
 
 Examples:
-  PcNinja-Win11-Upgrade-Assistant-RC3.exe validate --iso "D:\ISO\Windows11.iso"
-  PcNinja-Win11-Upgrade-Assistant-RC3.exe validate --mounted E:\
-  PcNinja-Win11-Upgrade-Assistant-RC3.exe validate --mounted E:\ --json
+  PcNinja-Win11-Upgrade-Assistant-RC4.exe validate --iso "D:\ISO\Windows11.iso"
+  PcNinja-Win11-Upgrade-Assistant-RC4.exe validate --mounted E:\
+  PcNinja-Win11-Upgrade-Assistant-RC4.exe validate --mounted "C:\Win11 Extracted"
+  PcNinja-Win11-Upgrade-Assistant-RC4.exe validate --mounted E:\ --json
 
 --iso mounts the exact file, then validates the mounted media.
---mounted uses an ISO that Windows already mounted. Run scan to find its drive.
+--mounted accepts either an ISO that Windows already mounted or an extracted
+Windows Setup folder containing setup.exe and the sources directory.
 
 Validation checks the system drive, ISO size, setup.exe location, Microsoft
 signature, absence of Autounattend.xml, and DISM readability of install.wim,
 install.esd, or install.swm. Administrator permission is required.
+ISO SHA-256 is calculated; --sha256 or PCNINJA_ISO_SHA256 supplies a trusted
+expected hash for comparison. --sha256 cannot be used with --mounted.
 """;
 
     private const string Upgrade = """
@@ -182,23 +186,25 @@ Validate exactly one source and start the known-good Windows Setup command.
 
 Source modes - choose exactly one:
   --iso <path>             Use and mount one exact local ISO file.
-  --mounted <drive-root>   Use an ISO already mounted as a drive, such as E:\.
+  --mounted <path>         Use mounted media or an extracted Setup folder.
   --download               Download an ISO automatically, then mount it.
 
 Additional options:
   --destination <folder>   Download folder for --download. NTFS/exFAT required.
+  --sha256 <hash>          Compare an ISO with a trusted 64-character SHA-256.
   --no-restart             Add /noreboot; restart manually when ready.
   --dry-run                Perform full validation but do not start Setup.
   --yes                    Explicitly skip the interactive YES confirmation.
   --json                   Emit a machine-readable final result.
 
 Examples:
-  PcNinja-Win11-Upgrade-Assistant-RC3.exe upgrade --mounted E:\
-  PcNinja-Win11-Upgrade-Assistant-RC3.exe upgrade --mounted E:\ --no-restart
-  PcNinja-Win11-Upgrade-Assistant-RC3.exe upgrade --iso "D:\ISO\Windows11.iso" --dry-run
-  PcNinja-Win11-Upgrade-Assistant-RC3.exe upgrade --iso "D:\ISO\Windows11.iso" --no-restart
-  PcNinja-Win11-Upgrade-Assistant-RC3.exe upgrade --download --destination "F:\PcNinja Downloads"
-  PcNinja-Win11-Upgrade-Assistant-RC3.exe upgrade --mounted E:\ --no-restart --yes --json
+  PcNinja-Win11-Upgrade-Assistant-RC4.exe upgrade --mounted E:\
+  PcNinja-Win11-Upgrade-Assistant-RC4.exe upgrade --mounted "C:\Win11 Extracted"
+  PcNinja-Win11-Upgrade-Assistant-RC4.exe upgrade --mounted E:\ --no-restart
+  PcNinja-Win11-Upgrade-Assistant-RC4.exe upgrade --iso "D:\ISO\Windows11.iso" --dry-run
+  PcNinja-Win11-Upgrade-Assistant-RC4.exe upgrade --iso "D:\ISO\Windows11.iso" --no-restart
+  PcNinja-Win11-Upgrade-Assistant-RC4.exe upgrade --download --destination "F:\PcNinja Downloads"
+  PcNinja-Win11-Upgrade-Assistant-RC4.exe upgrade --mounted E:\ --no-restart --yes --json
 
 Without --yes, type YES at the final safety prompt. Non-interactive execution
 without --yes is cancelled. Administrator permission is required.
@@ -208,6 +214,14 @@ Windows Setup arguments:
   /compat ignorewarning
 
 --no-restart additionally supplies /noreboot. PcNinja never calls shutdown.exe.
+
+Ctrl+C cancels download, checksum and preparation work (exit code 6). It does
+not interrupt Windows Setup after launch. Network failures may open the normal
+browser fallback in interactive mode; disk errors never do.
+Downloads pause after 90 seconds without incoming data. Retry resumes a partial
+only when the server confirms the same strong ETag, size and byte range.
+SHA-256 is calculated for ISO files. Supply --sha256 or PCNINJA_ISO_SHA256 to
+compare with a trusted value; a calculated hash alone is not proof of integrity.
 """;
 
     private const string LogPath = """
@@ -216,7 +230,7 @@ COMMAND: log-path
 Print the full path of the PcNinja upgrade log.
 
 Usage:
-  PcNinja-Win11-Upgrade-Assistant-RC3.exe log-path
+  PcNinja-Win11-Upgrade-Assistant-RC4.exe log-path
 
 This command does not require Administrator permission.
 """;
@@ -227,7 +241,7 @@ COMMAND: completion
 Generate a PowerShell native argument completer for the current EXE name.
 
 Enable completion for the current PowerShell session:
-  & .\PcNinja-Win11-Upgrade-Assistant-RC3.exe completion powershell |
+  & .\PcNinja-Win11-Upgrade-Assistant-RC4.exe completion powershell |
     Out-String | Invoke-Expression
 
 After registration, press Tab to complete commands, relevant options, mounted
@@ -235,11 +249,11 @@ drives containing setup.exe, ISO paths, and destination directories.
 
 The command prints a script only. It does not modify $PROFILE automatically.
 To make it persistent, review the generated script and add it to your profile.
-PowerShell completion is supported in RC3; CMD receives the embedded help only.
+PowerShell completion is supported in RC4; CMD receives the embedded help only.
 """;
 
     private const string PowerShellCompletion = """
-# PcNinja Windows 11 Upgrade Assistant native completion (RC3)
+# PcNinja Windows 11 Upgrade Assistant native completion (RC4)
 Register-ArgumentCompleter -Native -CommandName '__EXE_NAME__', 'PcNinja-Win11-Upgrade-Assistant.exe' -ScriptBlock {
     param($wordToComplete, $commandAst, $cursorPosition)
 
@@ -253,6 +267,13 @@ Register-ArgumentCompleter -Native -CommandName '__EXE_NAME__', 'PcNinja-Win11-U
             Where-Object { Test-Path -LiteralPath (Join-Path $_.Root 'setup.exe') } |
             ForEach-Object {
                 [System.Management.Automation.CompletionResult]::new($_.Root, $_.Root, 'ParameterValue', 'Mounted Windows source')
+            }
+        $filter = if ([string]::IsNullOrWhiteSpace($wordToComplete)) { '*' } else { "$wordToComplete*" }
+        Get-ChildItem -Path $filter -Directory -Force -ErrorAction SilentlyContinue |
+            ForEach-Object {
+                $value = $_.FullName
+                $completion = if ($value.Contains(' ')) { "'" + $value.Replace("'", "''") + "'" } else { $value }
+                [System.Management.Automation.CompletionResult]::new($completion, $_.Name, 'ParameterValue', $value)
             }
         return
     }
@@ -275,8 +296,8 @@ Register-ArgumentCompleter -Native -CommandName '__EXE_NAME__', 'PcNinja-Win11-U
         'scan'       { @('--json', '--help') }
         'refresh'    { @('--json', '--help') }
         'rescan'     { @('--json', '--help') }
-        'validate'   { @('--iso', '--mounted', '--json', '--help') }
-        'upgrade'    { @('--iso', '--mounted', '--download', '--destination', '--no-restart', '--dry-run', '--yes', '--json', '--help') }
+        'validate'   { @('--iso', '--mounted', '--sha256', '--json', '--help') }
+        'upgrade'    { @('--iso', '--mounted', '--download', '--destination', '--sha256', '--no-restart', '--dry-run', '--yes', '--json', '--help') }
         'completion' { @('powershell', '--help') }
         'help'       { @('status', 'scan', 'validate', 'upgrade', 'log-path', 'completion', 'all') }
         default      { $commands }

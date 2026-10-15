@@ -23,6 +23,16 @@ jobs:
         shell: pwsh
         run: dotnet run --project tests/PcNinja.Win11Upgrade.SmokeTests/PcNinja.Win11Upgrade.SmokeTests.csproj -c Release
 
+      - name: Run GUI action checks (never starts Setup)
+        shell: pwsh
+        run: |
+          if ((Get-CimInstance Win32_OperatingSystem).ProductType -eq 1) {
+            dotnet run --project tests/PcNinja.Win11Upgrade.GuiChecks/PcNinja.Win11Upgrade.GuiChecks.csproj -c Release
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          } else {
+            Write-Output 'GUI action checks require a supported Windows client; hosted Server runner skips these. Run them locally on Windows 10/11.'
+          }
+
       - name: Publish portable EXE
         shell: pwsh
         run: >-
@@ -36,27 +46,27 @@ jobs:
       - name: Prepare release assets
         shell: pwsh
         run: |
-          Move-Item artifacts/PcNinja-Win11-Upgrade-Assistant.exe artifacts/PcNinja-Win11-Upgrade-Assistant-RC3.exe
-          (Get-FileHash artifacts/PcNinja-Win11-Upgrade-Assistant-RC3.exe -Algorithm SHA256).Hash.ToLowerInvariant() + "  PcNinja-Win11-Upgrade-Assistant-RC3.exe" | Set-Content artifacts/SHA256SUMS.txt -Encoding ascii
+          Move-Item artifacts/PcNinja-Win11-Upgrade-Assistant.exe artifacts/PcNinja-Win11-Upgrade-Assistant-RC4.exe
+          (Get-FileHash artifacts/PcNinja-Win11-Upgrade-Assistant-RC4.exe -Algorithm SHA256).Hash.ToLowerInvariant() + "  PcNinja-Win11-Upgrade-Assistant-RC4.exe" | Set-Content artifacts/SHA256SUMS.txt -Encoding ascii
 
       - name: Verify CLI entry points
         shell: pwsh
         run: |
-          & artifacts/PcNinja-Win11-Upgrade-Assistant-RC3.exe --version
+          & artifacts/PcNinja-Win11-Upgrade-Assistant-RC4.exe --version
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & artifacts/PcNinja-Win11-Upgrade-Assistant-RC3.exe status --json
+          & artifacts/PcNinja-Win11-Upgrade-Assistant-RC4.exe status --json
           if ($LASTEXITCODE -notin 0,3) { exit $LASTEXITCODE }
-          $help = & artifacts/PcNinja-Win11-Upgrade-Assistant-RC3.exe help upgrade | Out-String
+          $help = & artifacts/PcNinja-Win11-Upgrade-Assistant-RC4.exe help upgrade | Out-String
           if ($LASTEXITCODE -ne 0 -or $help -notmatch '--mounted') { exit 1 }
-          $completion = & artifacts/PcNinja-Win11-Upgrade-Assistant-RC3.exe completion powershell | Out-String
+          $completion = & artifacts/PcNinja-Win11-Upgrade-Assistant-RC4.exe completion powershell | Out-String
           [scriptblock]::Create($completion) | Out-Null
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: PcNinja-Win11-Upgrade-Assistant-RC3
+          name: PcNinja-Win11-Upgrade-Assistant-RC4
           path: |
-            artifacts/PcNinja-Win11-Upgrade-Assistant-RC3.exe
+            artifacts/PcNinja-Win11-Upgrade-Assistant-RC4.exe
             artifacts/SHA256SUMS.txt
 
       - name: Publish GitHub prerelease
@@ -64,20 +74,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           prerelease: true
-          generate_release_notes: true
-          body: |
-            ## Documentation
-
-            - [Graphical workflow and overview](https://github.com/${{ github.repository }}/blob/main/README.md)
-            - [Complete CLI guide](https://github.com/${{ github.repository }}/blob/main/docs/CLI.md)
-
-            Run `PcNinja-Win11-Upgrade-Assistant-RC3.exe help all` for the complete offline manual embedded in the downloaded EXE.
-
-            Enable PowerShell Tab completion for the current session:
-
-            ```powershell
-            & .\PcNinja-Win11-Upgrade-Assistant-RC3.exe completion powershell | Out-String | Invoke-Expression
-            ```
+          name: PcNinja Windows 11 Upgrade Assistant RC4
+          body_path: docs/RELEASE-RC4.md
           files: |
-            artifacts/PcNinja-Win11-Upgrade-Assistant-RC3.exe
+            artifacts/PcNinja-Win11-Upgrade-Assistant-RC4.exe
             artifacts/SHA256SUMS.txt

@@ -4,12 +4,15 @@ using System.Net;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using System.Security.Cryptography;
 
 namespace PcNinja.Win11Upgrade.Core;
 
 public sealed class UpgradeEngine
 {
     public const string DownloadEndpoint = "https://11oem.pcninja.pro";
+    public const string PcNinjaBrowserFallbackPage =
+        "https://technionmail-my.sharepoint.com/:u:/g/personal/techsup_technion_ac_il/IQB4hCE2DRrGRqQuQYDafLdfAYjrr8R8MAqD4efXPsI-epA?e=aqZwxY";
     public const string MicrosoftDownloadPage = "https://www.microsoft.com/software-download/windows11";
     public const long MinimumIsoBytes = 3L * 1024 * 1024 * 1024;
     public const long MinimumSystemDriveFreeBytes = 20L * 1024 * 1024 * 1024;
@@ -22,12 +25,12 @@ public sealed class UpgradeEngine
         var handler = new HttpClientHandler
         {
             AllowAutoRedirect = true,
-            AutomaticDecompression = DecompressionMethods.All,
+            AutomaticDecompression = DecompressionMethods.None,
             UseCookies = true,
             CookieContainer = new CookieContainer()
         };
         _http = new HttpClient(handler) { Timeout = Timeout.InfiniteTimeSpan };
-        _http.DefaultRequestHeaders.UserAgent.ParseAdd("PcNinja-Win11-Upgrade-Assistant/1.1.0-rc.3");
+        _http.DefaultRequestHeaders.UserAgent.ParseAdd("PcNinja-Win11-Upgrade-Assistant/1.1.0-rc.4");
     }
 
     public string GetOperatingSystemDescription()
@@ -62,7 +65,7 @@ public sealed class UpgradeEngine
 
     public void ValidateSupportedComputer()
     {
-        if (!Environment.Is64BitOperatingSystem)
+        if (RuntimeInformation.OSArchitecture != Architecture.X64)
             throw new InvalidOperationException("This release supports x64 computers only.");
 
         using var key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion");
@@ -94,12 +97,22 @@ public sealed class UpgradeEngine
         }
     }
 
-    public IReadOnlyList<MountedSource> FindMountedSources() => DriveInfo.GetDrives()
-        .Where(drive => drive.IsReady)
-        .Select(drive => new MountedSource(drive.RootDirectory.FullName,
-            System.IO.Path.Combine(drive.RootDirectory.FullName, "setup.exe")))
-        .Where(source => File.Exists(source.SetupPath))
-        .ToArray();
+    public IReadOnlyList<MountedSource> FindMountedSources()
+    {
+        var sources = new List<MountedSource>();
+        foreach (var drive in DriveInfo.GetDrives())
+        {
+            try
+            {
+                if (!drive.IsReady) continue;
+                var setup = Path.Combine(drive.RootDirectory.FullName, "setup.exe");
+                if (File.Exists(setup)) sources.Add(new(drive.RootDirectory.FullName, setup));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            { AppLog.Info($"Source scan skipped {drive.Name}: {ex.Message}"); }
+        }
+        return sources;
+    }
 
     public IReadOnlyList<StorageLocation> FindDownloadLocations()
     {
@@ -109,6 +122,8 @@ public sealed class UpgradeEngine
             try
             {
                 if (!drive.IsReady || drive.DriveType is not (DriveType.Fixed or DriveType.Removable)) continue;
+                if (!IsEligibleDownloadLocation(drive.DriveFormat, drive.AvailableFreeSpace)) continue;
+                if (DownloadVolume.IsReserved(drive.RootDirectory.FullName)) continue;
                 locations.Add(new StorageLocation(drive.RootDirectory.FullName, drive.VolumeLabel,
                     drive.DriveType, drive.DriveFormat, drive.AvailableFreeSpace));
             }
@@ -148,10 +163,13 @@ public sealed class UpgradeEngine
             ?? throw new InvalidOperationException("The selected download drive could not be identified.");
         var drive = new DriveInfo(root);
         if (!drive.IsReady) throw new InvalidOperationException($"Drive {root} is not ready.");
-        if (drive.DriveFormat.Equals("FAT32", StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException("FAT32 cannot store this Windows ISO. Choose an NTFS or exFAT drive.");
+        if (DownloadVolume.IsReserved(root))
+            throw new InvalidOperationException("Choose a data drive instead of a hidden, recovery or system partition.");
+        if (!IsSupportedDownloadFileSystem(drive.DriveFormat))
+            throw new InvalidOperationException("Choose an NTFS or exFAT drive for the ISO download.");
 
-        var required = checked((expectedBytes ?? UnknownDownloadReserveBytes) + DownloadSafetyMarginBytes);
+        var systemRoot = Path.GetPathRoot(Environment.GetFolderPath(Environment.SpecialFolder.Windows))!;
+        var required = RequiredDownloadBytes(expectedBytes, string.Equals(root, systemRoot, StringComparison.OrdinalIgnoreCase));
         var valid = drive.AvailableFreeSpace >= required;
         var message = valid
             ? $"{FormatBytes(drive.AvailableFreeSpace)} free on {root}."
@@ -177,69 +195,48 @@ public sealed class UpgradeEngine
         return new StorageCheck(valid, root, drive.DriveFormat, drive.AvailableFreeSpace, required, message);
     }
 
-    public async Task<DownloadResult> DownloadIsoAsync(string destinationDirectory,
-        IProgress<DownloadProgress>? progress, CancellationToken cancellationToken)
+    public static bool IsSupportedDownloadFileSystem(string format) =>
+        format.Equals("NTFS", StringComparison.OrdinalIgnoreCase) || format.Equals("exFAT", StringComparison.OrdinalIgnoreCase);
+
+    public static bool IsEligibleDownloadLocation(string format, long availableBytes) =>
+        IsSupportedDownloadFileSystem(format) && availableBytes >= MinimumIsoBytes + DownloadSafetyMarginBytes;
+
+    public static long RequiredDownloadBytes(long? remainingBytes, bool windowsDrive) =>
+        checked((remainingBytes ?? UnknownDownloadReserveBytes) + DownloadSafetyMarginBytes +
+            (windowsDrive ? MinimumSystemDriveFreeBytes : 0));
+
+    public static string? ConfiguredIsoSha256 => Environment.GetEnvironmentVariable("PCNINJA_ISO_SHA256") is { Length: > 0 } hash
+        ? NormalizeSha256(hash) : null;
+
+    public static string NormalizeSha256(string hash)
     {
-        AppLog.Info("Starting automatic ISO download from the configured PcNinja endpoint.");
-        using var response = await _http.GetAsync(DownloadEndpoint,
-            HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-        response.EnsureSuccessStatusCode();
+        hash = hash.Trim();
+        if (hash.Length != 64 || !hash.All(Uri.IsHexDigit))
+            throw new ArgumentException("SHA-256 must contain exactly 64 hexadecimal characters.");
+        return hash.ToUpperInvariant();
+    }
 
-        var contentType = response.Content.Headers.ContentType?.MediaType ?? "";
-        if (contentType.Contains("text/html", StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException("The download service returned a web page instead of an ISO file.");
+    public static async Task<string> VerifyIsoHashAsync(string path, string? expected, CancellationToken token)
+    {
+        expected = expected is null ? null : NormalizeSha256(expected);
+        await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read,
+            1024 * 1024, FileOptions.Asynchronous | FileOptions.SequentialScan);
+        var actual = Convert.ToHexString(await SHA256.HashDataAsync(stream, token).ConfigureAwait(false));
+        if (expected is not null && !actual.Equals(expected, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("The ISO checksum does not match. Download a fresh copy before upgrading.");
+        AppLog.Info($"ISO SHA256: {actual}. Trusted expected hash supplied: {expected is not null}.");
+        return actual;
+    }
 
-        var total = response.Content.Headers.ContentLength;
-        if (total is > 0 and < MinimumIsoBytes)
-            throw new InvalidOperationException($"The server reported an unexpectedly small file ({FormatBytes(total.Value)}). ");
-
-        var storage = CheckDownloadDestination(destinationDirectory, total);
-        if (!storage.IsValid) throw new InvalidOperationException(storage.Message);
-
-        var remoteFileName = GetRemoteFileName(response);
-        var destination = GetAvailableDestination(Path.GetFullPath(destinationDirectory), remoteFileName);
-        var partial = destination + ".partial";
-        AppLog.Info($"Download target selected: {destination}. Partial file: {partial}.");
-        progress?.Report(new DownloadProgress(destination, 0, total, total.HasValue ? 0 : null));
-
-        long received = 0;
-        try
-        {
-            await using (var input = await response.Content.ReadAsStreamAsync(cancellationToken))
-            await using (var output = new FileStream(partial, FileMode.CreateNew, FileAccess.Write, FileShare.None,
-                             1024 * 1024, FileOptions.Asynchronous | FileOptions.SequentialScan))
+    public Task<DownloadResult> DownloadIsoAsync(string destinationDirectory,
+        IProgress<DownloadProgress>? progress, CancellationToken cancellationToken, string? expectedSha256 = null)
+    {
+        return IsoTransfer.DownloadAsync(_http, new Uri(DownloadEndpoint), Path.GetFullPath(destinationDirectory),
+            remaining =>
             {
-                var buffer = new byte[1024 * 1024];
-                int read;
-                while ((read = await input.ReadAsync(buffer, cancellationToken)) > 0)
-                {
-                    await output.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
-                    received += read;
-                    int? percentage = total is > 0
-                        ? (int)Math.Clamp(received * 100L / total.Value, 0, 100)
-                        : null;
-                    progress?.Report(new DownloadProgress(destination, received, total, percentage));
-                }
-                await output.FlushAsync(cancellationToken);
-            }
-
-            if (total is > 0 && received != total.Value)
-                throw new InvalidOperationException(
-                    $"The ISO download is incomplete. Received {FormatBytes(received)} of {FormatBytes(total.Value)}.");
-            if (received < MinimumIsoBytes)
-                throw new InvalidOperationException($"The downloaded file is too small to be a Windows ISO ({FormatBytes(received)}). ");
-
-            File.Move(partial, destination);
-            ValidateIsoFile(destination);
-            progress?.Report(new DownloadProgress(destination, received, total, 100));
-            AppLog.Info($"ISO download completed: {destination} ({FormatBytes(received)}). ");
-            return new DownloadResult(destination, received, total);
-        }
-        catch
-        {
-            AppLog.Error($"ISO download failed after {FormatBytes(received)}. Partial file retained at {partial}.");
-            throw;
-        }
+                var storage = CheckDownloadDestination(destinationDirectory, remaining);
+                if (!storage.IsValid) throw new InvalidOperationException(storage.Message);
+            }, progress, cancellationToken, expectedSha256 ?? ConfiguredIsoSha256);
     }
 
     public void ValidateIsoFile(string isoPath)
@@ -271,8 +268,9 @@ public sealed class UpgradeEngine
     {
         if (string.IsNullOrWhiteSpace(root))
             throw new InvalidOperationException("No mounted installation source was selected.");
-        root = System.IO.Path.GetPathRoot(root) ?? root;
-        if (root.EndsWith(':')) root += Path.DirectorySeparatorChar;
+        root = Path.GetFullPath(root.Trim().Trim('"'));
+        if (!Directory.Exists(root))
+            throw new DirectoryNotFoundException($"The installation source folder was not found: {root}");
         var setup = System.IO.Path.Combine(root, "setup.exe");
         if (!File.Exists(setup))
             throw new InvalidOperationException($"setup.exe was not found in {root}.");
@@ -286,13 +284,15 @@ public sealed class UpgradeEngine
 
     public async Task<MountedSource> ValidateMountedSourceAsync(string root, CancellationToken cancellationToken)
     {
-        var source = ValidateMountedSource(root);
+        var source = await Task.Run(() => ValidateMountedSource(root), cancellationToken).ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
         var sourcesDirectory = Path.Combine(source.Root, "sources");
         var installImage = new[] { "install.wim", "install.esd", "install.swm" }
             .Select(name => Path.Combine(sourcesDirectory, name))
             .FirstOrDefault(File.Exists);
         if (installImage is null)
-            throw new InvalidOperationException("The mounted ISO does not contain sources\\install.wim or install.esd.");
+            throw new InvalidOperationException(
+                "The installation source does not contain sources\\install.wim, install.esd, or install.swm.");
 
         AppLog.Info($"Validating Windows image metadata with DISM: {installImage}.");
         var dism = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "System32", "dism.exe");
@@ -309,6 +309,10 @@ public sealed class UpgradeEngine
     public async Task<UpgradeResult> StartUpgradeAsync(string setupPath, bool allowAutomaticRestart,
         CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+        ValidateSupportedComputer();
+        var storage = CheckSystemDriveSpace();
+        if (!storage.IsValid) throw new InvalidOperationException(storage.Message);
         var arguments = "/product server /auto upgrade /eula accept /dynamicupdate disable /compat ignorewarning";
         if (!allowAutomaticRestart) arguments += " /noreboot";
 
@@ -321,7 +325,8 @@ public sealed class UpgradeEngine
             WorkingDirectory = System.IO.Path.GetDirectoryName(setupPath)!
         };
         using var process = Process.Start(startInfo) ?? throw new InvalidOperationException("Windows Setup could not be started.");
-        await process.WaitForExitAsync(cancellationToken);
+        // Once Setup starts, let Windows finish; cancelling the assistant cannot stop an upgrade safely.
+        await process.WaitForExitAsync(CancellationToken.None);
         AppLog.Info($"Windows Setup exit code: {process.ExitCode}.");
         return new UpgradeResult(process.ExitCode, setupPath);
     }
@@ -334,7 +339,9 @@ public sealed class UpgradeEngine
 
     public static void OpenPcNinjaDownloadPage() => Process.Start(new ProcessStartInfo
     {
-        FileName = DownloadEndpoint,
+        // This deliberately omits download=1. A signed-in browser can complete the
+        // fallback when SharePoint temporarily rejects repeated direct downloads.
+        FileName = PcNinjaBrowserFallbackPage,
         UseShellExecute = true
     });
 
@@ -343,17 +350,26 @@ public sealed class UpgradeEngine
         var encoded = Convert.ToBase64String(Encoding.Unicode.GetBytes(command));
         var startInfo = new ProcessStartInfo
         {
-            FileName = "powershell.exe",
+            FileName = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "WindowsPowerShell", "v1.0", "powershell.exe"),
             Arguments = $"-NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand {encoded}",
             UseShellExecute = false,
             CreateNoWindow = true,
+            WindowStyle = ProcessWindowStyle.Hidden,
             RedirectStandardOutput = true,
             RedirectStandardError = true
         };
         using var process = Process.Start(startInfo) ?? throw new InvalidOperationException("Windows could not mount the ISO.");
         var outputTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
         var errorTask = process.StandardError.ReadToEndAsync(cancellationToken);
-        await process.WaitForExitAsync(cancellationToken);
+        try
+        {
+            await process.WaitForExitAsync(cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            TryTerminateProcess(process, "PowerShell ISO operation");
+            throw;
+        }
         var output = await outputTask;
         var error = await errorTask;
         if (process.ExitCode != 0)
@@ -370,6 +386,7 @@ public sealed class UpgradeEngine
             Arguments = arguments,
             UseShellExecute = false,
             CreateNoWindow = true,
+            WindowStyle = ProcessWindowStyle.Hidden,
             RedirectStandardOutput = true,
             RedirectStandardError = true
         };
@@ -377,11 +394,31 @@ public sealed class UpgradeEngine
             ?? throw new InvalidOperationException($"Could not start {Path.GetFileName(fileName)}.");
         var outputTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
         var errorTask = process.StandardError.ReadToEndAsync(cancellationToken);
-        await process.WaitForExitAsync(cancellationToken);
+        try
+        {
+            await process.WaitForExitAsync(cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            TryTerminateProcess(process, Path.GetFileName(fileName));
+            throw;
+        }
         return (process.ExitCode, await outputTask, await errorTask);
     }
 
-    private static string GetRemoteFileName(HttpResponseMessage response)
+    private static void TryTerminateProcess(Process process, string description)
+    {
+        try
+        {
+            if (!process.HasExited) process.Kill(entireProcessTree: true);
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error($"Could not stop {description} after cancellation: {ex.Message}");
+        }
+    }
+
+    internal static string GetRemoteFileName(HttpResponseMessage response)
     {
         var fileName = response.Content.Headers.ContentDisposition?.FileNameStar
             ?? response.Content.Headers.ContentDisposition?.FileName;

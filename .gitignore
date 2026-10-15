@@ -6,6 +6,7 @@
 # Runtime files
 *.log
 *.partial
+*.partial.json
 *.tmp
 
 # Future .NET build output
@@ -14,6 +15,7 @@ obj/
 .vs/
 artifacts/
 .artifacts/
+outputs/
 
 # Local editor and operating system files
 .idea/

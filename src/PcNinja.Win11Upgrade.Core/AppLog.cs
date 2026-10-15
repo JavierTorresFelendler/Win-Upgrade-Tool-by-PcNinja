@@ -17,10 +17,18 @@ public static class AppLog
     {
         lock (Sync)
         {
-            Directory.CreateDirectory(Folder);
-            File.AppendAllText(Path,
-                $"{DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss zzz} [{level}] {message}{Environment.NewLine}",
-                Encoding.UTF8);
+            try
+            {
+                Directory.CreateDirectory(Folder);
+                File.AppendAllText(Path,
+                    $"{DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss zzz} [{level}] {message}{Environment.NewLine}",
+                    Encoding.UTF8);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+            {
+                // Diagnostics must never prevent downloading, cancellation or Setup.
+                System.Diagnostics.Debug.WriteLine($"PcNinja log unavailable: {ex.Message}");
+            }
         }
     }
 }

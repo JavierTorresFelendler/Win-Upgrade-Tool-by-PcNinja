@@ -8,12 +8,15 @@ public sealed record DownloadProgress(
     string DestinationPath,
     long BytesReceived,
     long? TotalBytes,
-    int? Percentage);
+    int? Percentage,
+    string? Stage = null);
 
 public sealed record DownloadResult(
     string IsoPath,
     long BytesReceived,
-    long? ExpectedBytes);
+    long? ExpectedBytes,
+    string? Sha256 = null,
+    bool Resumed = false);
 
 public sealed record StorageCheck(
     bool IsValid,

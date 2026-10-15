@@ -14,10 +14,18 @@ internal static class CliRunner
     internal const int Cancelled = 6;
     internal const int SetupFailed = 7;
     private const string Version = CliHelp.Version;
+    private static volatile bool _setupRunning;
 
     public static async Task<int> RunAsync(string[] args)
     {
         Console.OutputEncoding = System.Text.Encoding.UTF8;
+        using var cancellation = new CancellationTokenSource();
+        ConsoleCancelEventHandler cancelHandler = (_, e) =>
+        {
+            e.Cancel = true;
+            if (!_setupRunning) cancellation.Cancel();
+        };
+        Console.CancelKeyPress += cancelHandler;
         try
         {
             if (CliHelp.TryGetRequestedTopic(args, out var helpTopic))
@@ -36,7 +44,7 @@ internal static class CliRunner
                     return Fail(InvalidArguments,
                         "Usage: completion powershell. Run 'help completion' for setup instructions.", false);
                 var executableName = Path.GetFileName(Environment.ProcessPath)
-                    ?? "PcNinja-Win11-Upgrade-Assistant-RC3.exe";
+                    ?? "PcNinja-Win11-Upgrade-Assistant-RC4.exe";
                 Console.WriteLine(CliHelp.GetPowerShellCompletion(executableName));
                 return Success;
             }
@@ -50,11 +58,15 @@ internal static class CliRunner
             {
                 "status" => ShowStatus(engine, options.Json),
                 "scan" or "refresh" or "rescan" => ShowScan(engine, options.Json),
-                "validate" => await ValidateOrUpgradeAsync(engine, options, false),
-                "upgrade" => await ValidateOrUpgradeAsync(engine, options, true),
+                "validate" => await ValidateOrUpgradeAsync(engine, options, false, cancellation.Token),
+                "upgrade" => await ValidateOrUpgradeAsync(engine, options, true, cancellation.Token),
                 _ => Fail(InvalidArguments,
                     $"Unknown command: {options.Command}. Use 'help' to list commands.", options.Json)
             };
+        }
+        catch (OperationCanceledException)
+        {
+            return Fail(Cancelled, "Operation cancelled. Windows Setup was not started.", args.Contains("--json", StringComparer.OrdinalIgnoreCase));
         }
         catch (CliArgumentException ex)
         {
@@ -65,6 +77,7 @@ internal static class CliRunner
             AppLog.Error($"CLI failure: {ex}");
             return Fail(UnexpectedError, ex.Message, args.Contains("--json", StringComparer.OrdinalIgnoreCase));
         }
+        finally { Console.CancelKeyPress -= cancelHandler; _setupRunning = false; }
     }
 
     private static int ShowStatus(UpgradeEngine engine, bool json)
@@ -114,7 +127,7 @@ internal static class CliRunner
         return Success;
     }
 
-    private static async Task<int> ValidateOrUpgradeAsync(UpgradeEngine engine, CliOptions options, bool startSetup)
+    private static async Task<int> ValidateOrUpgradeAsync(UpgradeEngine engine, CliOptions options, bool startSetup, CancellationToken token)
     {
         try { engine.ValidateSupportedComputer(); }
         catch (Exception ex) { return Fail(ValidationFailed, ex.Message, options.Json); }
@@ -140,34 +153,54 @@ internal static class CliRunner
                 var destination = options.Destination ?? GetDefaultDestination(engine);
                 var progress = options.Json ? null : new Progress<DownloadProgress>(item =>
                 {
-                    var progressText = item.Percentage.HasValue ? $"{item.Percentage}%" : UpgradeEngine.FormatBytes(item.BytesReceived);
+                    var progressText = item.Stage ?? (item.Percentage.HasValue ? $"{item.Percentage}%" : UpgradeEngine.FormatBytes(item.BytesReceived));
                     Console.Error.Write($"\rDownloading {Path.GetFileName(item.DestinationPath)}: {progressText}     ");
                 });
                 DownloadResult download;
                 try
                 {
-                    download = await engine.DownloadIsoAsync(destination, progress, CancellationToken.None);
+                    download = await engine.DownloadIsoAsync(destination, progress, token, options.Sha256);
                     if (!options.Json) Console.Error.WriteLine();
                 }
-                catch (Exception ex)
+                catch (DownloadTransferException ex)
                 {
                     if (!options.Json) Console.Error.WriteLine();
+                    var browserOpened = false;
+                    if (!options.Json && !Console.IsInputRedirected && !Console.IsOutputRedirected)
+                    {
+                        try
+                        {
+                            UpgradeEngine.OpenPcNinjaDownloadPage();
+                            browserOpened = true;
+                        }
+                        catch (Exception browserError)
+                        {
+                            AppLog.Error($"CLI browser fallback failed: {browserError}");
+                        }
+                    }
                     return Fail(DownloadFailed,
-                        $"{ex.Message} Browser fallback: {UpgradeEngine.DownloadEndpoint}", options.Json);
+                        browserOpened
+                            ? $"{ex.Message} The PcNinja browser fallback was opened. " +
+                              "After the ISO downloads, rerun with --iso <path>."
+                            : $"{ex.Message} Automatic download did not complete; provide the ISO with --iso <path>.",
+                        options.Json);
                 }
                 exactIsoPath = download.IsoPath;
-                source = await engine.MountAndValidateAsync(exactIsoPath, CancellationToken.None);
+                source = await engine.MountAndValidateAsync(exactIsoPath, token);
             }
             else if (options.IsoPath is not null)
             {
                 exactIsoPath = Path.GetFullPath(options.IsoPath.Trim('"'));
-                source = await engine.MountAndValidateAsync(exactIsoPath, CancellationToken.None);
+                engine.ValidateIsoFile(exactIsoPath);
+                await UpgradeEngine.VerifyIsoHashAsync(exactIsoPath, options.Sha256 ?? UpgradeEngine.ConfiguredIsoSha256, token);
+                source = await engine.MountAndValidateAsync(exactIsoPath, token);
             }
             else
             {
-                source = await engine.ValidateMountedSourceAsync(options.MountedRoot!, CancellationToken.None);
+                source = await engine.ValidateMountedSourceAsync(options.MountedRoot!, token);
             }
         }
+        catch (OperationCanceledException) { throw; }
         catch (Exception ex)
         {
             return Fail(ValidationFailed, ex.Message, options.Json);
@@ -193,7 +226,9 @@ internal static class CliRunner
                 return Fail(Cancelled, "Upgrade cancelled. Windows Setup was not started.", options.Json);
         }
 
-        var result = await engine.StartUpgradeAsync(source.SetupPath, !options.NoRestart, CancellationToken.None);
+        token.ThrowIfCancellationRequested();
+        _setupRunning = true;
+        var result = await engine.StartUpgradeAsync(source.SetupPath, !options.NoRestart, token);
         if (result.ExitCode != 0)
             return Fail(SetupFailed,
                 $"Windows Setup stopped with exit code {result.ExitCode}. No forced restart was issued.", options.Json);
@@ -240,17 +275,24 @@ internal sealed record CliOptions(
     bool NoRestart,
     bool Yes,
     bool DryRun,
-    bool Json)
+    bool Json,
+    string? Sha256 = null)
 {
     public static CliOptions Parse(string[] args)
     {
         if (args.Length == 0) throw new CliArgumentException("No command was supplied.");
-        if (args[0].Equals("--version", StringComparison.OrdinalIgnoreCase)) return Empty("version");
+        if (args[0].Equals("--version", StringComparison.OrdinalIgnoreCase))
+        {
+            if (args.Length != 1) throw new CliArgumentException("--version does not accept additional options.");
+            return Empty("version");
+        }
 
         var command = args[0].ToLowerInvariant();
         string? iso = null;
         string? mounted = null;
         string? destination = null;
+        string? sha256 = null;
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var download = false;
         var noRestart = false;
         var yes = false;
@@ -259,6 +301,7 @@ internal sealed record CliOptions(
 
         for (var index = 1; index < args.Length; index++)
         {
+            if (!seen.Add(args[index])) throw new CliArgumentException($"Repeated option: {args[index]}.");
             switch (args[index].ToLowerInvariant())
             {
                 case "--iso": iso = RequireValue(args, ref index, "--iso"); break;
@@ -269,12 +312,28 @@ internal sealed record CliOptions(
                 case "--yes": yes = true; break;
                 case "--dry-run": dryRun = true; break;
                 case "--json": json = true; break;
+                case "--sha256":
+                    try { sha256 = UpgradeEngine.NormalizeSha256(RequireValue(args, ref index, "--sha256")); }
+                    catch (ArgumentException ex) { throw new CliArgumentException(ex.Message); }
+                    break;
                 default: throw new CliArgumentException(
                     $"Unknown option for {command}: {args[index]}. Run '{command} --help' for valid options.");
             }
         }
 
-        return new CliOptions(command, iso, mounted, download, destination, noRestart, yes, dryRun, json);
+        var allowed = command switch
+        {
+            "status" or "scan" or "refresh" or "rescan" => new[] { "--json" },
+            "validate" => new[] { "--iso", "--mounted", "--sha256", "--json" },
+            "upgrade" => new[] { "--iso", "--mounted", "--download", "--destination", "--sha256", "--no-restart", "--yes", "--dry-run", "--json" },
+            _ => Array.Empty<string>()
+        };
+        foreach (var option in seen)
+            if (!allowed.Contains(option, StringComparer.OrdinalIgnoreCase))
+                throw new CliArgumentException($"{option} is not valid for {command}. See '{command} --help'.");
+        if (destination is not null && !download) throw new CliArgumentException("--destination requires --download.");
+        if (sha256 is not null && mounted is not null) throw new CliArgumentException("--sha256 requires --iso or --download.");
+        return new CliOptions(command, iso, mounted, download, destination, noRestart, yes, dryRun, json, sha256);
     }
 
     private static string RequireValue(string[] args, ref int index, string option)

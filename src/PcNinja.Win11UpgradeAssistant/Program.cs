@@ -12,9 +12,11 @@ internal static class Program
     private static int Main(string[] args)
     {
         if (args.Length > 0)
+        {
+            AttachCommandLineConsole();
             return CliRunner.RunAsync(args).GetAwaiter().GetResult();
+        }
 
-        FreeConsole();
         if (!IsAdministrator()) return RestartGuiAsAdministrator();
 
         ApplicationConfiguration.Initialize();
@@ -48,7 +50,7 @@ internal static class Program
         }
         catch (Win32Exception ex) when (ex.NativeErrorCode == 1223)
         {
-            MessageBox.Show("Administrator permission is required to mount an ISO and start Windows Setup.",
+            MessageBox.Show("Run the app as administrator to continue.",
                 "PcNinja Windows 11 Upgrade Assistant", MessageBoxButtons.OK, MessageBoxIcon.Information);
             return 5;
         }
@@ -63,12 +65,36 @@ internal static class Program
     {
         try { AppLog.Error(exception.ToString()); } catch { }
         MessageBox.Show(
-            $"An unexpected error occurred.\n\n{exception.Message}\n\nLog: {AppLog.Path}",
+            "Something went wrong. Open View log for details and try again.",
             "PcNinja Windows 11 Upgrade Assistant",
             MessageBoxButtons.OK,
             MessageBoxIcon.Error);
     }
 
+    private static void AttachCommandLineConsole()
+    {
+        // Preserve redirected pipe/file handles when attaching to the caller's console.
+        var input = GetStdHandle(-10);
+        var output = GetStdHandle(-11);
+        var error = GetStdHandle(-12);
+        var redirectedInput = GetFileType(input) is 1 or 3;
+        var redirectedOutput = GetFileType(output) is 1 or 3;
+        var redirectedError = GetFileType(error) is 1 or 3;
+        AttachConsole(unchecked((uint)-1));
+        if (redirectedInput) SetStdHandle(-10, input);
+        if (redirectedOutput) SetStdHandle(-11, output);
+        if (redirectedError) SetStdHandle(-12, error);
+        Console.SetOut(new StreamWriter(Console.OpenStandardOutput(), new System.Text.UTF8Encoding(false)) { AutoFlush = true });
+        Console.SetError(new StreamWriter(Console.OpenStandardError(), new System.Text.UTF8Encoding(false)) { AutoFlush = true });
+        Console.SetIn(new StreamReader(Console.OpenStandardInput()));
+    }
+
     [DllImport("kernel32.dll")]
-    private static extern bool FreeConsole();
+    private static extern bool AttachConsole(uint processId);
+    [DllImport("kernel32.dll")]
+    private static extern IntPtr GetStdHandle(int handle);
+    [DllImport("kernel32.dll")]
+    private static extern bool SetStdHandle(int handle, IntPtr value);
+    [DllImport("kernel32.dll")]
+    private static extern uint GetFileType(IntPtr handle);
 }

@@ -1,5 +1,12 @@
 # Roadmap
 
+## RC4 - download reliability and release testing
+
+- Field-test GUI cancellation, real-provider resume, physical USB refresh and
+  low-space behavior using the [RC4 test notes](RC4-TESTING.md).
+- Review the short [message catalog](UI-MESSAGES.md) with the product owner.
+- Complete a Windows 10 and Windows 11 upgrade from RC4-downloaded media.
+
 ## RC3 - self-documenting CLI
 
 - Field-test global help, per-command help, the offline manual, and PowerShell
@@ -19,10 +26,10 @@
 
 ## Standalone product
 
-- Add resumable download support.
+- Expand guarded resumable download support if the provider changes validators.
 - Add an expected SHA-256 allowlist when a stable trusted source publishes one.
 - Add structured support-log export.
-- Add code signing before public distribution.
+- Add code signing before the stable release.
 - Add localization after the English workflow is stable.
 
 ## Integration into PcNinja WinUpdate Tool

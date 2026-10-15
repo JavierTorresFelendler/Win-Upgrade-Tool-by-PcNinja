@@ -2,6 +2,18 @@ using PcNinja.Win11Upgrade.Core;
 
 var failures = new List<string>();
 var engine = new UpgradeEngine();
+await TransferChecks.RunAsync();
+if (UpgradeEngine.RequiredDownloadBytes(7L * 1024 * 1024 * 1024, true) != 28L * 1024 * 1024 * 1024)
+    failures.Add("Combined ISO and Windows workspace reservation failed.");
+if (UpgradeEngine.IsEligibleDownloadLocation("FAT32", long.MaxValue) ||
+    UpgradeEngine.IsEligibleDownloadLocation("NTFS", 70L * 1024 * 1024) ||
+    !UpgradeEngine.IsEligibleDownloadLocation("exFAT", 16L * 1024 * 1024 * 1024))
+    failures.Add("Download drive filtering failed.");
+if (UpgradeEngine.PcNinjaBrowserFallbackPage.Contains("download=1", StringComparison.OrdinalIgnoreCase))
+    failures.Add("The browser fallback must not use direct-download mode.");
+if (!Uri.TryCreate(UpgradeEngine.PcNinjaBrowserFallbackPage, UriKind.Absolute, out var fallbackUri) ||
+    fallbackUri.Scheme != Uri.UriSchemeHttps)
+    failures.Add("The PcNinja browser fallback is not a valid HTTPS URL.");
 var os = engine.GetOperatingSystemDescription();
 if (string.IsNullOrWhiteSpace(os) || !os.Contains("build", StringComparison.OrdinalIgnoreCase))
     failures.Add("Operating system description was not populated.");
@@ -55,6 +67,23 @@ finally
     File.Delete(unsignedFile);
 }
 
+var extractedFolder = Path.Combine(Path.GetTempPath(), $"PcNinja-Extracted-{Guid.NewGuid():N}");
+Directory.CreateDirectory(extractedFolder);
+try
+{
+    var extractedSetup = Path.Combine(extractedFolder, "setup.exe");
+    File.Copy(microsoftFile, extractedSetup);
+    var extractedSource = engine.ValidateMountedSource(extractedFolder);
+    if (!string.Equals(extractedSource.Root, Path.GetFullPath(extractedFolder), StringComparison.OrdinalIgnoreCase))
+        failures.Add($"Extracted-folder root was changed unexpectedly: {extractedSource.Root}");
+    if (!string.Equals(extractedSource.SetupPath, extractedSetup, StringComparison.OrdinalIgnoreCase))
+        failures.Add($"Extracted-folder setup path was not preserved: {extractedSource.SetupPath}");
+}
+finally
+{
+    Directory.Delete(extractedFolder, true);
+}
+
 if (failures.Count > 0)
 {
     foreach (var failure in failures) Console.Error.WriteLine($"FAIL: {failure}");
@@ -68,4 +97,6 @@ Console.WriteLine($"PASS: Windows Server reporting: {normalizedServer}");
 Console.WriteLine("PASS: ISO collision naming.");
 Console.WriteLine($"PASS: Microsoft signer: {signer}");
 Console.WriteLine("PASS: Unsigned file rejected.");
+Console.WriteLine("PASS: Browser fallback omits download=1 and uses HTTPS.");
+Console.WriteLine("PASS: Extracted setup folder path is preserved and validated.");
 return 0;
