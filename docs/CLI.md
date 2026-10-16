@@ -182,7 +182,9 @@ ignored Range or changed validator restarts the exact owned partial. Completed
 exact-name ISOs are revalidated and reused; only proven-corrupt recorded PcNinja
 downloads are deleted for replacement. Unowned user files are never overwritten
 or deleted, and no numbered copies are created. Environmental failures and
-cancellation preserve completed ISOs. Header
+cancellation preserve completed ISOs.
+The last completed download is recorded by its exact name in the chosen folder,
+allowing revalidation/reuse even when the provider cannot be contacted. Header
 requests have a 60-second timeout; 90 seconds without data stops a transfer.
 Local storage/checksum errors do not open the download website.
 

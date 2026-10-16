@@ -22,9 +22,8 @@ and exact source commit. The portable EXE is limited to 100,000,000 bytes.
 - **Exact-file download reuse:** validate an existing original-name ISO rather
   than downloading a numbered copy. Only proven-corrupt recorded PcNinja downloads
   are replaced. A recorded completed ISO can be revalidated without contacting an
-  unavailable provider. Unknown/unowned files are not automatically replaced and
-  are deleted for replacement. Unowned files and environmental/cancellation
-  failures are preserved. Original-name resumable partials replace Copy N logic.
+  unavailable provider. Unowned files and environmental/cancellation failures
+  are preserved. Original-name resumable partials replace Copy N logic.
 - **Secure transport fallback:** a short-link connection failure automatically
   tries the provider route, without disabling certificate validation. Provider
   access/rate limits may still require the normal browser download; select that

@@ -3,7 +3,7 @@
 ## Automated/local verification
 
 - Core smoke tests: exact-name resume and ignored-Range restart, completed-file
-  reuse with media revalidation, corrupt-owned-file replacement, preservation of
+  reuse with media revalidation even with an unavailable provider, corrupt-owned-file replacement, preservation of
   unowned files, environmental errors and cancellation, and secure route fallback.
 - Safety fixtures: selected writable answer file removal, secondary-media block,
   locked selected file block, late file detection, and unrelated file preservation.
