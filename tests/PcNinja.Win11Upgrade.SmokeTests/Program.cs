@@ -3,6 +3,7 @@ using PcNinja.Win11Upgrade.Core;
 var failures = new List<string>();
 var engine = new UpgradeEngine();
 await TransferChecks.RunAsync();
+SafetyImageChecks.Run();
 if (UpgradeEngine.RequiredDownloadBytes(7L * 1024 * 1024 * 1024, true) != 28L * 1024 * 1024 * 1024)
     failures.Add("Combined ISO and Windows workspace reservation failed.");
 if (UpgradeEngine.IsEligibleDownloadLocation("FAT32", long.MaxValue) ||
@@ -32,21 +33,6 @@ var normalizedServer = UpgradeEngine.FormatOperatingSystemDescription(
     "Windows Server 2022 Datacenter", "21H2", 20348, true);
 if (!normalizedServer.StartsWith("Windows Server 2022 Datacenter 21H2", StringComparison.Ordinal))
     failures.Add($"Windows Server reporting failed: {normalizedServer}");
-
-var collisionFolder = Path.Combine(Path.GetTempPath(), $"PcNinja-Collision-{Guid.NewGuid():N}");
-Directory.CreateDirectory(collisionFolder);
-try
-{
-    File.WriteAllText(Path.Combine(collisionFolder, "Original.iso"), "existing");
-    File.WriteAllText(Path.Combine(collisionFolder, "Original (Copy 1).iso.partial"), "partial");
-    var collisionPath = UpgradeEngine.GetAvailableDestination(collisionFolder, "Original.iso");
-    if (!collisionPath.EndsWith("Original (Copy 2).iso", StringComparison.Ordinal))
-        failures.Add($"ISO collision naming failed: {collisionPath}");
-}
-finally
-{
-    Directory.Delete(collisionFolder, true);
-}
 
 var microsoftFile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows),
     "System32", "curl.exe");
@@ -78,6 +64,19 @@ try
         failures.Add($"Extracted-folder root was changed unexpectedly: {extractedSource.Root}");
     if (!string.Equals(extractedSource.SetupPath, extractedSetup, StringComparison.OrdinalIgnoreCase))
         failures.Add($"Extracted-folder setup path was not preserved: {extractedSource.SetupPath}");
+    Directory.CreateDirectory(Path.Combine(extractedFolder, "sources"));
+    File.WriteAllText(Path.Combine(extractedFolder, "sources", "install.wim"), "not launched - safety fixture only");
+    var lateAnswer = Path.Combine(extractedFolder, "Autounattend.xml");
+    File.WriteAllText(lateAnswer, "late answer file");
+    try
+    {
+        engine.ValidateMountedSource(extractedFolder, removeSelectedAnswerFiles: false);
+        failures.Add("Pre-launch source validation allowed a late answer file.");
+    }
+    catch (UnsafeInstallationMediaException) { }
+    if (!File.Exists(lateAnswer)) failures.Add("Pre-launch validation silently deleted a late answer file.");
+    engine.ValidateMountedSource(extractedFolder);
+    if (File.Exists(lateAnswer)) failures.Add("Preparation did not clean the selected writable answer file.");
 }
 finally
 {
@@ -94,7 +93,7 @@ Console.WriteLine($"PASS: OS detection: {os}");
 Console.WriteLine($"PASS: Windows 11 normalization: {normalizedWindows11}");
 Console.WriteLine($"PASS: Windows 10 normalization: {normalizedWindows10}");
 Console.WriteLine($"PASS: Windows Server reporting: {normalizedServer}");
-Console.WriteLine("PASS: ISO collision naming.");
+Console.WriteLine("PASS: Exact-name download reuse and owned-file safety (no numbered copies).");
 Console.WriteLine($"PASS: Microsoft signer: {signer}");
 Console.WriteLine("PASS: Unsigned file rejected.");
 Console.WriteLine("PASS: Browser fallback omits download=1 and uses HTTPS.");

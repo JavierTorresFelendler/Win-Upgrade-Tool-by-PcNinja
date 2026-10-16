@@ -1,5 +1,8 @@
 # Downloaded installation media
 *.iso
+*.iso.pcninja.json
+*.iso.pcninja.lock
+.pcninja-download.json
 *.wim
 *.esd
 

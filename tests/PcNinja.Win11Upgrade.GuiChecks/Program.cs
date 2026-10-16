@@ -17,17 +17,27 @@ internal static class Program
         Application.DoEvents();
         var start = (Button)Field("_start");
         if (!start.Enabled) throw new Exception("Start is disabled after startup on the test machine.");
-        var choices = new[] { "_autoDownload", "_localIso", "_mountedIso" }.Select(name => (RadioButton)Field(name)).ToArray();
+        var choices = new[] { "_autoDownload", "_existingMedia" }.Select(name => (RadioButton)Field(name)).ToArray();
+        IEnumerable<Control> Descendants(Control parent) => parent.Controls.Cast<Control>()
+            .SelectMany(control => new[] { control }.Concat(Descendants(control)));
+        if (Descendants(form).OfType<RadioButton>().Count() != 2)
+            throw new Exception("The GUI must contain exactly two primary source choices.");
         foreach (var choice in choices)
         {
             choice.Checked = true;
             if (choices.Count(item => item.Checked) != 1) throw new Exception("Source choices are not exclusive.");
+            var automaticPanel = (Control)Field("_autoSourcePanel");
+            var existingPanel = (Control)Field("_existingSourcePanel");
+            if (automaticPanel.BackColor == existingPanel.BackColor)
+                throw new Exception("The selected source is not uniquely highlighted.");
         }
         // Exercise the real Click event, using an empty source so Setup can NEVER start.
-        ((ComboBox)Field("_mountedSources")).Items.Clear();
+        var sources = (ComboBox)Field("_sources");
+        sources.Items.Clear();
+        sources.Text = "";
         start.PerformClick();
         Application.DoEvents();
-        if (!((Label)Field("_status")).Text.Contains("No mounted media"))
+        if (!((Label)Field("_status")).Text.Contains("No existing installation media"))
             throw new Exception("Start click did not reach validation or its message was overwritten.");
         if (!start.Enabled) throw new Exception("Start was not restored after validation failure.");
 
@@ -56,6 +66,24 @@ internal static class Program
             Invoke("RefreshSources", false);
             if ((combo.SelectedItem as StorageLocation)?.RootPath != folder)
                 throw new Exception("Refresh replaced the manually selected download folder.");
+
+            sources.Text = Path.Combine(folder, "exact-selected.iso");
+            var current = CurrentWindows.Read();
+            var image = new InstallationImage(6, "Test Windows image", current.Edition, "x64", $"10.0.{current.Build}", "Client", current.Language);
+            var prepared = new MountedSource(folder, Path.Combine(folder, "setup.exe"), Path.Combine(folder, "sources", "install.wim"), [image]);
+            SetField("_preparedSource", prepared);
+            SetField("_preparedKey", sources.Text);
+            var images = (ComboBox)Field("_installationImages");
+            images.Items.Add(image);
+            images.SelectedIndex = 0;
+            ((CheckBox)Field("_autoRestart")).Checked = false;
+            Invoke("RefreshSources", false);
+            if (sources.Text != Path.Combine(folder, "exact-selected.iso") || !Equals(images.SelectedItem, image) ||
+                ((CheckBox)Field("_autoRestart")).Checked)
+                throw new Exception("Refresh lost the exact source, image or restart policy.");
+            sources.Text = Path.Combine(folder, "different.iso");
+            if (images.Items.Count != 0 || Field("_preparedSource") is not null)
+                throw new Exception("Changing the source retained an old image index.");
         }
         finally { Directory.Delete(folder); }
 
@@ -65,9 +93,12 @@ internal static class Program
             Invoke("RefreshSources", false);
             ((LinkLabel)Field("_details")).Visible = false;
             choices[0].Checked = true;
-            Save("RC4-Ready.png");
+            Save("RC5-Ready.png");
+            using var previewOperation = new CancellationTokenSource();
+            SetField("_operation", previewOperation);
             Invoke("SetBusy", true);
-            Save("RC4-Cancel.png");
+            Save("RC5-Cancel.png");
+            SetField("_operation", null);
             Invoke("SetBusy", false);
             void Save(string name)
             {
@@ -77,7 +108,7 @@ internal static class Program
                 image.Save(Path.Combine(args[0], name));
             }
         }
-        Console.WriteLine("PASS: Real Start/Cancel clicks, Setup lockout, exclusive source selection, retained outcome and custom-folder refresh. No Setup launched.");
+        Console.WriteLine("PASS: Two exclusive highlighted sources; real Start/Cancel; Setup lockout; source/image/restart/folder refresh retention; image reset on source change. No Setup launched.");
         return 0;
     }
 }

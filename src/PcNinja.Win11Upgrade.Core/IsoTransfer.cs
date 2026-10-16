@@ -1,13 +1,14 @@
 using System.Net;
 using System.Net.Http.Headers;
-using System.Security.Cryptography;
 using System.Text.Json;
 
 namespace PcNinja.Win11Upgrade.Core;
 
 public sealed class DownloadTransferException(string message, Exception? inner = null) : IOException(message, inner);
+public sealed class CorruptDownloadException(string message) : IOException(message);
 
-internal sealed record PartialDownload(string Endpoint, string FileName, string ETag, long TotalBytes);
+internal sealed record PartialDownload(string Endpoint, string FileName, string? ETag, long? TotalBytes);
+internal sealed record CompletedDownload(string Endpoint, string FileName, long Bytes, string Sha256);
 
 internal static class IsoTransfer
 {
@@ -15,8 +16,47 @@ internal static class IsoTransfer
 
     internal static async Task<DownloadResult> DownloadAsync(HttpClient http, Uri endpoint, string directory,
         Action<long?> checkStorage, IProgress<DownloadProgress>? progress, CancellationToken token,
-        string? expectedSha256, long minimumBytes = UpgradeEngine.MinimumIsoBytes)
+        string? expectedSha256, long minimumBytes = UpgradeEngine.MinimumIsoBytes,
+        Func<string, CancellationToken, Task>? validateMedia = null)
     {
+        directory = Path.GetFullPath(directory);
+        Directory.CreateDirectory(directory);
+        var pointerPath = Path.Combine(directory, ".pcninja-download.json");
+        RejectLink(pointerPath);
+        var cached = await ReadMetadataAsync<CompletedDownload>(pointerPath, token);
+        if (cached is not null && cached.FileName is { Length: > 0 } && cached.FileName == Path.GetFileName(cached.FileName) &&
+            cached.FileName.EndsWith(".iso", StringComparison.OrdinalIgnoreCase) &&
+            cached.FileName.IndexOfAny(Path.GetInvalidFileNameChars()) < 0 &&
+            cached.Sha256 is { Length: 64 } && cached.Sha256.All(Uri.IsHexDigit))
+        {
+            var cachedPath = Path.Combine(directory, cached.FileName);
+            var cachedRecord = cachedPath + ".pcninja.json";
+            RejectLink(cachedPath);
+            RejectLink(cachedRecord);
+            if (File.Exists(cachedPath) && await ReadMetadataAsync<CompletedDownload>(cachedRecord, token) == cached)
+            {
+                RejectLink(cachedPath + ".pcninja.lock");
+                await using var cacheLock = new FileStream(cachedPath + ".pcninja.lock", FileMode.OpenOrCreate,
+                    FileAccess.ReadWrite, FileShare.None, 1, FileOptions.DeleteOnClose);
+                try
+                {
+                    progress?.Report(new(cachedPath, 0, cached.Bytes, null, "Validating the existing ISO..."));
+                    if (new FileInfo(cachedPath).Length != cached.Bytes || cached.Bytes < minimumBytes)
+                        throw new CorruptDownloadException("The recorded ISO size has changed.");
+                    var hash = await CheckedHashAsync(cachedPath, expectedSha256 ?? cached.Sha256, token);
+                    if (validateMedia is not null) await validateMedia(cachedPath, token);
+                    AppLog.Info($"Reusing exact recorded download without contacting the provider: {cachedPath}. SHA256: {hash}.");
+                    return new(cachedPath, cached.Bytes, cached.Bytes, hash, Reused: true);
+                }
+                catch (CorruptDownloadException)
+                {
+                    DeleteOwned(cachedPath);
+                    DeleteOwned(cachedRecord);
+                    DeleteOwned(pointerPath);
+                    AppLog.Info($"Removed corrupt recorded ISO before a fresh transfer: {cachedPath}");
+                }
+            }
+        }
         using var initial = await SendAsync(http, new HttpRequestMessage(HttpMethod.Get, endpoint), token);
         var mediaType = initial.Content.Headers.ContentType?.MediaType ?? "";
         if (mediaType.Contains("text/", StringComparison.OrdinalIgnoreCase))
@@ -26,58 +66,78 @@ internal static class IsoTransfer
             throw new DownloadTransferException("The download service did not return a complete Windows ISO.");
 
         var name = UpgradeEngine.GetRemoteFileName(initial);
-        var etag = initial.Headers.ETag;
-        PartialDownload? metadata = total is > 0 && etag is { IsWeak: false }
-            ? new(endpoint.AbsoluteUri, name, etag.ToString(), total.Value) : null;
-        Directory.CreateDirectory(directory);
-        string? partial = null;
-        if (metadata is not null)
+        var destination = Path.Combine(directory, name);
+        var partial = destination + ".partial";
+        var metadataPath = partial + ".json";
+        var completedPath = destination + ".pcninja.json";
+        foreach (var path in new[] { destination, partial, metadataPath, completedPath, destination + ".pcninja.lock" })
+            RejectLink(path);
+        // Exact-name lock: concurrent instances cannot replace/reuse a file during a transfer.
+        await using var downloadLock = new FileStream(destination + ".pcninja.lock", FileMode.OpenOrCreate,
+            FileAccess.ReadWrite, FileShare.None, 1, FileOptions.DeleteOnClose);
+        var etag = initial.Headers.ETag is { IsWeak: false } strong ? strong.ToString() : null;
+        var metadata = new PartialDownload(endpoint.AbsoluteUri, name, etag, total);
+        var completed = await ReadMetadataAsync<CompletedDownload>(completedPath, token);
+        var ownedFinal = completed is not null && completed.Endpoint == endpoint.AbsoluteUri &&
+            completed.FileName == name && completed.Sha256 is { Length: 64 } && completed.Sha256.All(Uri.IsHexDigit);
+
+        if (File.Exists(destination))
         {
-            foreach (var metadataPath in Directory.EnumerateFiles(directory, "*.iso.partial.json"))
+            try
             {
-                try
-                {
-                    var candidate = metadataPath[..^5];
-                    if (JsonSerializer.Deserialize<PartialDownload>(await File.ReadAllTextAsync(metadataPath, token)) == metadata &&
-                        Path.GetFileName(candidate).StartsWith(Path.GetFileNameWithoutExtension(name), StringComparison.OrdinalIgnoreCase) &&
-                        File.Exists(candidate) && !File.Exists(candidate[..^8]) &&
-                        new FileInfo(candidate).Length is > 0 && new FileInfo(candidate).Length < total)
-                    {
-                        partial = candidate;
-                        break;
-                    }
-                }
-                catch (Exception ex) when (ex is IOException or JsonException or UnauthorizedAccessException)
-                {
-                    AppLog.Info($"Ignoring unavailable partial-download metadata: {ex.Message}");
-                }
+                progress?.Report(new(destination, 0, total, null, "Validating the existing ISO..."));
+                var length = new FileInfo(destination).Length;
+                if (length < minimumBytes || (total.HasValue && length != total))
+                    throw new CorruptDownloadException("The existing ISO size does not match the download.");
+                var hash = await CheckedHashAsync(destination, expectedSha256 ?? (ownedFinal ? completed!.Sha256 : null), token);
+                if (validateMedia is not null) await validateMedia(destination, token);
+                await SaveCompletedAsync(completedPath, new(endpoint.AbsoluteUri, name, length, hash), token);
+                await SaveCompletedAsync(pointerPath, new(endpoint.AbsoluteUri, name, length, hash), token);
+                AppLog.Info($"Reusing exact validated download: {destination}. SHA256: {hash}.");
+                return new(destination, length, total, hash, Reused: true);
+            }
+            catch (CorruptDownloadException)
+            {
+                if (!ownedFinal)
+                    throw new InvalidOperationException("The existing ISO failed integrity checks but is not a recorded PcNinja download. Move or remove that exact file, then retry.");
+                DeleteOwned(destination);
+                DeleteOwned(completedPath);
+                AppLog.Info($"Removed corrupt owned download before retry: {destination}");
             }
         }
 
-        var destination = partial is null ? UpgradeEngine.GetAvailableDestination(directory, name) : partial[..^8];
-        partial ??= destination + ".partial";
+        var previous = await ReadMetadataAsync<PartialDownload>(metadataPath, token);
+        var ownedPartial = previous is not null && previous.Endpoint == endpoint.AbsoluteUri && previous.FileName == name;
         var offset = File.Exists(partial) ? new FileInfo(partial).Length : 0;
-        // Reserve enough free space for the remaining ISO bytes AND Windows workspace.
+        if (File.Exists(partial) && !ownedPartial)
+            throw new InvalidOperationException("An unrecognized partial file already uses this download name. Move or remove it before retrying.");
+        var canResume = ownedPartial && previous == metadata && etag is not null && total is > 0 && offset <= total;
+        if (File.Exists(partial) && !canResume)
+        {
+            DeleteOwned(partial);
+            DeleteOwned(metadataPath);
+            offset = 0;
+        }
+        if (offset == 0 && File.Exists(partial)) DeleteOwned(partial);
         checkStorage(total.HasValue ? total.Value - offset : null);
         HttpResponseMessage? resumedResponse = null;
         try
         {
             var response = initial;
-            if (offset > 0)
+            if (offset > 0 && offset != total)
             {
                 var request = new HttpRequestMessage(HttpMethod.Get, endpoint);
                 request.Headers.Range = new RangeHeaderValue(offset, null);
-                request.Headers.IfRange = new RangeConditionHeaderValue(etag!);
+                request.Headers.IfRange = new RangeConditionHeaderValue(EntityTagHeaderValue.Parse(etag!));
                 resumedResponse = await SendAsync(http, request, token);
                 var range = resumedResponse.Content.Headers.ContentRange;
                 if (resumedResponse.StatusCode != HttpStatusCode.PartialContent || range?.From != offset ||
-                    range.Length != total || resumedResponse.Headers.ETag?.ToString() != metadata!.ETag)
+                    range.Length != total || range.To != total - 1 || resumedResponse.Headers.ETag?.ToString() != etag)
                 {
-                    // Never append bytes from an unverified response to the retained ISO.
+                    // Restart the exact owned partial, never append unverified bytes or create Copy N files.
                     resumedResponse.Dispose();
                     resumedResponse = null;
-                    destination = UpgradeEngine.GetAvailableDestination(directory, name);
-                    partial = destination + ".partial";
+                    DeleteOwned(partial);
                     offset = 0;
                     checkStorage(total);
                 }
@@ -85,14 +145,14 @@ internal static class IsoTransfer
             }
 
             AppLog.Info($"Download target: {destination}. Partial: {partial}. Resume offset: {offset}.");
-            if (metadata is not null)
-                await File.WriteAllTextAsync(partial + ".json", JsonSerializer.Serialize(metadata), token);
+            await File.WriteAllTextAsync(metadataPath, JsonSerializer.Serialize(metadata), token);
             var received = offset;
             progress?.Report(new(destination, received, total, total is > 0 ? (int)(received * 100 / total.Value) : null));
-            await using (var input = await response.Content.ReadAsStreamAsync(token))
-            await using (var output = new FileStream(partial, offset > 0 ? FileMode.Open : FileMode.CreateNew,
-                             FileAccess.Write, FileShare.None, 1024 * 1024, FileOptions.Asynchronous))
+            if (offset != total || offset == 0)
             {
+                await using var input = await response.Content.ReadAsStreamAsync(token);
+                await using var output = new FileStream(partial, offset > 0 ? FileMode.Open : FileMode.CreateNew,
+                    FileAccess.Write, FileShare.None, 1024 * 1024, FileOptions.Asynchronous);
                 output.Position = offset;
                 var buffer = new byte[1024 * 1024];
                 var lastReport = Environment.TickCount64;
@@ -111,6 +171,8 @@ internal static class IsoTransfer
                     if (count == 0) break;
                     await output.WriteAsync(buffer.AsMemory(0, count), token).ConfigureAwait(false);
                     received += count;
+                    if (total.HasValue && received > total)
+                        throw new CorruptDownloadException("The download exceeded its expected size.");
                     if (Environment.TickCount64 - lastReport >= 200)
                     {
                         progress?.Report(new(destination, received, total,
@@ -124,17 +186,28 @@ internal static class IsoTransfer
             if ((total.HasValue && received != total) || received < minimumBytes)
                 throw new DownloadTransferException("The ISO download is incomplete. Try again to resume it.");
             progress?.Report(new(destination, received, total, null, "Checking the ISO checksum..."));
-            var hash = await UpgradeEngine.VerifyIsoHashAsync(partial, expectedSha256, token).ConfigureAwait(false);
+            var finalHash = await CheckedHashAsync(partial, expectedSha256, token).ConfigureAwait(false);
             token.ThrowIfCancellationRequested();
-            File.Move(partial, destination);
-            try { File.Delete(partial + ".json"); } catch (IOException) { }
+            File.Move(partial, destination); // Streams are closed before promotion.
+            await SaveCompletedAsync(completedPath, new(endpoint.AbsoluteUri, name, received, finalHash), token);
+            await SaveCompletedAsync(pointerPath, new(endpoint.AbsoluteUri, name, received, finalHash), token);
+            DeleteOwned(metadataPath);
+            if (validateMedia is not null) await validateMedia(destination, token);
             progress?.Report(new(destination, received, total, 100));
-            AppLog.Info($"Download complete: {destination}. SHA256: {hash}. Expected hash checked: {expectedSha256 is not null}.");
-            return new(destination, received, total, hash, offset > 0);
+            AppLog.Info($"Download complete: {destination}. SHA256: {finalHash}.");
+            return new(destination, received, total, finalHash, offset > 0);
+        }
+        catch (CorruptDownloadException)
+        {
+            // Only this invocation's exact owned partial is discarded. Never delete on cancellation,
+            // I/O/access failures, absent media, signature-chain failures or answer-file interference.
+            DeleteOwned(partial);
+            DeleteOwned(metadataPath);
+            throw;
         }
         catch (OperationCanceledException)
         {
-            AppLog.Info($"Download cancelled. Partial retained: {partial}");
+            AppLog.Info($"Download cancelled. Exact files retained: {destination}; {partial}");
             throw;
         }
         catch (Exception ex)
@@ -143,6 +216,40 @@ internal static class IsoTransfer
             throw;
         }
         finally { resumedResponse?.Dispose(); }
+    }
+
+    private static async Task<string> CheckedHashAsync(string path, string? expected, CancellationToken token)
+    {
+        try { return await UpgradeEngine.VerifyIsoHashAsync(path, expected, token); }
+        catch (InvalidDataException ex) { throw new CorruptDownloadException(ex.Message); }
+    }
+
+    private static async Task<T?> ReadMetadataAsync<T>(string path, CancellationToken token) where T : class
+    {
+        if (!File.Exists(path)) return null;
+        if (new FileInfo(path).Length > 16384) return null;
+        try { return JsonSerializer.Deserialize<T>(await File.ReadAllTextAsync(path, token)); }
+        catch (JsonException) { return null; }
+    }
+
+    private static Task SaveCompletedAsync(string path, CompletedDownload value, CancellationToken token) =>
+        File.WriteAllTextAsync(path, JsonSerializer.Serialize(value), token);
+
+    private static void RejectLink(string path)
+    {
+        try
+        {
+            if ((File.GetAttributes(path) & (FileAttributes.ReparsePoint | FileAttributes.Directory)) != 0)
+                throw new InvalidOperationException("A download path is a link or directory. Choose a different folder.");
+        }
+        catch (FileNotFoundException) { }
+        catch (DirectoryNotFoundException) { }
+    }
+
+    private static void DeleteOwned(string path)
+    {
+        RejectLink(path);
+        File.Delete(path);
     }
 
     private static async Task<HttpResponseMessage> SendAsync(HttpClient http, HttpRequestMessage request, CancellationToken token)

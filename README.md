@@ -4,7 +4,7 @@ Standalone Windows application for guiding advanced home users through an
 in-place Windows 11 upgrade on unsupported x64 hardware.
 
 > [!WARNING]
-> RC4 is prerelease software. It uses the undocumented `/product server`
+> RC5 is prerelease software. It uses the undocumented `/product server`
 > compatibility behavior with Windows client Setup. Back up important files
 > before using it. Microsoft can change this behavior in future releases.
 
@@ -13,7 +13,7 @@ in-place Windows 11 upgrade on unsupported x64 hardware.
 Download the latest prerelease from the repository's **Releases** page:
 
 ```text
-PcNinja-Win11-Upgrade-Assistant-RC4.exe
+PcNinja-Win11-Upgrade-Assistant-RC5.exe
 ```
 
 The portable x64 EXE contains both the graphical application and the CLI. No
@@ -24,18 +24,37 @@ PowerShell or CMD files are required.
 The application shows the current Windows version, storage state, and source
 choices on one screen:
 
-1. Download the configured PcNinja ISO automatically.
-2. Select an ISO already downloaded.
-3. Use a Windows ISO that is already mounted or an extracted Setup folder.
-4. Refresh after downloading an ISO, mounting media, or connecting a USB drive.
+1. **Download the ISO automatically.** Choose a download drive/folder.
+2. **Use existing installation media.** Select an ISO, mounted drive, extracted
+   Setup folder or network folder in one path field, using **ISO...** or **Folder...**.
 
-The automatic downloader preserves the server-provided filename. Existing files
-are never overwritten; collisions use `(Copy 1)`, `(Copy 2)`, and so on. A
-failed or cancelled transfer remains as the exact `.partial` file recorded in the
-log. Retrying automatic download resumes it only when the server supplies the
-same strong ETag, total length and a valid byte-range response. Otherwise a new
-numbered copy is downloaded. Header requests time out after 60 seconds and a
-transfer stops after 90 seconds without incoming data.
+Refresh after downloading, mounting media or connecting a USB drive. The exact
+source, image selection and restart policy are retained when the source is unchanged.
+A single ISO beside the EXE is offered automatically; multiple files are never
+resolved by newest-file guessing.
+
+Use **Inspect images**, or **Start**, to enumerate the actual installation images.
+Names, indexes, edition, x64 architecture, build and default language come from
+that source. A unique same-edition/language match is selected; otherwise select
+an image in the same screen. Incompatible images are rejected. Replacing the
+source resets the old image index.
+
+The downloader requires the original ISO filename supplied by the server.
+An existing exact-name completed ISO is reused after size, hash and media checks.
+The last completed app download is recorded by its exact name in that folder,
+so a valid recorded ISO can also be revalidated when the provider is unavailable.
+Only a proven-corrupt **recorded PcNinja download** is deleted before a fresh
+transfer. Unknown user files, cancellation, signature-chain failures, unavailable
+drives and interfering answer files never trigger automatic ISO deletion.
+There is no numbered-copy allocator or broad wildcard selection.
+
+Partial files retain their exact path and ownership metadata. Resume requires
+the same endpoint, strong ETag, total size and valid range. If Range is ignored,
+the owned partial restarts under its original name. Header requests time out
+after 60 seconds; 90 seconds without incoming data stops a transfer.
+A TLS connection failure at the short-link host triggers a secure direct-provider
+attempt; certificate validation remains enabled. Provider rate/access blocks may
+still require browser download.
 
 The green **START UPGRADE** button becomes red **CANCEL** during preparation.
 After cancellation, the result remains visible. Once Windows Setup is running,
@@ -60,7 +79,11 @@ Before starting Setup, the application validates:
 - `setup.exe` at the root of the mounted source
 - a valid Microsoft Authenticode signature on `setup.exe`
 - a readable `install.wim`, `install.esd`, or `install.swm` through DISM
-- absence of `Autounattend.xml`
+- answer-file safety on the selected source and other attached media, repeated
+  immediately before Setup; narrowly scoped writable selected-source answer
+  files are removed, while secondary/read-only media blocks the upgrade
+- actual image index, matching edition (including N/Single Language), x64,
+  system-default UI language, and equal-or-newer Windows 11 build
 
 Downloading onto the Windows drive reserves space for both the remaining ISO
 bytes and the 20 GB upgrade workspace, plus a 1 GB download margin. Windows
@@ -77,7 +100,7 @@ Mounted media/extracted folders do not support whole-ISO checksum comparison.
 
 Routine errors appear in the main window; **View details** shows diagnostics.
 See the [message catalog](docs/UI-MESSAGES.md) for the short English wording
-used in RC4 and the [RC4 test notes](docs/RC4-TESTING.md) for coverage and limits.
+used in RC5 and the [RC5 test notes](docs/RC5-TESTING.md) for coverage and limits.
 
 ## CLI
 
@@ -89,22 +112,22 @@ See the [complete CLI guide](docs/CLI.md) for mounted ISO drives, automatic
 downloads, validation-only runs, JSON output, confirmations, and exit codes.
 
 ```powershell
-.\PcNinja-Win11-Upgrade-Assistant-RC4.exe help
-.\PcNinja-Win11-Upgrade-Assistant-RC4.exe help all
-.\PcNinja-Win11-Upgrade-Assistant-RC4.exe help upgrade
-.\PcNinja-Win11-Upgrade-Assistant-RC4.exe status --json
-.\PcNinja-Win11-Upgrade-Assistant-RC4.exe scan
-.\PcNinja-Win11-Upgrade-Assistant-RC4.exe validate --iso "D:\Windows11.iso"
-.\PcNinja-Win11-Upgrade-Assistant-RC4.exe validate --mounted E:\
-.\PcNinja-Win11-Upgrade-Assistant-RC4.exe upgrade --iso "D:\Windows11.iso" --no-restart
-.\PcNinja-Win11-Upgrade-Assistant-RC4.exe upgrade --mounted E:\ --no-restart
-.\PcNinja-Win11-Upgrade-Assistant-RC4.exe upgrade --download --destination "E:\PcNinja Downloads"
+.\PcNinja-Win11-Upgrade-Assistant-RC5.exe help
+.\PcNinja-Win11-Upgrade-Assistant-RC5.exe help all
+.\PcNinja-Win11-Upgrade-Assistant-RC5.exe help upgrade
+.\PcNinja-Win11-Upgrade-Assistant-RC5.exe status --json
+.\PcNinja-Win11-Upgrade-Assistant-RC5.exe scan
+.\PcNinja-Win11-Upgrade-Assistant-RC5.exe validate --iso "D:\Windows11.iso"
+.\PcNinja-Win11-Upgrade-Assistant-RC5.exe validate --mounted E:\
+.\PcNinja-Win11-Upgrade-Assistant-RC5.exe upgrade --iso "D:\Windows11.iso" --no-restart
+.\PcNinja-Win11-Upgrade-Assistant-RC5.exe upgrade --mounted E:\ --no-restart
+.\PcNinja-Win11-Upgrade-Assistant-RC5.exe upgrade --download --destination "E:\PcNinja Downloads"
 ```
 
 Enable PowerShell completion for the current session:
 
 ```powershell
-& .\PcNinja-Win11-Upgrade-Assistant-RC4.exe completion powershell | Out-String | Invoke-Expression
+& .\PcNinja-Win11-Upgrade-Assistant-RC5.exe completion powershell | Out-String | Invoke-Expression
 ```
 
 Mount, validation, download-and-mount, and upgrade operations must be launched
@@ -124,18 +147,31 @@ Stable CLI exit codes:
 | 5 | Administrator permission required |
 | 6 | User confirmation or preparation cancelled |
 | 7 | Windows Setup returned failure |
+| 8 | Setup transition outcome unconfirmed; verify after restart |
 
 ## Upgrade and restart behavior
 
 The upgrade command is:
 
 ```text
-setup.exe /product server /auto upgrade /eula accept /dynamicupdate disable /compat ignorewarning
+setup.exe /product server /auto upgrade /eula accept /dynamicupdate disable /compat ignorewarning /imageindex <selected-index> /installfrom "<validated-image-file>"
 ```
 
 Clearing **Allow Windows Setup to restart the computer automatically**, or using
 CLI option `--no-restart`, adds `/noreboot`. The application never calls
 `shutdown.exe` and never forces a restart after a failed Setup process.
+
+Preparation completion is not a final upgrade result. A Setup transition exit
+such as `0x40010004` is reported as unconfirmed, not automatically successful.
+After restarting, reopen the GUI or run `status --json` to compare the running
+build/edition with the recorded attempt. Confirm that your files and apps remain.
+The last-attempt record is `Last-Upgrade.json` beside the log; no startup task or
+background service is installed.
+
+If an interfering ISO/USB is detected, detach it and Refresh. There is no warning
+bypass or clean-install fallback. Windows-owned Panther cache files are never
+automatically modified. Do not attach installation media after the final check.
+Never continue if Windows Setup unexpectedly asks where to install Windows.
 
 Logs are written to:
 
@@ -159,7 +195,7 @@ Work is tracked through issues, feature branches and Draft PRs under the owner's
 account. No other person's approval is required. Merge and release publication
 remain separate owner decisions. See the [GitHub workflow guide](docs/GITHUB-WORKFLOW.md)
 for checkpoints, test artifacts, recovery and the proposed main protection.
-PR test builds do not replace the published RC4 release.
+PR artifacts are test builds, not replacements for an explicitly published release.
 
 ## Build
 

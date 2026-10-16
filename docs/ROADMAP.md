@@ -1,12 +1,15 @@
 # Roadmap
 
-## Next RC backlog - pending completion of RC4 field testing
+## RC5 implemented requirements - owner field testing pending
 
-Planning only: do not change runtime code, build, replace the tested EXE or
-publish a new release until the owner finishes the current test round.
+The owner authorized implementation, protected-PR merge and RC5 prerelease
+publication for further testing. This supersedes the earlier planning-only hold.
+The requirements below are implemented with automated/local checks; actual
+Windows upgrades, provider transfer and physical media still require the
+[RC5 field checks](RC5-TESTING.md). Do not equate implementation with field approval.
 
-The workflow-preparation PR may verify a build of the unchanged RC4 baseline;
-that is not RC5, a replacement field-test EXE, or permission to publish a release.
+The separately merged workflow-preparation PR kept RC4 unchanged; the subsequent
+RC5 implementation includes Core, GUI/CLI and packaging changes.
 Follow the [owner-led GitHub workflow](GITHUB-WORKFLOW.md).
 The [RC5 work register](RC5-PLAN.md) links the issues and testing checkpoints.
 
@@ -114,8 +117,8 @@ download or all customized media are safe; those remain separate test cases.
 
 ### Investigate EXE size without compromising the portable workflow
 
-- Keep the portable EXE at or below 100,000,000 bytes; the proposed PR checks
-  enforce this limit for PR test builds, not yet for the existing tag workflow.
+- Keep the portable EXE at or below 100,000,000 bytes; RC5 enforces the cap in
+  both PR checks and release packaging. The local portable EXE is about 73 MB.
 
 - Current settings are self-contained, single-file, compressed .NET 8 WinForms.
   The inspected publish is about 72.9 MB (69.6 MiB); the app/Core assemblies

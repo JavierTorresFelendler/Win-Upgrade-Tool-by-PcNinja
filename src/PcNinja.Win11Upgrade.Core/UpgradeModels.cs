@@ -1,6 +1,7 @@
 namespace PcNinja.Win11Upgrade.Core;
 
-public sealed record MountedSource(string Root, string SetupPath);
+public sealed record MountedSource(string Root, string SetupPath, string? ImagePath = null,
+    IReadOnlyList<InstallationImage>? Images = null);
 
 public sealed record UpgradeResult(int ExitCode, string SetupPath);
 
@@ -16,7 +17,8 @@ public sealed record DownloadResult(
     long BytesReceived,
     long? ExpectedBytes,
     string? Sha256 = null,
-    bool Resumed = false);
+    bool Resumed = false,
+    bool Reused = false);
 
 public sealed record StorageCheck(
     bool IsValid,

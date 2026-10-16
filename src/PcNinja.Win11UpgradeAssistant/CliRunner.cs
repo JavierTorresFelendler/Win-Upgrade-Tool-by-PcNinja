@@ -13,6 +13,7 @@ internal static class CliRunner
     internal const int AdministratorRequired = 5;
     internal const int Cancelled = 6;
     internal const int SetupFailed = 7;
+    internal const int OutcomeUnconfirmed = 8;
     private const string Version = CliHelp.Version;
     private static volatile bool _setupRunning;
 
@@ -44,7 +45,7 @@ internal static class CliRunner
                     return Fail(InvalidArguments,
                         "Usage: completion powershell. Run 'help completion' for setup instructions.", false);
                 var executableName = Path.GetFileName(Environment.ProcessPath)
-                    ?? "PcNinja-Win11-Upgrade-Assistant-RC4.exe";
+                    ?? "PcNinja-Win11-Upgrade-Assistant-RC5.exe";
                 Console.WriteLine(CliHelp.GetPowerShellCompletion(executableName));
                 return Success;
             }
@@ -96,13 +97,15 @@ internal static class CliRunner
             systemDrive = storage.RootPath,
             systemDriveFreeBytes = storage.AvailableBytes,
             systemDriveReady = storage.IsValid,
-            logPath = AppLog.Path
+            logPath = AppLog.Path,
+            previousUpgrade = UpgradeHistory.ReadStatus()
         };
         Write(value, json,
             $"PcNinja Windows 11 Upgrade Assistant {Version}\n" +
             $"OS: {value.operatingSystem}\nUpgrade supported: {value.upgradeSupported}" +
             (supportError is null ? "" : $" ({supportError})") + $"\nAdministrator: {value.isAdministrator}\n" +
-            $"System storage: {storage.Message}\nLog: {AppLog.Path}");
+            $"System storage: {storage.Message}\nLog: {AppLog.Path}" +
+            (value.previousUpgrade is null ? "" : $"\nPrevious upgrade: {value.previousUpgrade.State}. {value.previousUpgrade.Message}"));
         return Success;
     }
 
@@ -206,10 +209,22 @@ internal static class CliRunner
             return Fail(ValidationFailed, ex.Message, options.Json);
         }
 
+        InstallationImage? selectedImage = null;
+        try
+        {
+            if (options.ImageIndex.HasValue || (startSetup && !options.DryRun))
+                selectedImage = InstallationImages.Select(source, options.ImageIndex, CurrentWindows.Read());
+        }
+        catch (InvalidOperationException ex) { return Fail(ValidationFailed, ex.Message, options.Json); }
+        var matchingImages = InstallationImages.Compatible(source, CurrentWindows.Read());
         if (!startSetup || options.DryRun)
         {
-            Write(new { valid = true, isoPath = exactIsoPath, mountedRoot = source.Root, setupPath = source.SetupPath },
-                options.Json, $"Validation passed.\nMounted source: {source.Root}\nSetup: {source.SetupPath}");
+            Write(new { valid = true, isoPath = exactIsoPath, mountedRoot = source.Root, setupPath = source.SetupPath,
+                    imagePath = source.ImagePath, images = source.Images, compatibleImageIndexes = matchingImages.Select(image => image.Index),
+                    selectedImageIndex = selectedImage?.Index ?? (matchingImages.Count == 1 ? matchingImages[0].Index : (int?)null) },
+                options.Json, $"Validation passed.\nSource: {source.Root}\nImage file: {source.ImagePath}\n" +
+                string.Join("\n", (source.Images ?? []).Select(image => image.ToString())) +
+                $"\nCompatible indexes: {string.Join(", ", matchingImages.Select(image => image.Index))}");
             return Success;
         }
 
@@ -218,6 +233,7 @@ internal static class CliRunner
             if (Console.IsInputRedirected)
                 return Fail(Cancelled, "Confirmation is required. Re-run interactively or add --yes.", options.Json);
             Console.Error.WriteLine("WARNING: This uses an experimental unsupported-hardware upgrade method.");
+            Console.Error.WriteLine($"Image {selectedImage!.Index}: {selectedImage.Name}");
             Console.Error.WriteLine(options.NoRestart
                 ? "Automatic restart is disabled."
                 : "Windows Setup may restart this computer automatically.");
@@ -227,14 +243,20 @@ internal static class CliRunner
         }
 
         token.ThrowIfCancellationRequested();
-        _setupRunning = true;
-        var result = await engine.StartUpgradeAsync(source.SetupPath, !options.NoRestart, token);
+        UpgradeResult result;
+        try { result = await engine.StartUpgradeAsync(source, selectedImage!.Index, !options.NoRestart, token,
+            () => _setupRunning = true); }
+        catch (OperationCanceledException) { throw; }
+        catch (InvalidOperationException ex) { return Fail(ValidationFailed, ex.Message, options.Json); }
+        if (result.ExitCode == 0x40010004)
+            return Fail(OutcomeUnconfirmed, "Setup exited during the transition. The upgrade outcome is not confirmed. After restarting, run status --json and verify your files/apps.", options.Json);
         if (result.ExitCode != 0)
             return Fail(SetupFailed,
                 $"Windows Setup stopped with exit code {result.ExitCode}. No forced restart was issued.", options.Json);
         Write(new { started = true, setupExitCode = result.ExitCode, automaticRestart = !options.NoRestart,
-                isoPath = exactIsoPath, mountedRoot = source.Root },
-            options.Json, "Windows Setup completed its current stage successfully.");
+                isoPath = exactIsoPath, mountedRoot = source.Root, imageIndex = selectedImage.Index,
+                outcome = "PreparationCompleted" },
+            options.Json, "Windows Setup completed its current stage. Verify the final outcome after restarting.");
         return Success;
     }
 
@@ -276,7 +298,8 @@ internal sealed record CliOptions(
     bool Yes,
     bool DryRun,
     bool Json,
-    string? Sha256 = null)
+    string? Sha256 = null,
+    int? ImageIndex = null)
 {
     public static CliOptions Parse(string[] args)
     {
@@ -292,6 +315,7 @@ internal sealed record CliOptions(
         string? mounted = null;
         string? destination = null;
         string? sha256 = null;
+        int? imageIndex = null;
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var download = false;
         var noRestart = false;
@@ -312,6 +336,11 @@ internal sealed record CliOptions(
                 case "--yes": yes = true; break;
                 case "--dry-run": dryRun = true; break;
                 case "--json": json = true; break;
+                case "--image-index":
+                    if (!int.TryParse(RequireValue(args, ref index, "--image-index"), out var value) || value < 1)
+                        throw new CliArgumentException("--image-index must be a positive integer.");
+                    imageIndex = value;
+                    break;
                 case "--sha256":
                     try { sha256 = UpgradeEngine.NormalizeSha256(RequireValue(args, ref index, "--sha256")); }
                     catch (ArgumentException ex) { throw new CliArgumentException(ex.Message); }
@@ -324,8 +353,8 @@ internal sealed record CliOptions(
         var allowed = command switch
         {
             "status" or "scan" or "refresh" or "rescan" => new[] { "--json" },
-            "validate" => new[] { "--iso", "--mounted", "--sha256", "--json" },
-            "upgrade" => new[] { "--iso", "--mounted", "--download", "--destination", "--sha256", "--no-restart", "--yes", "--dry-run", "--json" },
+            "validate" => new[] { "--iso", "--mounted", "--sha256", "--image-index", "--json" },
+            "upgrade" => new[] { "--iso", "--mounted", "--download", "--destination", "--sha256", "--image-index", "--no-restart", "--yes", "--dry-run", "--json" },
             _ => Array.Empty<string>()
         };
         foreach (var option in seen)
@@ -333,7 +362,7 @@ internal sealed record CliOptions(
                 throw new CliArgumentException($"{option} is not valid for {command}. See '{command} --help'.");
         if (destination is not null && !download) throw new CliArgumentException("--destination requires --download.");
         if (sha256 is not null && mounted is not null) throw new CliArgumentException("--sha256 requires --iso or --download.");
-        return new CliOptions(command, iso, mounted, download, destination, noRestart, yes, dryRun, json, sha256);
+        return new CliOptions(command, iso, mounted, download, destination, noRestart, yes, dryRun, json, sha256, imageIndex);
     }
 
     private static string RequireValue(string[] args, ref int index, string option)
