@@ -19,6 +19,44 @@ internal static class IsoTransfer
         string? expectedSha256, long minimumBytes = UpgradeEngine.MinimumIsoBytes,
         Func<string, CancellationToken, Task>? validateMedia = null)
     {
+        directory = Path.GetFullPath(directory);
+        Directory.CreateDirectory(directory);
+        var pointerPath = Path.Combine(directory, ".pcninja-download.json");
+        RejectLink(pointerPath);
+        var cached = await ReadMetadataAsync<CompletedDownload>(pointerPath, token);
+        if (cached is not null && cached.FileName is { Length: > 0 } && cached.FileName == Path.GetFileName(cached.FileName) &&
+            cached.FileName.EndsWith(".iso", StringComparison.OrdinalIgnoreCase) &&
+            cached.FileName.IndexOfAny(Path.GetInvalidFileNameChars()) < 0 &&
+            cached.Sha256 is { Length: 64 } && cached.Sha256.All(Uri.IsHexDigit))
+        {
+            var cachedPath = Path.Combine(directory, cached.FileName);
+            var cachedRecord = cachedPath + ".pcninja.json";
+            RejectLink(cachedPath);
+            RejectLink(cachedRecord);
+            if (File.Exists(cachedPath) && await ReadMetadataAsync<CompletedDownload>(cachedRecord, token) == cached)
+            {
+                RejectLink(cachedPath + ".pcninja.lock");
+                await using var cacheLock = new FileStream(cachedPath + ".pcninja.lock", FileMode.OpenOrCreate,
+                    FileAccess.ReadWrite, FileShare.None, 1, FileOptions.DeleteOnClose);
+                try
+                {
+                    progress?.Report(new(cachedPath, 0, cached.Bytes, null, "Validating the existing ISO..."));
+                    if (new FileInfo(cachedPath).Length != cached.Bytes || cached.Bytes < minimumBytes)
+                        throw new CorruptDownloadException("The recorded ISO size has changed.");
+                    var hash = await CheckedHashAsync(cachedPath, expectedSha256 ?? cached.Sha256, token);
+                    if (validateMedia is not null) await validateMedia(cachedPath, token);
+                    AppLog.Info($"Reusing exact recorded download without contacting the provider: {cachedPath}. SHA256: {hash}.");
+                    return new(cachedPath, cached.Bytes, cached.Bytes, hash, Reused: true);
+                }
+                catch (CorruptDownloadException)
+                {
+                    DeleteOwned(cachedPath);
+                    DeleteOwned(cachedRecord);
+                    DeleteOwned(pointerPath);
+                    AppLog.Info($"Removed corrupt recorded ISO before a fresh transfer: {cachedPath}");
+                }
+            }
+        }
         using var initial = await SendAsync(http, new HttpRequestMessage(HttpMethod.Get, endpoint), token);
         var mediaType = initial.Content.Headers.ContentType?.MediaType ?? "";
         if (mediaType.Contains("text/", StringComparison.OrdinalIgnoreCase))
@@ -28,8 +66,6 @@ internal static class IsoTransfer
             throw new DownloadTransferException("The download service did not return a complete Windows ISO.");
 
         var name = UpgradeEngine.GetRemoteFileName(initial);
-        directory = Path.GetFullPath(directory);
-        Directory.CreateDirectory(directory);
         var destination = Path.Combine(directory, name);
         var partial = destination + ".partial";
         var metadataPath = partial + ".json";
@@ -56,6 +92,7 @@ internal static class IsoTransfer
                 var hash = await CheckedHashAsync(destination, expectedSha256 ?? (ownedFinal ? completed!.Sha256 : null), token);
                 if (validateMedia is not null) await validateMedia(destination, token);
                 await SaveCompletedAsync(completedPath, new(endpoint.AbsoluteUri, name, length, hash), token);
+                await SaveCompletedAsync(pointerPath, new(endpoint.AbsoluteUri, name, length, hash), token);
                 AppLog.Info($"Reusing exact validated download: {destination}. SHA256: {hash}.");
                 return new(destination, length, total, hash, Reused: true);
             }
@@ -153,6 +190,7 @@ internal static class IsoTransfer
             token.ThrowIfCancellationRequested();
             File.Move(partial, destination); // Streams are closed before promotion.
             await SaveCompletedAsync(completedPath, new(endpoint.AbsoluteUri, name, received, finalHash), token);
+            await SaveCompletedAsync(pointerPath, new(endpoint.AbsoluteUri, name, received, finalHash), token);
             DeleteOwned(metadataPath);
             if (validateMedia is not null) await validateMedia(destination, token);
             progress?.Report(new(destination, received, total, 100));

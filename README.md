@@ -41,6 +41,8 @@ source resets the old image index.
 
 The downloader requires the original ISO filename supplied by the server.
 An existing exact-name completed ISO is reused after size, hash and media checks.
+The last completed app download is recorded by its exact name in that folder,
+so a valid recorded ISO can also be revalidated when the provider is unavailable.
 Only a proven-corrupt **recorded PcNinja download** is deleted before a fresh
 transfer. Unknown user files, cancellation, signature-chain failures, unavailable
 drives and interfering answer files never trigger automatic ISO deletion.

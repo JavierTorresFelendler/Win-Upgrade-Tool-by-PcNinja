@@ -36,6 +36,11 @@ internal static class TransferChecks
                 null, CancellationToken.None, hash, 1, (_, _) => { validations++; return Task.CompletedTask; });
             if (!reused.Reused || validations != 1 || reused.IsoPath != exact)
                 throw new Exception("The completed exact file was not reused and revalidated.");
+            using var offlineHttp = new HttpClient(new OfflineHandler());
+            var offlineReuse = await IsoTransfer.DownloadAsync(offlineHttp, endpoint, directory,
+                _ => throw new Exception("Offline reuse reserved download space."), null, CancellationToken.None, hash, 1);
+            if (!offlineReuse.Reused || offlineReuse.IsoPath != exact)
+                throw new Exception("Recorded exact ISO could not be reused while the provider was unavailable.");
             var damaged = data.ToArray();
             damaged[0] ^= 0xFF;
             File.WriteAllBytes(exact, damaged);
@@ -161,6 +166,12 @@ internal static class TransferChecks
             response.Headers.ETag = new EntityTagHeaderValue("\"test-v1\"");
             return Task.FromResult(response);
         }
+    }
+
+    private sealed class OfflineHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            throw new HttpRequestException("A valid recorded cache must not contact the unavailable provider.");
     }
 
     private sealed class InterruptedStream(byte[] data, CancellationTokenSource? cancellation = null) : MemoryStream(data)
