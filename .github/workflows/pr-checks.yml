@@ -1,0 +1,89 @@
+name: PR checks
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-checks-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: PR validation
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Run Core smoke tests (no Windows Setup)
+        shell: pwsh
+        run: |
+          dotnet run --project tests/PcNinja.Win11Upgrade.SmokeTests/PcNinja.Win11Upgrade.SmokeTests.csproj -c Release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Publish portable test EXE
+        shell: pwsh
+        run: |
+          dotnet publish src/PcNinja.Win11UpgradeAssistant/PcNinja.Win11UpgradeAssistant.csproj -c Release -r win-x64 --self-contained true -o artifacts
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Check size and read-only CLI entry points
+        shell: pwsh
+        run: |
+          $exe = Join-Path $PWD 'artifacts/PcNinja-Win11-Upgrade-Assistant.exe'
+          $size = (Get-Item -LiteralPath $exe).Length
+          if ($size -gt 100000000) { throw "EXE exceeds 100,000,000 bytes: $size" }
+          & $exe --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $exe status --json
+          if ($LASTEXITCODE -notin 0,3) { exit $LASTEXITCODE }
+          $help = & $exe help upgrade | Out-String
+          if ($LASTEXITCODE -ne 0 -or $help -notmatch '--mounted' -or $help -notmatch '--iso') {
+            throw 'CLI upgrade help is missing or incomplete.'
+          }
+          $completion = & $exe completion powershell | Out-String
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          [scriptblock]::Create($completion) | Out-Null
+
+      - name: Record provenance and checksum
+        shell: pwsh
+        env:
+          SOURCE_COMMIT: ${{ github.event.pull_request.head.sha }}
+          TESTED_COMMIT: ${{ github.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          $exe = Get-Item -LiteralPath 'artifacts/PcNinja-Win11-Upgrade-Assistant.exe'
+          $hash = (Get-FileHash -LiteralPath $exe.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  $($exe.Name)" | Set-Content artifacts/SHA256SUMS.txt -Encoding ascii
+          @(
+            'TEST BUILD ONLY - not a release or approval to upgrade a machine.'
+            "PR: $env:PR_NUMBER"
+            "Source commit: $env:SOURCE_COMMIT"
+            "Tested merge commit: $env:TESTED_COMMIT"
+            "Product version: $($exe.VersionInfo.ProductVersion)"
+            "EXE bytes: $($exe.Length)"
+            'Client GUI checks and real upgrades require separate Windows 10/11 VM testing.'
+          ) | Set-Content artifacts/BUILD-INFO.txt -Encoding utf8
+          Get-Content artifacts/BUILD-INFO.txt | Add-Content $env:GITHUB_STEP_SUMMARY
+          "SHA-256: $hash" | Add-Content $env:GITHUB_STEP_SUMMARY
+
+      - name: Upload test artifact (never creates a Release)
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: PcNinja-PR-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+          retention-days: 30
+          if-no-files-found: error
+          path: |
+            artifacts/PcNinja-Win11-Upgrade-Assistant.exe
+            artifacts/SHA256SUMS.txt
+            artifacts/BUILD-INFO.txt
