@@ -153,6 +153,14 @@ This boundary is intentional. The standalone product remains independent while
 the Core project can later be integrated into PcNinja WinUpdate Tool without
 copying the standalone interface.
 
+## Development workflow
+
+Work is tracked through issues, feature branches and Draft PRs under the owner's
+account. No other person's approval is required. Merge and release publication
+remain separate owner decisions. See the [GitHub workflow guide (Hebrew)](docs/GITHUB-WORKFLOW.md)
+for checkpoints, test artifacts, recovery and the proposed main protection.
+PR test builds do not replace the published RC4 release.
+
 ## Build
 
 Requirements: .NET 8 SDK or later on Windows.

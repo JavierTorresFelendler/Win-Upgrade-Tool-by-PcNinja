@@ -1,5 +1,134 @@
 # Roadmap
 
+## Next RC backlog - pending completion of RC4 field testing
+
+Planning only: do not change runtime code, build, replace the tested EXE or
+publish a new release until the owner finishes the current test round.
+
+The workflow-preparation PR may verify a build of the unchanged RC4 baseline;
+that is not RC5, a replacement field-test EXE, or permission to publish a release.
+Follow the [owner-led GitHub workflow](GITHUB-WORKFLOW.md).
+The [RC5 work register](RC5-PLAN.md) links the issues and testing checkpoints.
+
+### Block interfering unattended installation media (safety priority)
+
+- Scan the selected source and other attached installation-media roots for
+  interfering answer files before preparation and again immediately before Setup.
+- Remove an interfering media-root answer file only when its exact location is
+  established and deletion is permitted within the selected installation source;
+  verify it is actually gone. Do not broadly delete OS answer files, cached
+  Panther content, unrelated user files or files on other connected media.
+- If an answer file remains on read-only mounted media, USB, or another source,
+  block Setup. Explain briefly that customized automatic-installation media can
+  trigger an unwanted clean install and data loss. Ask the user to detach that
+  media (or remove the file from writable media) and refresh/recheck.
+- Never continue with a warning-only bypass, auto-select a partition, or fall
+  back from upgrade to clean installation. Share the gate between GUI and CLI.
+- Acceptance: interfering selected or secondary ISO/USB is blocked; only the
+  exact permitted writable file is removed; detaching and rechecking succeeds;
+  a remaining/detected-late answer file prevents Setup from being launched.
+- A future separate ISO extraction/launcher project is out of scope for this RC.
+
+Field-test evidence reported by the owner: Windows 11 24H2 to 26H2 and Windows
+10 Pro to Windows 11 Pro completed after the original VM installation media
+containing an answer file was detached. This is not proof that automatic
+download or all customized media are safe; those remain separate test cases.
+
+### Two primary source choices (medium scope)
+
+- Keep automatic download as the first choice. Merge local ISO, mounted media
+  and extracted Setup folders into one **Use existing installation media** choice.
+- Use one selected-source/path field and one list of discovered candidates.
+  Keep lightweight ISO-file and folder browse actions; reuse Windows dialogs
+  instead of adding a custom mixed file/folder picker or another UI dependency.
+- Identify an explicitly chosen ISO versus directory internally, then call
+  the existing shared mounting/validation operations. Preserve exact paths;
+  never guess a source by newest-file order or a broad Windows filename match.
+- Preserve Refresh for newly mounted media and USB drives, along with the
+  selected path, download destination and restart policy.
+- Update main-screen descriptions, selected-source/status text, browser-fallback
+  wording, confirmation text, message catalog, offline help and documentation.
+- Remove the obsolete third radio button, its panel, mutually exclusive state
+  handling and redundant event handlers. Keep current CLI --iso/--mounted
+  compatibility and verify both still use the same Core validation rules.
+- Acceptance: two exclusive primary choices; ISO/folder/mounted/network paths
+  work; refresh preserves the exact choice; cancellation remains available;
+  no extra wizard pages, custom dialog framework or new package dependency.
+
+### Reuse completed downloads and simplify filename handling
+
+- Before downloading, inspect only the exact expected final filename at the
+  selected destination. Reuse it after applicable size/checksum and media checks.
+- If the file is demonstrably corrupt, delete that exact owned download, recheck
+  free space and download again using the original filename.
+- Cancellation, access failures, missing drive letters, external answer-file
+  interference and other environmental validation failures do not prove ISO
+  corruption and must not cause deletion of an otherwise valid file.
+- Retain guarded partial-file resume. Do not delete files in use or unrelated
+  user media. Remove the Copy N allocation method, redundant branches, obsolete
+  collision tests and outdated documentation rather than leaving dead code.
+
+### Select the installation image before launching Setup
+
+- Enumerate actual image indexes and metadata from the selected installation
+  image using the existing Windows DISM facilities, without a new UI dependency.
+  Display image name, edition, index, architecture, build and language when
+  available alongside the current Windows edition/language/architecture.
+- Recommend the matching edition (including N/Single Language distinctions),
+  but do not treat an edition-name match as proof that in-place migration works.
+  For multiple eligible choices, let the user choose in the existing main-screen
+  source area before the final upgrade confirmation. With one clear compatible
+  choice, show the resolved selection without another wizard page.
+- Pass /ImageIndex <selected-index> through the shared Core Setup command builder.
+  Index numbers are specific to each source: never hard-code Pro as index 6 or
+  carry an index from a previous ISO/folder to a newly selected source.
+- Distinguish selecting an image INSIDE a WIM from selecting a different WIM
+  FILE. If multiple source files are supported, bind the selected file and its
+  index together and use /InstallFrom where applicable; split images use the
+  first SWM file. Validate against the exact file Setup will consume.
+- Re-enumerate/reset selection on source replacement/refresh when media changes.
+  Keep /auto upgrade and the unattended-media checks; choosing an index must not
+  permit clean-install fallback or arbitrary edition changes without a supported
+  migration path.
+- Add optional CLI --image-index, image enumeration in source validation output,
+  offline help, completion and documentation. Preserve GUI/CLI Core parity and
+  reject nonexistent or source-mismatched indexes before launching Setup.
+- Verify multi-edition, duplicate-name, single-image, source-change and invalid
+  index cases. Expected scope is small-to-medium; reuse DISM already present.
+
+### Download, Setup and diagnostics findings to address
+
+- Investigate Windows 10 TLS compatibility at the download redirect endpoint.
+  Controlled probes failed with TLS 1.2 but reached an HTTP redirect using TLS
+  1.3; the client log reports ProtocolVersion. Do not disable certificate checks.
+- Wait/retry for Windows to assign a mounted ISO's drive letter; avoid reporting
+  failure while a refresh immediately discovers the mounted source.
+- Detect interfering answer files beyond the selected source root. Setup found
+  D:\autounattend.xml while upgrading from F:\; isolate original VM install media.
+  The captured SetupHost command also includes /Install /Boot alongside /auto
+  upgrade. Verify the cause and fail closed if the requested upgrade cannot be
+  established; never auto-select a target partition to conceal this condition.
+- Reconcile Setup process exit status with post-restart OS/Setup evidence;
+  one successful field upgrade was incorrectly reported failed on 0x40010004.
+  Do not globally reinterpret that process status as upgrade success.
+
+### Investigate EXE size without compromising the portable workflow
+
+- Keep the portable EXE at or below 100,000,000 bytes; the proposed PR checks
+  enforce this limit for PR test builds, not yet for the existing tag workflow.
+
+- Current settings are self-contained, single-file, compressed .NET 8 WinForms.
+  The inspected publish is about 72.9 MB (69.6 MiB); the app/Core assemblies
+  together are about 1.35 MB before bundle compression, including resources.
+- Measure actual release outputs in the next authorized build; UI simplification
+  alone will not remove the bundled runtime. Audit symbols and assets, then
+  compare the existing portable build with an optional framework-dependent
+  build that requires the matching Windows Desktop Runtime.
+- Keep a no-runtime-install portable option unless the owner chooses otherwise.
+  A smaller EXE must not conceal a runtime download or installation step.
+  Avoid unsupported WinForms trimming or an architecture rewrite solely to
+  reduce file size; record measured savings and the prerequisite tradeoff first.
+
 ## RC4 - download reliability and release testing
 
 - Field-test GUI cancellation, real-provider resume, physical USB refresh and
