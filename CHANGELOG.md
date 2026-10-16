@@ -1,5 +1,31 @@
 # Changelog
 
+## 1.1.0-rc.5
+
+- Reduced the GUI to automatic download or existing installation media, sharing
+  one ISO/folder/mounted/network selector without a new UI dependency.
+- Added shared selected/secondary answer-file gates, narrowly scoped writable
+  source cleanup, read-only/locked media blocking and final pre-launch rescan.
+- Enumerated actual installation images with edition, language, x64 and build
+  eligibility; bound `/ImageIndex` and `/InstallFrom` to the validated source.
+- Added GUI image inspection/selection and CLI `--image-index`, validation image
+  output, embedded documentation and completion-option parity.
+- Reused exact-name validated completed downloads; replaced only corrupt recorded
+  downloads, preserved unowned files and environmental/cancellation failures.
+- Removed numbered-copy allocation and broad partial-file rediscovery. Resume or
+  safe restart now uses the exact original-name partial and identity metadata.
+- Added secure direct-provider retry for short-link transport/TLS failure, keeping
+  normal certificate validation and the existing browser/Microsoft fallbacks.
+- Waited up to 30 seconds for ISO drive assignment; retained hidden helpers.
+- Persisted last-attempt diagnostics with post-restart build/edition observation;
+  added CLI exit 8 for unconfirmed transition status instead of false success.
+- Retained Start/Cancel, one-logo website branding, CPU/RAM/storage details,
+  refresh, restart policy, shared Core, and independent standalone packaging.
+- Added safety/image/transfer/GUI/CLI regression checks, protected-PR workflow,
+  release tag/version/main-commit checks and a 100,000,000-byte portable EXE cap.
+- Documented untested field cases and provider HTTP 403 observed during probing;
+  no new real OS upgrade or successful provider transfer is claimed.
+
 ## 1.1.0-rc.4
 
 - Restyled the single-screen GUI with one mascot, CPU/RAM/free-space details,

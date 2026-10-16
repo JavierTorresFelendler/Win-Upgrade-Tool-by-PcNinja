@@ -64,6 +64,19 @@ try
         failures.Add($"Extracted-folder root was changed unexpectedly: {extractedSource.Root}");
     if (!string.Equals(extractedSource.SetupPath, extractedSetup, StringComparison.OrdinalIgnoreCase))
         failures.Add($"Extracted-folder setup path was not preserved: {extractedSource.SetupPath}");
+    Directory.CreateDirectory(Path.Combine(extractedFolder, "sources"));
+    File.WriteAllText(Path.Combine(extractedFolder, "sources", "install.wim"), "not launched - safety fixture only");
+    var lateAnswer = Path.Combine(extractedFolder, "Autounattend.xml");
+    File.WriteAllText(lateAnswer, "late answer file");
+    try
+    {
+        engine.ValidateMountedSource(extractedFolder, removeSelectedAnswerFiles: false);
+        failures.Add("Pre-launch source validation allowed a late answer file.");
+    }
+    catch (UnsafeInstallationMediaException) { }
+    if (!File.Exists(lateAnswer)) failures.Add("Pre-launch validation silently deleted a late answer file.");
+    engine.ValidateMountedSource(extractedFolder);
+    if (File.Exists(lateAnswer)) failures.Add("Preparation did not clean the selected writable answer file.");
 }
 finally
 {

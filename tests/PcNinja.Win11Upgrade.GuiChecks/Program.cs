@@ -78,7 +78,7 @@ internal static class Program
             images.SelectedIndex = 0;
             ((CheckBox)Field("_autoRestart")).Checked = false;
             Invoke("RefreshSources", false);
-            if (sources.Text != Path.Combine(folder, "exact-selected.iso") || images.SelectedItem != image ||
+            if (sources.Text != Path.Combine(folder, "exact-selected.iso") || !Equals(images.SelectedItem, image) ||
                 ((CheckBox)Field("_autoRestart")).Checked)
                 throw new Exception("Refresh lost the exact source, image or restart policy.");
             sources.Text = Path.Combine(folder, "different.iso");

@@ -231,6 +231,7 @@ public sealed class UpgradeEngine
     public async Task<DownloadResult> DownloadIsoAsync(string destinationDirectory,
         IProgress<DownloadProgress>? progress, CancellationToken cancellationToken, string? expectedSha256 = null)
     {
+        InstallationSafety.EnsureSafe(AppContext.BaseDirectory, removeSelectedAnswerFiles: false);
         return await DownloadWithTransportFallbackAsync(endpoint => IsoTransfer.DownloadAsync(_http, endpoint, Path.GetFullPath(destinationDirectory),
             remaining =>
             {
@@ -279,7 +280,7 @@ public sealed class UpgradeEngine
         return await ValidateMountedSourceAsync(root, cancellationToken);
     }
 
-    public MountedSource ValidateMountedSource(string root)
+    public MountedSource ValidateMountedSource(string root, bool removeSelectedAnswerFiles = true)
     {
         if (string.IsNullOrWhiteSpace(root))
             throw new InvalidOperationException("No mounted installation source was selected.");
@@ -291,14 +292,15 @@ public sealed class UpgradeEngine
             throw new InvalidOperationException($"setup.exe was not found in {root}.");
         if (!AuthenticodeVerifier.IsTrustedMicrosoftFile(setup, out var signer))
             throw new InvalidOperationException("setup.exe does not have a valid Microsoft digital signature.");
-        InstallationSafety.EnsureSafe(root);
+        InstallationSafety.EnsureSafe(root, removeSelectedAnswerFiles);
         AppLog.Info($"Validated installation source {root}; signer: {signer}.");
         return new MountedSource(root, setup);
     }
 
-    public async Task<MountedSource> ValidateMountedSourceAsync(string root, CancellationToken cancellationToken)
+    public async Task<MountedSource> ValidateMountedSourceAsync(string root, CancellationToken cancellationToken,
+        bool removeSelectedAnswerFiles = true)
     {
-        var source = await Task.Run(() => ValidateMountedSource(root), cancellationToken).ConfigureAwait(false);
+        var source = await Task.Run(() => ValidateMountedSource(root, removeSelectedAnswerFiles), cancellationToken).ConfigureAwait(false);
         cancellationToken.ThrowIfCancellationRequested();
         var sourcesDirectory = Path.Combine(source.Root, "sources");
         var installImage = new[] { "install.wim", "install.esd", "install.swm" }
@@ -335,10 +337,13 @@ public sealed class UpgradeEngine
         bool allowAutomaticRestart, CancellationToken cancellationToken, Action? setupStarting = null)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        Directory.CreateDirectory(AppLog.Folder);
+        await using var setupLock = new FileStream(Path.Combine(AppLog.Folder, "Setup-Launch.lock"),
+            FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None, 1, FileOptions.DeleteOnClose);
         ValidateSupportedComputer();
         var storage = CheckSystemDriveSpace();
         if (!storage.IsValid) throw new InvalidOperationException(storage.Message);
-        var source = await ValidateMountedSourceAsync(selectedSource.Root, cancellationToken);
+        var source = await ValidateMountedSourceAsync(selectedSource.Root, cancellationToken, removeSelectedAnswerFiles: false);
         if (!string.Equals(source.ImagePath, selectedSource.ImagePath, StringComparison.OrdinalIgnoreCase) ||
             !(source.Images ?? []).SequenceEqual(selectedSource.Images ?? []))
             throw new InvalidOperationException("Installation media changed. Validate and select the image again.");

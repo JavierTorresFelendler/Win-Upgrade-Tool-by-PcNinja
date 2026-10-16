@@ -43,7 +43,7 @@ internal static class IsoTransfer
         var metadata = new PartialDownload(endpoint.AbsoluteUri, name, etag, total);
         var completed = await ReadMetadataAsync<CompletedDownload>(completedPath, token);
         var ownedFinal = completed is not null && completed.Endpoint == endpoint.AbsoluteUri &&
-            completed.FileName == name && completed.Sha256.Length == 64;
+            completed.FileName == name && completed.Sha256 is { Length: 64 } && completed.Sha256.All(Uri.IsHexDigit);
 
         if (File.Exists(destination))
         {

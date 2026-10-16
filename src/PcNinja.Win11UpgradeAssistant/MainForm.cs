@@ -572,7 +572,7 @@ internal sealed class MainForm : Form
         if (dialog.ShowDialog(this) != DialogResult.OK) return;
         try
         {
-            var check = _engine.CheckDownloadDestination(dialog.SelectedPath);
+            var check = _engine.CheckDownloadDestination(dialog.SelectedPath, 0);
             if (!check.IsValid) throw new InvalidOperationException(check.Message);
             var root = Path.GetPathRoot(dialog.SelectedPath)!;
             var drive = new DriveInfo(root);
@@ -764,6 +764,12 @@ internal sealed class MainForm : Form
         AppLog.Error(error.ToString());
         _lastErrorDetails = error + $"\n\nLog: {AppLog.Path}";
         _details.Visible = true;
+        if (error is UnsafeInstallationMediaException)
+        {
+            _status.Text = "Upgrade blocked. Remove the interfering installation media, then Refresh. See View details.";
+            MessageBox.Show(this, error.Message, "Unsafe installation media", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            return;
+        }
         _status.Text = error is IOException and not DownloadTransferException and not CorruptDownloadException
             ? "Could not read or save the file. Check the drive and available space."
             : error.Message;

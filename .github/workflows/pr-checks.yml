@@ -37,23 +37,13 @@ jobs:
           dotnet publish src/PcNinja.Win11UpgradeAssistant/PcNinja.Win11UpgradeAssistant.csproj -c Release -r win-x64 --self-contained true -o artifacts
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Check size and read-only CLI entry points
+      - name: Build GUI checks and verify read-only CLI
         shell: pwsh
         run: |
-          $exe = Join-Path $PWD 'artifacts/PcNinja-Win11-Upgrade-Assistant.exe'
-          $size = (Get-Item -LiteralPath $exe).Length
-          if ($size -gt 100000000) { throw "EXE exceeds 100,000,000 bytes: $size" }
-          & $exe --version
+          dotnet build tests/PcNinja.Win11Upgrade.GuiChecks/PcNinja.Win11Upgrade.GuiChecks.csproj -c Release -warnaserror
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          & $exe status --json
-          if ($LASTEXITCODE -notin 0,3) { exit $LASTEXITCODE }
-          $help = & $exe help upgrade | Out-String
-          if ($LASTEXITCODE -ne 0 -or $help -notmatch '--mounted' -or $help -notmatch '--iso') {
-            throw 'CLI upgrade help is missing or incomplete.'
-          }
-          $completion = & $exe completion powershell | Out-String
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          [scriptblock]::Create($completion) | Out-Null
+          [xml]$project = Get-Content src/PcNinja.Win11UpgradeAssistant/PcNinja.Win11UpgradeAssistant.csproj
+          & ./tests/Verify-Cli.ps1 -ExePath artifacts/PcNinja-Win11-Upgrade-Assistant.exe -ExpectedVersion $project.Project.PropertyGroup.Version
 
       - name: Record provenance and checksum
         shell: pwsh
