@@ -157,7 +157,7 @@ copying the standalone interface.
 
 Work is tracked through issues, feature branches and Draft PRs under the owner's
 account. No other person's approval is required. Merge and release publication
-remain separate owner decisions. See the [GitHub workflow guide (Hebrew)](docs/GITHUB-WORKFLOW.md)
+remain separate owner decisions. See the [GitHub workflow guide](docs/GITHUB-WORKFLOW.md)
 for checkpoints, test artifacts, recovery and the proposed main protection.
 PR test builds do not replace the published RC4 release.
 

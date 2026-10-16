@@ -1,89 +1,109 @@
-# עבודה מסודרת עם GitHub
+# GitHub Development Workflow
 
-הפרויקט מנוהל בחשבון `JavierTorresFelendler`. אין צורך במאשר נוסף:
-אתה מחליט מתי השינוי מוכן ומתי למזג אותו. ה־PR הוא תיק העבודה והבדיקות,
-לא בקשה לאישור ממישהו אחר.
+This project is managed under the `JavierTorresFelendler` account. No additional
+reviewer is required: you decide when a change is ready and when to merge it.
+A pull request (PR) is the record of the work and its testing, not a requirement
+to obtain someone else's approval.
 
-## המסלול הקבוע
+## Standard workflow
 
-`Issue → Branch → Commits → Draft PR → בדיקות → Merge → Release`
+`Issue → Branch → Commits → Draft PR → Testing → Merge → Release`
 
-1. **Issue — מה עושים:** מתעדים תקלה או דרישה, תנאי הצלחה ומה לא כלול.
-   מקבצים משימות של אותה גרסה תחת Milestone. רשימת המשימות אינה הבטחה
-   שכל שינוי כבר נמצא בתוכנה.
-2. **Branch — איפה עובדים:** יוצרים ענף מ־`main`, למשל
-   `fix/answer-file-safety`. השינויים נשארים בענף ואינם משנים את הגרסה שפורסמה.
-3. **Commit — נקודת שמירה:** שומרים שינוי קטן עם תיאור ברור ותוצאת בדיקה.
-   אפשר לראות בדיוק מה השתנה בין שתי נקודות, בלי לשכתב היסטוריה.
-4. **Draft PR — תיק הבדיקה:** פותחים PR אל `main`, מקשרים למשימות, מפרטים
-   מה הושלם ומה נשאר, וממשיכים לדחוף אליו commits. לא פותחים PR חדש לכל תיקון קטן.
-5. **בדיקות:** GitHub מריץ בדיקות ובונה EXE לניסוי, עם SHA-256 ותיעוד של commit
-   המקור. מורידים דרך לשונית Checks או Actions, ובתחתית הריצה בוחרים Artifacts.
-   זהו קובץ בדיקה, לא Release. החלפת commit מחייבת בדיקה מחדש של התוצר החדש.
-6. **Merge — החלטה שלך:** אחרי הבדיקות מסירים Draft באמצעות Ready for review,
-   עוברים על Files changed וה־checklist, ובוחרים Squash and merge.
-   אין צורך ללחוץ Approve על PR של עצמך ואין חובה לביקורת של משתמש אחר.
-   אין להפעיל Auto-merge כחלק מהתהליך הזה.
-7. **Release — פרסום נפרד:** רק לאחר החלטה מפורשת מכינים מספר גרסה, הערות
-   שחרור ותג. בפרויקט הזה push של תג `v*` מפעיל את תהליך הפרסום הקיים.
-   אין ליצור או להזיז תג כפעולת שמירה שגרתית. מיזוג PR לבדו אינו מפרסם EXE ב־Releases.
+1. **Issue - define the work:** Describe the bug or requirement, acceptance
+   criteria, and exclusions. Group tasks for the same version under a milestone.
+   A task appearing in the backlog does not mean it is already implemented.
+2. **Branch - isolate the work:** Create a branch from `main`, such as
+   `fix/answer-file-safety`. Changes stay on that branch and do not change the
+   published release.
+3. **Commit - save a checkpoint:** Save a small, focused change with a clear
+   description and its test result. You can inspect exactly what changed between
+   checkpoints without rewriting history.
+4. **Draft PR - collect the work and evidence:** Open a PR targeting `main`, link
+   the related issues, describe completed and pending work, and push additional
+   commits to the same branch. Do not open a new PR for every small correction.
+5. **Testing:** GitHub runs checks and builds a test EXE with a SHA-256 checksum
+   and source-commit information. Open the run through **Checks** or **Actions**,
+   then download its **Artifacts** at the bottom of the run page. This is a test
+   build, not a release. A different commit requires retesting the new artifact.
+6. **Merge - your decision:** After testing, select **Ready for review**, inspect
+   **Files changed** and the checklist, then select **Squash and merge**. You do
+   not need to approve your own PR or obtain another user's review. Do not enable
+   auto-merge as part of this workflow.
+7. **Release - a separate publication step:** Only after an explicit decision,
+   prepare the version number, release notes, and tag. In this repository, pushing
+   a `v*` tag starts the existing release workflow. Do not create or move release
+   tags as routine checkpoints. Merging a PR alone does not publish an EXE under
+   **Releases**.
 
-## מה נבדק אוטומטית ומה עדיין דורש אותך
+## Automated checks and manual testing
 
-הבדיקה `PR validation` מריצה את בדיקות ה־Core, בונה את ה־EXE הנייד, בודקת
-פקודות CLI שאינן מפעילות התקנה, ומגבילה את גודל הקובץ ל־100,000,000 בתים.
-ל־workflow אין הרשאת כתיבה לקוד או לפרסום Release. תוצרי הבדיקה נשמרים 30 יום;
-תגים, commits ותיעוד נשארים נקודות החזרה הקבועות.
+The `PR validation` check runs Core smoke tests, builds the portable EXE, checks
+CLI commands that do not start installation, and enforces a maximum EXE size of
+100,000,000 bytes. The workflow has no permission to write repository code or
+publish releases. Test artifacts are retained for 30 days; commits, tags, and
+documentation provide the permanent recovery checkpoints.
 
-שרת GitHub אינו מחשב Windows 10/11 לקוח. בדיקות GUI ייעודיות, שדרוג אמיתי,
-שמירת קבצים ויישומים, חומרה לא נתמכת, USB, ומדיה עם קובצי תשובות עדיין נבדקים
-במכונות הניסוי. הצלחת CI אינה הוכחה ששדרוג בטוח. אין להפעיל Setup מתוך CI.
+The GitHub runner is not a Windows 10/11 client test machine. Dedicated GUI
+checks, real upgrades, preservation of files and applications, unsupported
+hardware, USB behavior, and media containing answer files still require testing
+on the test machines. Passing CI does not prove that an upgrade is safe. Never
+launch Windows Setup from CI.
 
-ב־PR הראשון שמכין את התהליך, קוד המוצר ומספר הגרסה נשארים RC4. ה־EXE שלו
-הוא בדיקת בנייה של הבסיס בלבד, ואינו כולל את דרישות RC5 שב־Issues.
+In the initial workflow-preparation PR, application code and the product version
+remain RC4. Its EXE only verifies the baseline build; it does not include the RC5
+requirements tracked in the issues.
 
-## נקודות חזרה
+## Recovery checkpoints
 
-| נקודה | מה נשמר | איך חוזרים בלי לאבד היסטוריה |
+| Checkpoint | What is preserved | Recovery without losing history |
 | --- | --- | --- |
-| לפני הסבב | תג `v1.1.0-rc.4`, commit `2e65c1e83f729a03909f393666b6abc368b6ea94` | משתמשים ב־EXE של RC4 מה־Releases או יוצרים ענף חדש מהתג |
-| בזמן פיתוח | commits בענף ודיון ה־PR | מתקנים ב־commit נוסף; אפשר לבטל commit מסוים באמצעות revert |
-| לפני מיזוג | commit שנבדק, תוצאות CI, SHA-256 ודו״ח בדיקה | לא ממזגים אם התוצר לא עבר; ממשיכים לתקן באותו PR |
-| אחרי מיזוג | PR ממוזג ו־squash commit | פותחים PR הפוך באמצעות Revert, בודקים וממזגים; לא מבצעים force-push ל־main |
-| אחרי פרסום | תג גרסה, EXE וה־checksum שלה | מפסיקים להמליץ על הגרסה התקולה ומפנים לתוצר הקודם; מפרסמים תיקון בתג חדש |
+| Before the work cycle | Tag `v1.1.0-rc.4`, commit `2e65c1e83f729a03909f393666b6abc368b6ea94` | Use the RC4 EXE from Releases or create a new branch from the tag. |
+| During development | Branch commits and the PR discussion | Add a corrective commit or revert a specific commit. |
+| Before merging | Tested commit, CI results, SHA-256, and test report | Do not merge a failed candidate; continue fixing it in the same PR. |
+| After merging | Merged PR and its squash commit | Open a revert PR, test it, and merge it; do not force-push to `main`. |
+| After publication | Version tag, EXE, and checksum | Stop recommending the faulty release, direct users to the previous artifact, and publish a fix under a new tag. |
 
-לא משנים תג או קובץ של Release ישן כדי שייראה כאילו היה תקין מההתחלה.
-Artifacts זמניים אינם תחליף ל־Release מאושר. שומרים ראיות בדיקה מסוננות
-ממידע אישי, לא ISO ולא לוגים גולמיים בריפו הציבורי.
+Do not replace an old release asset or move its tag to make the original release
+appear correct. Temporary artifacts are not a substitute for an approved release.
+Keep sanitized test evidence; do not commit ISOs or raw customer logs to the
+public repository.
 
-חשוב: חזרה לגרסת תוכנה קודמת אינה מחזירה מערכת Windows שכבר שודרגה או נמחקה.
-לכך נדרש גיבוי או snapshot של מכונת הניסוי, שנוצרו לפני ההתקנה.
+Important: reverting application code does not restore a Windows installation
+that has already been upgraded or erased. Recovery requires a backup or test-VM
+snapshot created before installation.
 
-## הגנה על main — המלצה, לא נעילה לקריאה בלבד
+## Protecting main without making it read-only
 
-ההמלצה היא להגן על `main`, לא להפעיל את האפשרות **Lock branch**:
+The recommendation is to protect `main`, not enable **Lock branch**:
 
-- לחייב שינוי דרך PR, עם **0 required approvals** וללא Code Owner approval
-  או דרישת approval של הדחיפה האחרונה. אין תלות באדם נוסף.
-- לחייב את הבדיקה `PR validation` ולדרוש שהענף מעודכן מול `main`.
-- לחסום force-push ומחיקת `main`, ולהחיל את הכללים גם על מנהל הריפו.
-- להשאיר את ענפי הפיתוח פתוחים לעבודה רגילה. אם `main` התקדם, מעדכנים
-  את ענף העבודה, פותרים התנגשויות ומריצים שוב בדיקות לפני מיזוג.
+- Require changes through a PR with **0 required approvals**, no required Code
+  Owner approval, and no approval requirement for the most recent push. This
+  avoids dependence on another person.
+- Require `PR validation` to pass and require the branch to be up to date with
+  `main` before merging.
+- Block force pushes and deletion of `main`, and apply the rules to repository
+  administrators as well.
+- Keep development branches available for normal work. If `main` advances,
+  update the working branch, resolve conflicts, and rerun checks before merging.
 
-אחרי הפעלת ההגנה, push ישיר ל־`main` יידחה. ממשיכים לערוך ולבצע commit
-בענף העבודה, פותחים PR וממזגים בעצמך כשהבדיקות תקינות. אין חסימה על עצם
-כתיבת הקוד ואין צורך בחשבון GitHub נוסף. תקלה ב־CI יכולה לחסום מיזוג עד
-לתיקונה; שינוי מדיניות בהגדרות אפשרי בידי בעל הריפו וצריך להיות חריג ומתועד.
+Once these protections are enabled, direct pushes to `main` are rejected. You
+continue editing and committing on a working branch, open a PR, and merge it
+yourself when the checks pass. Development is not blocked, and no second GitHub
+account is needed. A failing CI check can block merging until it is fixed. The
+repository owner can change the policy in settings, but exceptions should be
+rare and documented.
 
-ההגנה אינה מונעת ממי שפועל עם החשבון שלך למזג בשמך. לכן ההנחיה עבור
-עבודה כאן היא: **לא לבצע Merge ולא לפרסם Release בלי הוראה מפורשת שלך**.
-ההמלצה מתועדת; הגנת `main` עדיין לא הופעלה במסגרת הכנת ה־PR הזה.
+Protection cannot prevent someone using your account from merging on your
+behalf. The working instruction therefore remains: **Do not merge or publish a
+release without your explicit request.** No branch-protection settings were
+changed by the workflow-preparation PR; the owner manages those separately.
 
-מקורות: [GitHub flow](https://docs.github.com/en/get-started/using-github/github-flow),
+References: [GitHub flow](https://docs.github.com/en/get-started/using-github/github-flow),
 [Protected branches](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches).
 
-## איך לבקש את הסבב הבא
+## Requesting the next work cycle
 
-> עבוד על משימה מספר X בענף נפרד, ופתח Draft PR תחת החשבון שלי.
-> כלול תיעוד, בדיקות ו־EXE לניסוי מתוך ה־PR. שמור commits קטנים ונקודת בסיס
-> שאפשר לחזור אליה. אל תמזג ואל תפרסם Release עד שאבדוק ואבקש במפורש.
+> Work on issue X on a separate branch and open a Draft PR under my account.
+> Include documentation, tests, and a test EXE from the PR. Keep commits focused
+> and preserve a recoverable baseline. Do not merge or publish a release until
+> I have tested the result and explicitly requested it.
