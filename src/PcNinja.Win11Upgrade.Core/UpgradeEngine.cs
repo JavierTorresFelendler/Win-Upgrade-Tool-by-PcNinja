@@ -30,7 +30,7 @@ public sealed class UpgradeEngine
             CookieContainer = new CookieContainer()
         };
         _http = new HttpClient(handler) { Timeout = Timeout.InfiniteTimeSpan };
-        _http.DefaultRequestHeaders.UserAgent.ParseAdd("PcNinja-Win11-Upgrade-Assistant/1.1.0-rc.4");
+        _http.DefaultRequestHeaders.UserAgent.ParseAdd("PcNinja-Win11-Upgrade-Assistant/1.1.0-rc.5");
     }
 
     public string GetOperatingSystemDescription()
@@ -86,7 +86,7 @@ public sealed class UpgradeEngine
             return Directory.EnumerateFiles(AppContext.BaseDirectory, "*.iso", SearchOption.TopDirectoryOnly)
                 .Select(path => new FileInfo(path))
                 .Where(file => file.Length >= MinimumIsoBytes)
-                .OrderByDescending(file => file.LastWriteTimeUtc)
+                .OrderBy(file => file.Name, StringComparer.OrdinalIgnoreCase)
                 .Select(file => file.FullName)
                 .ToArray();
         }
@@ -228,15 +228,28 @@ public sealed class UpgradeEngine
         return actual;
     }
 
-    public Task<DownloadResult> DownloadIsoAsync(string destinationDirectory,
+    public async Task<DownloadResult> DownloadIsoAsync(string destinationDirectory,
         IProgress<DownloadProgress>? progress, CancellationToken cancellationToken, string? expectedSha256 = null)
     {
-        return IsoTransfer.DownloadAsync(_http, new Uri(DownloadEndpoint), Path.GetFullPath(destinationDirectory),
+        return await DownloadWithTransportFallbackAsync(endpoint => IsoTransfer.DownloadAsync(_http, endpoint, Path.GetFullPath(destinationDirectory),
             remaining =>
             {
                 var storage = CheckDownloadDestination(destinationDirectory, remaining);
                 if (!storage.IsValid) throw new InvalidOperationException(storage.Message);
-            }, progress, cancellationToken, expectedSha256 ?? ConfiguredIsoSha256);
+            }, progress, cancellationToken, expectedSha256 ?? ConfiguredIsoSha256,
+            validateMedia: async (path, token) => { await MountAndValidateAsync(path, token); }));
+    }
+
+    internal static async Task<DownloadResult> DownloadWithTransportFallbackAsync(Func<Uri, Task<DownloadResult>> transfer)
+    {
+        try { return await transfer(new Uri(DownloadEndpoint)); }
+        catch (DownloadTransferException ex) when (ex.InnerException is HttpRequestException)
+        {
+            // The short-link host may require TLS 1.3. Windows 10 can securely use the
+            // provider route directly with OS-default TLS and normal certificate checks.
+            AppLog.Info($"Short-link transport unavailable; trying the provider directly. {ex.InnerException.Message}");
+            return await transfer(new Uri(PcNinjaBrowserFallbackPage + "&download=1"));
+        }
     }
 
     public void ValidateIsoFile(string isoPath)
@@ -257,7 +270,9 @@ public sealed class UpgradeEngine
         var command = "$p='" + escaped + "';" +
             "$d=Get-DiskImage -ImagePath $p -ErrorAction SilentlyContinue;" +
             "if(-not $d -or -not $d.Attached){Mount-DiskImage -ImagePath $p -ErrorAction Stop|Out-Null};" +
-            "$v=Get-DiskImage -ImagePath $p|Get-Volume|Where-Object DriveLetter|Select-Object -First 1;" +
+            "$until=[DateTime]::UtcNow.AddSeconds(30);$v=$null;" +
+            "do{$v=Get-DiskImage -ImagePath $p|Get-Volume -ErrorAction SilentlyContinue|Where-Object DriveLetter|Select-Object -First 1;" +
+            "if(-not $v){Start-Sleep -Milliseconds 500}}while(-not $v -and [DateTime]::UtcNow -lt $until);" +
             "if(-not $v){throw 'Windows did not assign a drive letter to the ISO.'};" +
             "[Console]::Out.Write($v.DriveLetter+':\\')";
         var root = (await RunPowerShellAsync(command, cancellationToken)).Trim();
@@ -274,10 +289,9 @@ public sealed class UpgradeEngine
         var setup = System.IO.Path.Combine(root, "setup.exe");
         if (!File.Exists(setup))
             throw new InvalidOperationException($"setup.exe was not found in {root}.");
-        if (File.Exists(System.IO.Path.Combine(root, "Autounattend.xml")))
-            throw new InvalidOperationException("The installation source contains Autounattend.xml and cannot be used safely.");
         if (!AuthenticodeVerifier.IsTrustedMicrosoftFile(setup, out var signer))
             throw new InvalidOperationException("setup.exe does not have a valid Microsoft digital signature.");
+        InstallationSafety.EnsureSafe(root);
         AppLog.Info($"Validated installation source {root}; signer: {signer}.");
         return new MountedSource(root, setup);
     }
@@ -302,19 +316,39 @@ public sealed class UpgradeEngine
             throw new InvalidOperationException(
                 $"Windows could not validate the installation image (DISM exit code {result.ExitCode}). " +
                 "The ISO may be incomplete or damaged.");
-        AppLog.Info("DISM successfully read the Windows installation image metadata.");
-        return source;
+        var images = new List<InstallationImage>();
+        foreach (var index in InstallationImages.ParseIndexes(result.Output))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var details = await RunProcessAsync(dism,
+                $"/English /Get-WimInfo /WimFile:\"{installImage}\" /Index:{index}", cancellationToken);
+            if (details.ExitCode != 0)
+                throw new InvalidOperationException($"Windows could not read image {index} (DISM exit code {details.ExitCode}).");
+            images.Add(InstallationImages.ParseDetail(details.Output, index));
+        }
+        if (images.Count == 0) throw new InvalidOperationException("No installation images were found in the selected source.");
+        AppLog.Info($"DISM read {images.Count} installation images from {installImage}.");
+        return source with { ImagePath = installImage, Images = images };
     }
 
-    public async Task<UpgradeResult> StartUpgradeAsync(string setupPath, bool allowAutomaticRestart,
-        CancellationToken cancellationToken)
+    public async Task<UpgradeResult> StartUpgradeAsync(MountedSource selectedSource, int imageIndex,
+        bool allowAutomaticRestart, CancellationToken cancellationToken, Action? setupStarting = null)
     {
         cancellationToken.ThrowIfCancellationRequested();
         ValidateSupportedComputer();
         var storage = CheckSystemDriveSpace();
         if (!storage.IsValid) throw new InvalidOperationException(storage.Message);
-        var arguments = "/product server /auto upgrade /eula accept /dynamicupdate disable /compat ignorewarning";
-        if (!allowAutomaticRestart) arguments += " /noreboot";
+        var source = await ValidateMountedSourceAsync(selectedSource.Root, cancellationToken);
+        if (!string.Equals(source.ImagePath, selectedSource.ImagePath, StringComparison.OrdinalIgnoreCase) ||
+            !(source.Images ?? []).SequenceEqual(selectedSource.Images ?? []))
+            throw new InvalidOperationException("Installation media changed. Validate and select the image again.");
+        var image = InstallationImages.Select(source, imageIndex, CurrentWindows.Read());
+        var arguments = BuildSetupArguments(source, image, allowAutomaticRestart);
+        var setupPath = source.SetupPath;
+        InstallationSafety.EnsureSafe(source.Root, removeSelectedAnswerFiles: false);
+        var attempt = UpgradeHistory.Begin(source, image);
+        cancellationToken.ThrowIfCancellationRequested();
+        setupStarting?.Invoke();
 
         AppLog.Info($"Starting Windows Setup. Automatic restart: {allowAutomaticRestart}. Command: setup.exe {arguments}");
         var startInfo = new ProcessStartInfo
@@ -328,7 +362,16 @@ public sealed class UpgradeEngine
         // Once Setup starts, let Windows finish; cancelling the assistant cannot stop an upgrade safely.
         await process.WaitForExitAsync(CancellationToken.None);
         AppLog.Info($"Windows Setup exit code: {process.ExitCode}.");
+        UpgradeHistory.RecordExit(attempt, process.ExitCode);
         return new UpgradeResult(process.ExitCode, setupPath);
+    }
+
+    internal static string BuildSetupArguments(MountedSource source, InstallationImage image, bool automaticRestart)
+    {
+        if (source.ImagePath is null || !(source.Images ?? []).Contains(image))
+            throw new InvalidOperationException("The selected image is not bound to the validated source.");
+        return "/product server /auto upgrade /eula accept /dynamicupdate disable /compat ignorewarning" +
+            $" /imageindex {image.Index} /installfrom \"{source.ImagePath}\"" + (automaticRestart ? "" : " /noreboot");
     }
 
     public static void OpenMicrosoftDownloadPage() => Process.Start(new ProcessStartInfo
@@ -431,29 +474,10 @@ public sealed class UpgradeEngine
         }
         if (string.IsNullOrWhiteSpace(fileName))
             fileName = Uri.UnescapeDataString(Path.GetFileName(response.RequestMessage?.RequestUri?.LocalPath) ?? "");
-        if (string.IsNullOrWhiteSpace(fileName) || fileName.Equals("download", StringComparison.OrdinalIgnoreCase))
-            fileName = "Windows11.iso";
-
-        fileName = Path.GetFileName(fileName);
-        foreach (var invalid in Path.GetInvalidFileNameChars()) fileName = fileName.Replace(invalid, '_');
-        if (!fileName.EndsWith(".iso", StringComparison.OrdinalIgnoreCase)) fileName += ".iso";
+        if (string.IsNullOrWhiteSpace(fileName) || !fileName.EndsWith(".iso", StringComparison.OrdinalIgnoreCase) ||
+            fileName != Path.GetFileName(fileName) || fileName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+            throw new DownloadTransferException("The service did not provide a safe original ISO filename. Download in your browser and select the exact file.");
         return fileName;
-    }
-
-    public static string GetAvailableDestination(string directory, string originalFileName)
-    {
-        Directory.CreateDirectory(directory);
-        var stem = Path.GetFileNameWithoutExtension(originalFileName);
-        var extension = Path.GetExtension(originalFileName);
-        if (string.IsNullOrWhiteSpace(extension)) extension = ".iso";
-        for (var copy = 0; copy < 10_000; copy++)
-        {
-            var name = copy == 0 ? $"{stem}{extension}" : $"{stem} (Copy {copy}){extension}";
-            var path = Path.Combine(directory, name);
-            if (!File.Exists(path) && !File.Exists(path + ".partial")) return path;
-        }
-
-        throw new IOException("No available ISO filename could be created in the selected folder.");
     }
 
     private static string ExtractEdition(string productName)
