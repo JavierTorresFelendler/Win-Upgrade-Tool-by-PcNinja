@@ -30,10 +30,8 @@ internal sealed class MainForm : Form
     private readonly Label _sourceSummary = new();
     private readonly Label _restartSummary = new();
     private readonly RadioButton _autoDownload = new();
-    private readonly RadioButton _localIso = new();
-    private readonly RadioButton _mountedIso = new();
-    private readonly ComboBox _localIsos = new();
-    private readonly ComboBox _mountedSources = new();
+    private readonly RadioButton _existingMedia = new();
+    private readonly ComboBox _sources = new();
     private readonly ComboBox _downloadLocations = new();
     private readonly Button _browse = new();
     private readonly Button _browseInstallationFolder = new();
@@ -48,15 +46,20 @@ internal sealed class MainForm : Form
     private readonly LinkLabel _details = new();
     private string? _lastErrorDetails;
     private readonly TableLayoutPanel _autoSourcePanel = new();
-    private readonly TableLayoutPanel _localSourcePanel = new();
-    private readonly TableLayoutPanel _mountedSourcePanel = new();
+    private readonly TableLayoutPanel _existingSourcePanel = new();
     private CancellationTokenSource? _operation;
     private bool _setupHasStarted;
     private bool _changingSourceSelection;
+    private bool _refreshingSources;
+    private readonly ComboBox _installationImages = new();
+    private readonly Button _inspectSource = new();
+    private readonly Label _imageInfo = new();
+    private MountedSource? _preparedSource;
+    private string? _preparedKey;
 
     public MainForm()
     {
-        Text = "PcNinja Windows 11 Upgrade Assistant - RC4";
+        Text = "PcNinja Windows 11 Upgrade Assistant - RC5";
         StartPosition = FormStartPosition.CenterScreen;
         MinimumSize = new Size(1020, 700);
         Size = new Size(1160, 800);
@@ -126,12 +129,11 @@ internal sealed class MainForm : Form
         page.Controls.Add(BuildStatusBar(), 0, 3);
 
         _autoDownload.CheckedChanged += (_, _) => SourceSelectionChanged(_autoDownload);
-        _localIso.CheckedChanged += (_, _) => SourceSelectionChanged(_localIso);
-        _mountedIso.CheckedChanged += (_, _) => SourceSelectionChanged(_mountedIso);
+        _existingMedia.CheckedChanged += (_, _) => SourceSelectionChanged(_existingMedia);
         _autoRestart.CheckedChanged += (_, _) => UpdateReadinessSummary();
-        _localIsos.SelectedIndexChanged += (_, _) => UpdateReadinessSummary();
-        _localIsos.TextChanged += (_, _) => UpdateReadinessSummary();
-        _mountedSources.SelectedIndexChanged += (_, _) => UpdateReadinessSummary();
+        _sources.SelectedIndexChanged += (_, _) => ExistingPathChanged();
+        _sources.TextChanged += (_, _) => ExistingPathChanged();
+        _installationImages.SelectedIndexChanged += (_, _) => UpdateImageInfo();
         _downloadLocations.SelectedIndexChanged += (_, _) => UpdateReadinessSummary();
 
         UpdateSourceControls();
@@ -242,7 +244,7 @@ internal sealed class MainForm : Form
 
         content.Controls.Add(Kicker("INSTALLATION SOURCE"));
         content.Controls.Add(SectionHeading("Choose how Windows 11 Setup is provided"));
-        content.Controls.Add(BodyText("Use automatic download, a local ISO, mounted media, or an extracted Windows Setup folder."));
+        content.Controls.Add(BodyText("Download automatically, or use installation media you already have."));
 
         _autoDownload.Text = "Download the ISO automatically";
         StyleRadio(_autoDownload, true);
@@ -258,33 +260,43 @@ internal sealed class MainForm : Form
             "PcNinja preserves the original filename and validates the completed download.", destinationRow);
         content.Controls.Add(_autoSourcePanel);
 
-        _localIso.Text = "Use an ISO file already downloaded";
-        StyleRadio(_localIso);
-        var localRow = BuildTwoColumnRow();
-        _localIsos.DropDownStyle = ComboBoxStyle.DropDownList;
-        StyleCombo(_localIsos);
-        _localIsos.DropDown += (_, _) => _localIso.Checked = true;
-        StyleSecondaryButton(_browse, "Browse...");
+        _existingMedia.Text = "Use existing installation media";
+        StyleRadio(_existingMedia);
+        var existingRow = BuildTwoColumnRow();
+        _sources.DropDownStyle = ComboBoxStyle.DropDown;
+        StyleCombo(_sources);
+        _sources.DropDownWidth = 650;
+        _sources.DropDown += (_, _) => _existingMedia.Checked = true;
+        StyleSecondaryButton(_browse, "ISO...");
         _browse.Click += (_, _) => BrowseIso();
-        localRow.Controls.Add(_localIsos, 0, 0);
-        localRow.Controls.Add(_browse, 1, 0);
-        ConfigureSourcePanel(_localSourcePanel, _localIso,
-            "Select the exact ISO file. The assistant never chooses a broad wildcard match.", localRow);
-        content.Controls.Add(_localSourcePanel);
-
-        _mountedIso.Text = "Use mounted media or an extracted setup folder";
-        StyleRadio(_mountedIso);
-        var mountedRow = BuildTwoColumnRow();
-        _mountedSources.DropDownStyle = ComboBoxStyle.DropDownList;
-        StyleCombo(_mountedSources);
-        _mountedSources.DropDown += (_, _) => _mountedIso.Checked = true;
-        mountedRow.Controls.Add(_mountedSources, 0, 0);
-        StyleSecondaryButton(_browseInstallationFolder, "Browse folder...");
+        StyleSecondaryButton(_browseInstallationFolder, "Folder...");
         _browseInstallationFolder.Click += (_, _) => BrowseInstallationFolder();
-        mountedRow.Controls.Add(_browseInstallationFolder, 1, 0);
-        ConfigureSourcePanel(_mountedSourcePanel, _mountedIso,
-            "Select mounted media or a folder containing setup.exe and the sources directory.", mountedRow);
-        content.Controls.Add(_mountedSourcePanel);
+        var browseActions = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(0) };
+        browseActions.Controls.Add(_browse);
+        browseActions.Controls.Add(_browseInstallationFolder);
+        existingRow.Controls.Add(_sources, 0, 0);
+        existingRow.Controls.Add(browseActions, 1, 0);
+        ConfigureSourcePanel(_existingSourcePanel, _existingMedia,
+            "Choose an ISO, mounted drive, extracted folder or network setup folder.", existingRow);
+        content.Controls.Add(_existingSourcePanel);
+
+        content.Controls.Add(DividerLine());
+        content.Controls.Add(Kicker("INSTALLATION IMAGE"));
+        var imageRow = BuildTwoColumnRow();
+        _installationImages.DropDownStyle = ComboBoxStyle.DropDownList;
+        StyleCombo(_installationImages);
+        _installationImages.DropDownWidth = 700;
+        imageRow.Controls.Add(_installationImages, 0, 0);
+        StyleSecondaryButton(_inspectSource, "Inspect images");
+        _inspectSource.Click += async (_, _) => { if (_operation is null) await PrepareOrUpgradeAsync(false); };
+        imageRow.Controls.Add(_inspectSource, 1, 0);
+        content.Controls.Add(imageRow);
+        _imageInfo.AutoSize = true;
+        _imageInfo.MaximumSize = new Size(550, 0);
+        _imageInfo.ForeColor = Muted;
+        _imageInfo.Text = "Images are read from your selected media before Setup starts.";
+        _imageInfo.Margin = new Padding(0, 7, 0, 0);
+        content.Controls.Add(_imageInfo);
 
         var footer = new TableLayoutPanel
         {
@@ -440,7 +452,7 @@ internal sealed class MainForm : Form
         var footer = new LinkLabel
         {
             AutoSize = true,
-            Text = $"Version 1.1.0-rc.4  ·  View log",
+            Text = $"Version 1.1.0-rc.5  ·  View log",
             LinkColor = AccentLight,
             ActiveLinkColor = Accent,
             VisitedLinkColor = AccentLight,
@@ -466,10 +478,8 @@ internal sealed class MainForm : Form
 
     private void RefreshSources(bool initial)
     {
-        var selectedLocal = _localIsos.Text;
-        var selectedMounted = _mountedSources.SelectedItem?.ToString();
-        var selectedDownload = _downloadLocations.SelectedItem as StorageLocation;
-        var selectedDownloadRoot = selectedDownload?.RootPath;
+        var selected = _sources.Text.Trim();
+        var location = _downloadLocations.SelectedItem as StorageLocation;
         try
         {
             _engine.ValidateSupportedComputer();
@@ -480,57 +490,44 @@ internal sealed class MainForm : Form
             _systemStorage.Text = systemStorage.Message;
             _systemStorage.ForeColor = systemStorage.IsValid ? Success : Warning;
 
+            var local = _engine.FindLocalIsos();
             var mounted = _engine.FindMountedSources();
-            _mountedSources.Items.Clear();
-            foreach (var source in mounted) _mountedSources.Items.Add(source.Root);
-            if (!string.IsNullOrWhiteSpace(selectedMounted) && Directory.Exists(selectedMounted) &&
-                File.Exists(Path.Combine(selectedMounted, "setup.exe")) &&
-                !_mountedSources.Items.Contains(selectedMounted))
-                _mountedSources.Items.Insert(0, selectedMounted);
-            SelectText(_mountedSources, selectedMounted);
-
-            var local = _engine.FindLocalIsos().ToList();
-            if (!string.IsNullOrWhiteSpace(selectedLocal) && File.Exists(selectedLocal) &&
-                !local.Contains(selectedLocal, StringComparer.OrdinalIgnoreCase)) local.Insert(0, selectedLocal);
-            _localIsos.Items.Clear();
-            foreach (var path in local) _localIsos.Items.Add(path);
-            if (!string.IsNullOrWhiteSpace(selectedLocal)) _localIsos.Text = selectedLocal;
-            else if (_localIsos.Items.Count > 0) _localIsos.SelectedIndex = 0;
+            var candidates = local.Concat(mounted.Select(source => source.Root)).ToList();
+            if (!string.IsNullOrWhiteSpace(selected) && !candidates.Contains(selected, StringComparer.OrdinalIgnoreCase))
+                candidates.Insert(0, selected); // Retain exact user input even if a drive was temporarily removed.
+            _sources.BeginUpdate();
+            _refreshingSources = true;
+            _sources.Items.Clear();
+            foreach (var path in candidates) _sources.Items.Add(path);
+            _sources.Text = selected;
+            if (initial && local.Count == 1)
+            {
+                _sources.Text = local[0];
+                _existingMedia.Checked = true;
+            }
+            _sources.EndUpdate();
+            _refreshingSources = false;
 
             var locations = _engine.FindDownloadLocations().ToList();
-            if (selectedDownload?.VolumeLabel == "Selected folder" && Directory.Exists(selectedDownloadRoot))
+            if (location?.VolumeLabel == "Selected folder" && Directory.Exists(location.RootPath))
             {
-                var drive = new DriveInfo(Path.GetPathRoot(selectedDownloadRoot!)!);
-                if (drive.IsReady && UpgradeEngine.IsEligibleDownloadLocation(drive.DriveFormat, drive.AvailableFreeSpace))
-                    locations.Insert(0, selectedDownload with { AvailableBytes = drive.AvailableFreeSpace });
+                var drive = new DriveInfo(Path.GetPathRoot(location.RootPath)!);
+                if (drive.IsReady && UpgradeEngine.IsSupportedDownloadFileSystem(drive.DriveFormat))
+                    locations.Insert(0, location with { AvailableBytes = drive.AvailableFreeSpace });
             }
             _downloadLocations.Items.Clear();
-            foreach (var location in locations) _downloadLocations.Items.Add(location);
-            var matchIndex = locations.ToList().FindIndex(location =>
-                string.Equals(location.RootPath, selectedDownloadRoot, StringComparison.OrdinalIgnoreCase));
-            if (_downloadLocations.Items.Count > 0) _downloadLocations.SelectedIndex = matchIndex >= 0 ? matchIndex : 0;
-
-            if (initial)
-            {
-                if (local.Count > 0) _localIso.Checked = true;
-                else _autoDownload.Checked = true;
-            }
+            foreach (var item in locations) _downloadLocations.Items.Add(item);
+            var match = locations.FindIndex(item => item.RootPath.Equals(location?.RootPath, StringComparison.OrdinalIgnoreCase));
+            if (locations.Count > 0) _downloadLocations.SelectedIndex = match >= 0 ? match : 0;
             _status.Text = systemStorage.IsValid
-                ? $"Refresh complete: {local.Count} local ISO file(s), {mounted.Count} mounted source(s), {locations.Count} download drive(s)."
-                : $"Storage action required: {systemStorage.Message}";
-            // Keep Start clickable so a failed readiness check produces a clear
-            // explanation instead of leaving a green button that appears broken.
-            // StartUpgradeAsync repeats the check and safely blocks the upgrade.
+                ? $"Refresh complete: {local.Count} ISO(s), {mounted.Count} mounted source(s), {locations.Count} download drive(s)."
+                : systemStorage.Message;
+            if (initial && UpgradeHistory.ReadStatus() is { } previous)
+                _status.Text = $"Previous upgrade: {previous.State}. {previous.Message}";
             _start.Enabled = true;
-            AppLog.Info($"Sources refreshed. OS: {_systemValue.Text}. Local ISO: {local.Count}. Mounted: {mounted.Count}. Drives: {locations.Count}.");
         }
-        catch (Exception ex)
-        {
-            AppLog.Error(ex.ToString());
-            _status.Text = ex.Message;
-            _start.Enabled = false;
-            ShowIssue(ex);
-        }
+        catch (Exception ex) { ShowIssue(ex); _start.Enabled = false; }
+        ExistingPathChanged();
         UpdateSourceControls();
         UpdateReadinessSummary();
     }
@@ -546,31 +543,22 @@ internal sealed class MainForm : Form
             InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
         };
         if (dialog.ShowDialog(this) != DialogResult.OK) return;
-        if (!_localIsos.Items.Contains(dialog.FileName)) _localIsos.Items.Insert(0, dialog.FileName);
-        _localIsos.Text = dialog.FileName;
-        _localIso.Checked = true;
+        if (!_sources.Items.Contains(dialog.FileName)) _sources.Items.Insert(0, dialog.FileName);
+        _sources.Text = dialog.FileName;
+        _existingMedia.Checked = true;
     }
 
     private void BrowseInstallationFolder()
     {
         using var dialog = new FolderBrowserDialog
         {
-            Description = "Select a mounted Windows source or extracted folder containing setup.exe",
+            Description = "Select a mounted drive or extracted Windows Setup folder",
             UseDescriptionForTitle = true,
             ShowNewFolderButton = false
         };
         if (dialog.ShowDialog(this) != DialogResult.OK) return;
-        try
-        {
-            var source = _engine.ValidateMountedSource(dialog.SelectedPath);
-            if (!_mountedSources.Items.Contains(source.Root)) _mountedSources.Items.Insert(0, source.Root);
-            _mountedSources.SelectedItem = source.Root;
-            _mountedIso.Checked = true;
-        }
-        catch (Exception ex)
-        {
-            ShowIssue(ex);
-        }
+        _sources.Text = dialog.SelectedPath;
+        _existingMedia.Checked = true;
     }
 
     private void ChooseDownloadFolder()
@@ -613,10 +601,10 @@ internal sealed class MainForm : Form
             return;
         }
 
-        await StartUpgradeAsync();
+        await PrepareOrUpgradeAsync(true);
     }
 
-    private async Task StartUpgradeAsync()
+    private async Task PrepareOrUpgradeAsync(bool startSetup)
     {
         _lastErrorDetails = null;
         _details.Visible = false;
@@ -625,143 +613,122 @@ internal sealed class MainForm : Form
         SetBusy(true);
         try
         {
-            var systemStorage = _engine.CheckSystemDriveSpace();
-            if (!systemStorage.IsValid) throw new InvalidOperationException(systemStorage.Message);
-
+            if (startSetup)
+            {
+                var storage = _engine.CheckSystemDriveSpace();
+                if (!storage.IsValid) throw new InvalidOperationException(storage.Message);
+            }
+            var previousSource = _preparedSource;
+            var previousKey = _preparedKey;
+            var previousIndex = (_installationImages.SelectedItem as InstallationImage)?.Index;
             MountedSource source;
-            if (_mountedIso.Checked)
+            if (_autoDownload.Checked)
             {
-                _status.Text = "Validating the selected Windows installation source...";
-                if (_mountedSources.SelectedItem is not string root)
-                    throw new InvalidOperationException(
-                        "No mounted media or extracted setup folder was selected. Click Refresh or Browse folder.");
-                source = await _engine.ValidateMountedSourceAsync(root, _operation.Token);
-            }
-            else
-            {
-                string isoPath;
-                if (_localIso.Checked)
-                {
-                    isoPath = _localIsos.Text.Trim().Trim('"');
-                    _engine.ValidateIsoFile(isoPath);
-                    _status.Text = "Checking the ISO checksum...";
-                    _progress.Style = ProgressBarStyle.Marquee;
-                    _progress.Visible = true;
-                    await UpgradeEngine.VerifyIsoHashAsync(isoPath, UpgradeEngine.ConfiguredIsoSha256, _operation.Token);
-                }
-                else
-                {
-                    if (_downloadLocations.SelectedItem is not StorageLocation location)
-                        throw new InvalidOperationException("Choose a download destination. Connect a drive and click Refresh if necessary.");
-                    var destinationDirectory = location.VolumeLabel == "Selected folder"
-                        ? location.RootPath
-                        : Path.Combine(location.RootPath, "PcNinja Downloads");
-                    _status.Text = "Downloading the Windows 11 ISO...";
-                    _progress.Visible = true;
-                    var downloadOperation = _operation;
-                    var progress = new Progress<DownloadProgress>(value =>
-                    {
-                        if (!ReferenceEquals(_operation, downloadOperation) || downloadOperation.IsCancellationRequested) return;
-                        if (value.Stage is not null)
-                        {
-                            _status.Text = value.Stage;
-                            _progress.Style = ProgressBarStyle.Marquee;
-                            return;
-                        }
-                        if (value.Percentage.HasValue)
-                        {
-                            _progress.Style = ProgressBarStyle.Continuous;
-                            _progress.Value = value.Percentage.Value;
-                            _status.Text = $"Downloading {Path.GetFileName(value.DestinationPath)}... {value.Percentage}%";
-                        }
-                        else
-                        {
-                            _progress.Style = ProgressBarStyle.Marquee;
-                            _status.Text = $"Downloading {Path.GetFileName(value.DestinationPath)}... {UpgradeEngine.FormatBytes(value.BytesReceived)} received";
-                        }
-                    });
-                    try
-                    {
-                        var download = await _engine.DownloadIsoAsync(destinationDirectory, progress, _operation.Token);
-                        isoPath = download.IsoPath;
-                        if (!_localIsos.Items.Contains(isoPath)) _localIsos.Items.Insert(0, isoPath);
-                        _localIsos.Text = isoPath;
-                        _localIso.Checked = true;
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        throw;
-                    }
-                    catch (DownloadTransferException ex)
-                    {
-                        AppLog.Error($"Automatic download failed: {ex}");
-                        var browserOpened = false;
-                        try
-                        {
-                            UpgradeEngine.OpenPcNinjaDownloadPage();
-                            browserOpened = true;
-                            _localIso.Checked = true;
-                        }
-                        catch (Exception browserError) { AppLog.Error($"Browser fallback failed: {browserError}"); }
-                        throw new InvalidOperationException(browserOpened
-                            ? "Download interrupted. Choose automatic download to retry, or select the browser download."
-                            : "Download interrupted. Retry, or download manually and select the ISO.", ex);
-                    }
-                }
-
-                _progress.Style = ProgressBarStyle.Marquee;
+                if (!startSetup) throw new InvalidOperationException("Choose existing media to inspect its images.");
+                if (_downloadLocations.SelectedItem is not StorageLocation location)
+                    throw new InvalidOperationException("Choose a download destination. Connect a drive and Refresh if necessary.");
+                var destination = location.VolumeLabel == "Selected folder" ? location.RootPath
+                    : Path.Combine(location.RootPath, "PcNinja Downloads");
+                _status.Text = "Checking or downloading the Windows ISO...";
                 _progress.Visible = true;
-                _status.Text = $"Mounting and validating {Path.GetFileName(isoPath)}...";
-                source = await _engine.MountAndValidateAsync(isoPath, _operation.Token);
+                var operation = _operation;
+                var progress = new Progress<DownloadProgress>(value =>
+                {
+                    if (!ReferenceEquals(_operation, operation) || operation.IsCancellationRequested) return;
+                    _progress.Style = value.Percentage.HasValue ? ProgressBarStyle.Continuous : ProgressBarStyle.Marquee;
+                    if (value.Percentage.HasValue) _progress.Value = Math.Clamp(value.Percentage.Value, 0, 100);
+                    _status.Text = value.Stage ?? $"Downloading {Path.GetFileName(value.DestinationPath)}... " +
+                        (value.Percentage.HasValue ? $"{value.Percentage}%" : $"{UpgradeEngine.FormatBytes(value.BytesReceived)} received");
+                });
+                try
+                {
+                    var download = await _engine.DownloadIsoAsync(destination, progress, operation.Token);
+                    _sources.Text = download.IsoPath;
+                    _existingMedia.Checked = true;
+                }
+                catch (DownloadTransferException ex)
+                {
+                    AppLog.Error($"Automatic download failed: {ex}");
+                    var opened = false;
+                    try { UpgradeEngine.OpenPcNinjaDownloadPage(); opened = true; }
+                    catch (Exception browserError) { AppLog.Error($"Browser fallback failed: {browserError}"); }
+                    _existingMedia.Checked = true;
+                    _sources.SelectedIndex = -1;
+                    _sources.Text = "";
+                    throw new InvalidOperationException(opened
+                        ? "Browser download opened. When it finishes, use ISO... to select the downloaded file, then Start."
+                        : "Automatic download unavailable. Download manually, then use ISO... to select the file.", ex);
+                }
             }
+            var path = _sources.Text.Trim().Trim('"');
+            if (string.IsNullOrWhiteSpace(path))
+                throw new InvalidOperationException("No existing installation media selected. Choose an ISO, drive or folder.");
+            _progress.Visible = true;
+            _progress.Style = ProgressBarStyle.Marquee;
+            _status.Text = "Validating the selected installation media and images...";
+            if (path.EndsWith(".iso", StringComparison.OrdinalIgnoreCase))
+            {
+                _engine.ValidateIsoFile(path);
+                await UpgradeEngine.VerifyIsoHashAsync(path, UpgradeEngine.ConfiguredIsoSha256, _operation.Token);
+                source = await _engine.MountAndValidateAsync(path, _operation.Token);
+            }
+            else source = await _engine.ValidateMountedSourceAsync(path, _operation.Token);
 
-            _progress.Style = ProgressBarStyle.Continuous;
+            var sameSource = previousSource is not null && previousKey == path &&
+                source.ImagePath == previousSource.ImagePath &&
+                (source.Images ?? []).SequenceEqual(previousSource.Images ?? []);
+            _preparedSource = source;
+            _preparedKey = path;
+            _installationImages.Items.Clear();
+            foreach (var image in source.Images ?? []) _installationImages.Items.Add(image);
+            var current = CurrentWindows.Read();
+            var compatible = InstallationImages.Compatible(source, current);
+            var index = sameSource ? previousIndex : compatible.Count == 1 ? compatible[0].Index : (int?)null;
+            _installationImages.SelectedItem = (source.Images ?? []).FirstOrDefault(image => image.Index == index);
+            UpdateImageInfo();
             _progress.Visible = false;
-            _status.Text = $"Validated Microsoft installation source at {source.Root}.";
-            var restartText = _autoRestart.Checked
-                ? "Your computer may restart automatically."
-                : "You will restart the computer manually.";
-            var finalStorage = _engine.CheckSystemDriveSpace();
-            if (!finalStorage.IsValid) throw new InvalidOperationException(finalStorage.Message);
-            var confirmation = MessageBox.Show(
-                $"Save your work before continuing.\n{restartText}\n\nStart the Windows upgrade?",
+            if (!startSetup)
+            {
+                _status.Text = $"Read {source.Images?.Count} image(s). Select a matching image, then Start.";
+                return;
+            }
+            if (_installationImages.SelectedItem is not InstallationImage selection)
+            {
+                _status.Text = compatible.Count == 0
+                    ? $"No matching image for {current.Edition}, {current.Language}. Choose matching Windows 11 media."
+                    : "Choose an installation image above, then click START UPGRADE again.";
+                return;
+            }
+            selection = InstallationImages.Select(source, selection.Index, current);
+            var restart = _autoRestart.Checked ? "Windows may restart automatically." : "Restart manually when Setup is ready.";
+            if (MessageBox.Show(this,
+                $"{selection.Name} (image {selection.Index})\n{restart}\n\nSave your work. Start the upgrade?",
                 "Start upgrade", MessageBoxButtons.YesNo, MessageBoxIcon.Question,
-                MessageBoxDefaultButton.Button2);
-            if (confirmation != DialogResult.Yes)
+                MessageBoxDefaultButton.Button2) != DialogResult.Yes)
             {
                 _status.Text = "Upgrade cancelled. Windows Setup was not started.";
                 return;
             }
-
-            _status.Text = "Windows Setup is running. Do not close the assistant.";
-            _setupHasStarted = true;
-            SetBusy(true);
-            var result = await _engine.StartUpgradeAsync(source.SetupPath, _autoRestart.Checked, _operation.Token);
-            if (result.ExitCode != 0)
-                throw new InvalidOperationException($"Windows Setup stopped with exit code {result.ExitCode}. No forced restart was issued.");
-
-            _status.Text = "Windows Setup completed its current stage successfully.";
-            MessageBox.Show(
-                _autoRestart.Checked
-                    ? "Setup finished this stage. Windows will handle the restart."
-                    : "Setup finished this stage. Restart when you are ready.",
-                Text, MessageBoxButtons.OK, MessageBoxIcon.Information);
+            _operation.Token.ThrowIfCancellationRequested();
+            _status.Text = "Rechecking safety and starting Windows Setup...";
+            var result = await _engine.StartUpgradeAsync(source, selection.Index, _autoRestart.Checked, _operation.Token,
+                () => { _setupHasStarted = true; SetBusy(true); });
+            if (result.ExitCode == 0)
+                _status.Text = "Setup finished this stage. Check the upgrade result after restarting.";
+            else if (result.ExitCode == 0x40010004)
+                _status.Text = "Setup exited during the transition. Outcome not confirmed; reopen the assistant after restarting.";
+            else throw new InvalidOperationException(
+                $"Setup returned 0x{unchecked((uint)result.ExitCode):X8}. See View details/log. No forced restart was issued.");
         }
-        catch (OperationCanceledException)
-        {
-            _status.Text = "Operation cancelled.";
-        }
-        catch (Exception ex)
-        {
-            ShowIssue(ex);
-        }
+        catch (OperationCanceledException) { _status.Text = "Operation cancelled."; }
+        catch (Exception ex) { ShowIssue(ex); }
         finally
         {
             _operation?.Dispose();
             _operation = null;
             _setupHasStarted = false;
-            _progress.Style = ProgressBarStyle.Continuous;
             _progress.Visible = false;
+            _progress.Style = ProgressBarStyle.Continuous;
             SetBusy(false);
             var outcome = _status.Text;
             RefreshSources(false);
@@ -769,12 +736,35 @@ internal sealed class MainForm : Form
         }
     }
 
+    private void ExistingPathChanged()
+    {
+        if (_refreshingSources) return;
+        if (_sources.Focused && _operation is null) _existingMedia.Checked = true;
+        if (_preparedKey is not null && !string.Equals(_sources.Text.Trim().Trim('"'), _preparedKey, StringComparison.OrdinalIgnoreCase))
+        {
+            _preparedSource = null;
+            _preparedKey = null;
+            _installationImages.Items.Clear();
+            _imageInfo.Text = "Source changed. Inspect images or Start to validate this media.";
+        }
+        UpdateReadinessSummary();
+    }
+
+    private void UpdateImageInfo()
+    {
+        var current = CurrentWindows.Read();
+        _imageInfo.Text = _installationImages.SelectedItem is InstallationImage image
+            ? $"This PC: {current.Edition}, {current.Language}. " +
+                (InstallationImages.GetIncompatibility(image, current) ?? $"Selected image {image.Index}: {image.Language}, {image.Architecture}, build {image.Version}.")
+            : $"This PC: {current.Edition}, {current.Language}. Select an image after validation.";
+    }
+
     private void ShowIssue(Exception error)
     {
         AppLog.Error(error.ToString());
         _lastErrorDetails = error + $"\n\nLog: {AppLog.Path}";
         _details.Visible = true;
-        _status.Text = error is IOException and not DownloadTransferException
+        _status.Text = error is IOException and not DownloadTransferException and not CorruptDownloadException
             ? "Could not read or save the file. Check the drive and available space."
             : error.Message;
     }
@@ -787,34 +777,16 @@ internal sealed class MainForm : Form
 
     private void SetBusy(bool busy)
     {
-        if (!busy)
-        {
-            StyleGoButton(_start, "START UPGRADE");
-            _start.Enabled = true;
-        }
-        else if (_setupHasStarted)
-        {
-            StyleRunningButton(_start, "SETUP RUNNING");
-            _start.Enabled = false;
-        }
-        else
-        {
-            StyleCancelButton(_start, "CANCEL");
-            _start.Enabled = true;
-        }
+        if (!busy) { StyleGoButton(_start, "START UPGRADE"); _start.Enabled = true; }
+        else if (_setupHasStarted) { StyleRunningButton(_start, "SETUP RUNNING"); _start.Enabled = false; }
+        else { StyleCancelButton(_start, "CANCEL"); _start.Enabled = true; }
         _refresh.Enabled = !busy;
-        _browse.Enabled = !busy;
-        _browseInstallationFolder.Enabled = !busy;
-        _chooseDownloadFolder.Enabled = !busy;
         _pcNinjaDownload.Enabled = !busy;
         _microsoft.Enabled = !busy;
         _autoDownload.Enabled = !busy;
-        _localIso.Enabled = !busy;
-        _mountedIso.Enabled = !busy;
-        _mountedSources.Enabled = !busy && _mountedIso.Checked;
-        _localIsos.Enabled = !busy;
-        _downloadLocations.Enabled = !busy;
+        _existingMedia.Enabled = !busy;
         _autoRestart.Enabled = !busy;
+        UpdateSourceControls();
     }
 
     private void SourceSelectionChanged(RadioButton selectedSource)
@@ -824,15 +796,10 @@ internal sealed class MainForm : Form
         try
         {
             if (selectedSource.Checked)
-            {
-                foreach (var source in new[] { _autoDownload, _localIso, _mountedIso })
+                foreach (var source in new[] { _autoDownload, _existingMedia })
                     if (!ReferenceEquals(source, selectedSource)) source.Checked = false;
-            }
         }
-        finally
-        {
-            _changingSourceSelection = false;
-        }
+        finally { _changingSourceSelection = false; }
         UpdateSourceControls();
         UpdateReadinessSummary();
     }
@@ -841,72 +808,27 @@ internal sealed class MainForm : Form
     {
         var idle = _operation is null;
         _browse.Enabled = idle;
-        _localIsos.Enabled = idle;
+        _browseInstallationFolder.Enabled = idle;
+        _sources.Enabled = idle;
         _downloadLocations.Enabled = idle;
         _chooseDownloadFolder.Enabled = idle;
-        _mountedSources.Enabled = idle && _mountedIso.Checked;
-        _browseInstallationFolder.Enabled = idle;
-        _mountedIso.Enabled = idle;
-
+        _inspectSource.Enabled = idle && _existingMedia.Checked;
+        _installationImages.Enabled = idle && _preparedSource is not null;
         _autoSourcePanel.BackColor = _autoDownload.Checked ? AccentTint : SurfaceRaised;
-        _localSourcePanel.BackColor = _localIso.Checked ? AccentTint : SurfaceRaised;
-        _mountedSourcePanel.BackColor = _mountedIso.Checked ? AccentTint : SurfaceRaised;
-        _autoDownload.Text = _autoDownload.Checked
-            ? "✓ SELECTED  ·  Download the ISO automatically"
-            : "Download the ISO automatically";
-        _localIso.Text = _localIso.Checked
-            ? "✓ SELECTED  ·  Use an ISO file already downloaded"
-            : "Use an ISO file already downloaded";
-        _mountedIso.Text = _mountedIso.Checked
-            ? "✓ SELECTED  ·  Use mounted media or an extracted setup folder"
-            : "Use mounted media or an extracted setup folder";
+        _existingSourcePanel.BackColor = _existingMedia.Checked ? AccentTint : SurfaceRaised;
+        _autoDownload.Text = _autoDownload.Checked ? "✓ SELECTED  ·  Download the ISO automatically" : "Download the ISO automatically";
+        _existingMedia.Text = _existingMedia.Checked ? "✓ SELECTED  ·  Use existing installation media" : "Use existing installation media";
         _autoDownload.ForeColor = _autoDownload.Checked ? Success : Foreground;
-        _localIso.ForeColor = _localIso.Checked ? Success : Foreground;
-        _mountedIso.ForeColor = _mountedIso.Checked ? Success : Foreground;
+        _existingMedia.ForeColor = _existingMedia.Checked ? Success : Foreground;
     }
 
     private void UpdateReadinessSummary()
     {
-        if (_mountedIso.Checked)
-        {
-            var mounted = _mountedSources.SelectedItem?.ToString();
-            if (string.IsNullOrWhiteSpace(mounted)) _sourceSummary.Text = "Mounted media / folder";
-            else
-            {
-                var sourceRoot = Path.GetFullPath(mounted);
-                var driveRoot = Path.GetPathRoot(sourceRoot);
-                _sourceSummary.Text = string.Equals(
-                    Path.TrimEndingDirectorySeparator(sourceRoot),
-                    Path.TrimEndingDirectorySeparator(driveRoot ?? ""),
-                    StringComparison.OrdinalIgnoreCase)
-                    ? $"Mounted: {mounted}"
-                    : $"Folder: {mounted}";
-            }
-        }
-        else if (_localIso.Checked)
-        {
-            var path = _localIsos.Text.Trim().Trim('"');
-            _sourceSummary.Text = string.IsNullOrWhiteSpace(path) ? "Local ISO" : Path.GetFileName(path);
-        }
-        else
-        {
-            _sourceSummary.Text = _downloadLocations.SelectedItem is StorageLocation location
-                ? $"Automatic · {location.RootPath}"
-                : "Automatic download";
-        }
-
+        _sourceSummary.Text = _existingMedia.Checked
+            ? (string.IsNullOrWhiteSpace(_sources.Text) ? "Existing ISO / drive / folder" : _sources.Text)
+            : _downloadLocations.SelectedItem is StorageLocation location ? $"Automatic · {location.RootPath}" : "Automatic download";
         _restartSummary.Text = _autoRestart.Checked ? "Automatic when required" : "Manual / noreboot";
         _restartSummary.ForeColor = _autoRestart.Checked ? AccentLight : Warning;
-    }
-
-    private static void SelectText(ComboBox combo, string? value)
-    {
-        if (combo.Items.Count == 0) return;
-        var index = -1;
-        if (!string.IsNullOrWhiteSpace(value))
-            for (var i = 0; i < combo.Items.Count; i++)
-                if (string.Equals(combo.Items[i]?.ToString(), value, StringComparison.OrdinalIgnoreCase)) { index = i; break; }
-        combo.SelectedIndex = index >= 0 ? index : 0;
     }
 
     private static Panel CreateCard()
