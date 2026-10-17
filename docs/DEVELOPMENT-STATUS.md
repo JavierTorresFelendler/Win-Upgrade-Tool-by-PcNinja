@@ -10,16 +10,56 @@ assistant's personal memory or skills installation.
 
 - Published baseline: `v1.1.0-rc.5`, source commit
   `408628f67469e263be69825faccd046994148046`.
-- The owner is still testing RC5. Do not replace its EXE, merge pending work,
-  change release tags or publish another release without explicit authorization.
+- The owner authorized staged merging/development on 2026-10-17 until real VM
+  tests require participation or work reaches Internet application self-update.
+  PR #8 was squash-merged as `d2f671c263d90458eaace871b55209337ab62a24` after
+  passing PR validation. Published RC5 EXE/tags remain unchanged.
+- Stop for owner testing of runtime changes before promoting unverified flows.
+  Do not publish the first stable release or implement/activate self-update yet.
+  The owner wants a first official version, then a distinct higher-version
+  release to test Internet updating (it may contain no functional changes).
 - Approved source changes must still be committed/pushed to a development branch
   with a Draft PR. Local-only work is not an acceptable completed checkpoint.
 - Product versions remain RC5 until a separate release decision. CI artifacts
   from a development commit are test builds, not a replacement RC5 release.
 
-## Current work: language-aware automatic download
+## Current work: automatic consent and actionable diagnostics
 
-Branch: `fix/language-download-guidance`.
+Branch: `fix/automatic-consent-and-diagnostics`, based on merged PR #8.
+
+- Automatic mode asks once before transfer/reuse, covering validation, compatible
+  in-place upgrade and the selected restart policy. A unique matching image then
+  continues without a second assistant question. Cancel defaults to No.
+- Consent is local to that attempt and exact returned source object; manual
+  sources, a later Start, ambiguous images or changed restart policy require the
+  normal confirmation. Browser fallback stops the attempt rather than carrying
+  unattended consent into a later manual selection.
+- Shared Core returns the exact successful download's validated mounted source.
+  GUI and CLI consume it instead of immediately hashing/mounting/enumerating the
+  download again. Final source/image/signature/answer-file/storage checks remain.
+  Manual Inspect then Start caching is NOT implemented: timestamps/size alone are
+  not sufficient identity evidence. Mount ownership/detach cleanup is NOT fixed.
+- Decode bounded, DTD-disabled PowerShell CLIXML error records, suppress progress,
+  retain raw stderr and exit code in details/log. A 30-second drive-discovery
+  timeout explains Refresh/manual mounted-folder selection, not presumed ISO
+  corruption. Log exact requested ISO and resolved volume. Helper working directory
+  is Windows System32; this does not prove the unresolved eject problem is fixed.
+- Failure and no-compatible-image explanations remain in a multiline warning
+  panel through Refresh. Low-space guidance names the actual Windows volume,
+  available/required/missing space and action, independently of ISO destination.
+- Automated verification: Core smoke tests, bounded CLIXML/DTD/space fixtures,
+  Windows client GUI consent/invalidation/real rejected Start/persistent-warning
+  checks, existing language/selection/cancel tests and read-only CLI checks.
+  Builds use warnings-as-errors. No Windows Setup was launched locally.
+- Delivery/owner acceptance: see [automatic-flow test checklist](AUTOMATIC-FLOW-TESTING.md).
+  A green CI compiles GUI checks but cannot replace their Windows client run or
+  a disposable-VM upgrade. Keep this runtime PR draft until owner test feedback.
+
+## Merged source: language-aware automatic download
+
+Merged PR #8: `fix/language-download-guidance`. The older notes below preserve
+the investigation history; current implementation status above supersedes any
+old statement that all future work remains unauthorized.
 
 Implemented in source, not the published RC5 EXE:
 
@@ -71,9 +111,9 @@ metadata acceptance is not a real upgrade result.
   source confirmation retained), Windows 10 target upgrades and equal-version
   repair using target-aware Setup arguments, and application self-update.
 - [Next iteration plan](NEXT-ITERATION-PLAN.md) records source-backed behavior,
-  acceptance cases and proposed PR order. This is planning, not new runtime code
-  or permission to merge/release. PR #8 and design-only PR #9 had green CI when
-  checked; each new checkpoint needs its own result. No merge was performed.
+  acceptance cases and proposed PR order. The owner subsequently approved staged
+  execution; PR #8 is now merged. Design-only PR #9 remains separate and does
+  not implement its proposed runtime feature. Each checkpoint needs its own CI.
 
 ### Validation repetition and mount diagnostics (investigation only)
 

@@ -45,7 +45,9 @@ internal sealed class MainForm : Form
     private readonly CheckBox _autoRestart = new();
     private readonly ProgressBar _progress = new();
     private readonly Label _status = new();
+    private readonly Label _operationNotice = new();
     private readonly LinkLabel _details = new();
+    private Func<string, string, bool> _confirmUpgrade;
     private string? _lastErrorDetails;
     private readonly TableLayoutPanel _autoSourcePanel = new();
     private readonly TableLayoutPanel _existingSourcePanel = new();
@@ -70,6 +72,8 @@ internal sealed class MainForm : Form
         BackColor = Background;
         ForeColor = Foreground;
         try { Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { }
+        _confirmUpgrade = (message, title) => MessageBox.Show(this, message, title,
+            MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) == DialogResult.Yes;
         BuildUi();
         Shown += (_, _) => RefreshSources(true);
         FormClosing += (_, e) =>
@@ -425,6 +429,15 @@ internal sealed class MainForm : Form
             Margin = new Padding(0, 9, 0, 8)
         };
         content.Controls.Add(warning);
+        _operationNotice.AutoSize = true;
+        _operationNotice.MaximumSize = new Size(340, 0);
+        _operationNotice.Dock = DockStyle.Top;
+        _operationNotice.ForeColor = Warning;
+        _operationNotice.BackColor = Color.FromArgb(53, 45, 43);
+        _operationNotice.Padding = new Padding(12);
+        _operationNotice.Margin = new Padding(0, 4, 0, 8);
+        _operationNotice.Visible = false;
+        content.Controls.Add(_operationNotice);
 
         card.Controls.Add(scrollHost);
 
@@ -613,6 +626,7 @@ internal sealed class MainForm : Form
     {
         _lastErrorDetails = null;
         _details.Visible = false;
+        _operationNotice.Visible = false;
         _operation = new CancellationTokenSource();
         _setupHasStarted = false;
         SetBusy(true);
@@ -627,6 +641,8 @@ internal sealed class MainForm : Form
             var previousKey = _preparedKey;
             var previousIndex = (_installationImages.SelectedItem as InstallationImage)?.Index;
             MountedSource source;
+            MountedSource? automaticSource = null;
+            var consentedRestart = _autoRestart.Checked;
             if (_autoDownload.Checked)
             {
                 if (!startSetup) throw new InvalidOperationException("Choose existing media to inspect its images.");
@@ -634,6 +650,11 @@ internal sealed class MainForm : Form
                     throw new InvalidOperationException("Choose a download destination. Connect a drive and Refresh if necessary.");
                 var destination = location.VolumeLabel == "Selected folder" ? location.RootPath
                     : Path.Combine(location.RootPath, "PcNinja Downloads");
+                if (!ConfirmAutomaticUpgrade(destination, consentedRestart))
+                {
+                    _status.Text = "Upgrade cancelled. No download or Windows Setup was started.";
+                    return;
+                }
                 _status.Text = "Checking or downloading the Windows ISO...";
                 _progress.Visible = true;
                 var operation = _operation;
@@ -648,6 +669,8 @@ internal sealed class MainForm : Form
                 try
                 {
                     var download = await _engine.DownloadIsoAsync(destination, progress, operation.Token);
+                    automaticSource = download.ValidatedSource
+                        ?? throw new InvalidOperationException("The downloaded ISO did not complete media validation.");
                     _sources.Text = download.IsoPath;
                     _existingMedia.Checked = true;
                 }
@@ -671,7 +694,8 @@ internal sealed class MainForm : Form
             _progress.Visible = true;
             _progress.Style = ProgressBarStyle.Marquee;
             _status.Text = "Validating the selected installation media and images...";
-            if (path.EndsWith(".iso", StringComparison.OrdinalIgnoreCase))
+            if (automaticSource is not null) source = automaticSource;
+            else if (path.EndsWith(".iso", StringComparison.OrdinalIgnoreCase))
             {
                 _engine.ValidateIsoFile(path);
                 await UpgradeEngine.VerifyIsoHashAsync(path, UpgradeEngine.ConfiguredIsoSha256, _operation.Token);
@@ -688,7 +712,8 @@ internal sealed class MainForm : Form
             foreach (var image in source.Images ?? []) _installationImages.Items.Add(image);
             var current = CurrentWindows.Read();
             var compatible = InstallationImages.Compatible(source, current);
-            var index = sameSource ? previousIndex : compatible.Count == 1 ? compatible[0].Index : (int?)null;
+            var index = sameSource && automaticSource is null ? previousIndex
+                : compatible.Count == 1 ? compatible[0].Index : (int?)null;
             _installationImages.SelectedItem = (source.Images ?? []).FirstOrDefault(image => image.Index == index);
             UpdateImageInfo();
             _progress.Visible = false;
@@ -702,14 +727,11 @@ internal sealed class MainForm : Form
                 _status.Text = compatible.Count == 0
                     ? $"No matching image for {current.Edition}, {current.Language}. Choose matching Windows 11 media."
                     : "Choose an installation image above, then click START UPGRADE again.";
+                ShowOperationNotice(_status.Text);
                 return;
             }
             selection = InstallationImages.Select(source, selection.Index, current);
-            var restart = _autoRestart.Checked ? "Windows may restart automatically." : "Restart manually when Setup is ready.";
-            if (MessageBox.Show(this,
-                $"{selection.Name} (image {selection.Index})\n{restart}\n\nSave your work. Start the upgrade?",
-                "Start upgrade", MessageBoxButtons.YesNo, MessageBoxIcon.Question,
-                MessageBoxDefaultButton.Button2) != DialogResult.Yes)
+            if (!ConfirmPreparedUpgrade(source, selection, compatible.Count, automaticSource, consentedRestart))
             {
                 _status.Text = "Upgrade cancelled. Windows Setup was not started.";
                 return;
@@ -739,6 +761,33 @@ internal sealed class MainForm : Form
             RefreshSources(false);
             _status.Text = outcome;
         }
+    }
+
+    private bool ConfirmAutomaticUpgrade(string destination, bool restart) => _confirmUpgrade(
+        $"Download or reuse the Windows ISO in:\n{destination}\n\n" +
+        "Then validate it and start the compatible in-place upgrade automatically, keeping apps and personal files.\n" +
+        (restart ? "Windows may restart automatically." : "Restart manually when Setup is ready.") +
+        "\n\nExperimental compatibility method. Back up important files and save your work. Continue?",
+        "Download and upgrade");
+
+    private bool ConfirmPreparedUpgrade(MountedSource source, InstallationImage selection, int compatibleCount,
+        MountedSource? automaticSource, bool consentedRestart)
+    {
+        // Consent applies only to the result returned during this automatic attempt.
+        // A later manual Start, ambiguous image or changed restart policy must confirm again.
+        if (ReferenceEquals(source, automaticSource) && compatibleCount == 1 &&
+            (source.Images ?? []).Contains(selection) && _autoRestart.Checked == consentedRestart) return true;
+        var restart = _autoRestart.Checked ? "Windows may restart automatically." : "Restart manually when Setup is ready.";
+        return _confirmUpgrade($"{selection.Name} (image {selection.Index})\n{restart}\n\nSave your work. Start the upgrade?",
+            "Start upgrade");
+    }
+
+    private void ShowOperationNotice(string message)
+    {
+        _operationNotice.Text = message;
+        _operationNotice.Visible = true;
+        if (_operationNotice.Parent?.Parent is ScrollableControl scrollHost)
+            scrollHost.ScrollControlIntoView(_operationNotice);
     }
 
     private void ExistingPathChanged()
@@ -775,12 +824,14 @@ internal sealed class MainForm : Form
         if (error is UnsafeInstallationMediaException)
         {
             _status.Text = "Upgrade blocked. Remove the interfering installation media, then Refresh. See View details.";
+            ShowOperationNotice(_status.Text);
             MessageBox.Show(this, error.Message, "Unsafe installation media", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return;
         }
         _status.Text = error is IOException and not DownloadTransferException and not CorruptDownloadException
             ? "Could not read or save the file. Check the drive and available space."
             : error.Message;
+        ShowOperationNotice(_status.Text);
     }
 
     private void OpenPage(string url)

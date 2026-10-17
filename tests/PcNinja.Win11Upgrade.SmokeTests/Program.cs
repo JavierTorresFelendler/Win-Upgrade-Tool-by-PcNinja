@@ -6,6 +6,7 @@ if (!string.Equals(UpgradeEngine.PcNinjaBrowserFallbackPage, "https://iso.pcninj
     failures.Add("Manual PcNinja downloads must use the public ISO catalog.");
 await TransferChecks.RunAsync();
 SafetyImageChecks.Run();
+DiagnosticsChecks.Run();
 if (UpgradeEngine.RequiredDownloadBytes(7L * 1024 * 1024 * 1024, true) != 28L * 1024 * 1024 * 1024)
     failures.Add("Combined ISO and Windows workspace reservation failed.");
 if (UpgradeEngine.IsEligibleDownloadLocation("FAT32", long.MaxValue) ||

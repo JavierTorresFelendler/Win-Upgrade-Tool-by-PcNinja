@@ -199,7 +199,8 @@ internal static class CliRunner
                         options.Json);
                 }
                 exactIsoPath = download.IsoPath;
-                source = await engine.MountAndValidateAsync(exactIsoPath, token);
+                source = download.ValidatedSource
+                    ?? throw new InvalidOperationException("The downloaded ISO did not complete media validation.");
             }
             else if (options.IsoPath is not null)
             {

@@ -63,6 +63,9 @@ All paths below are relative to the repository root.
   add a bypass, select a disk/partition, or fall back to `/auto clean`.
 - Repeat safety and source/index validation immediately before launch. A passed
   earlier scan does not cover media added or modified during preparation.
+- Automatic-flow consent must precede transfer and belong only to that attempt's
+  successful exact source and restart intent. A browser fallback or later manual
+  Start must not inherit it. Never remove safety checks to eliminate a UI prompt.
 
 ### 3. Separate compatibility from media readability
 
@@ -108,6 +111,10 @@ All paths below are relative to the repository root.
 
 - Put operational safety in Core and call it from both interfaces. Add tests for
   both presentation modes when availability, selection or exit behavior changes.
+- A successful Core download already hashes and validates its mounted media.
+  Hand that exact result to GUI/CLI rather than immediately repeating it. This
+  bounded handoff is not a general cache: retain final prelaunch revalidation,
+  and do not skip later manual ISO checks based only on size/timestamps.
 - Refresh must preserve the exact source, index and restart policy when valid.
   Changing source invalidates the old index. Failure/cancel messages must survive
   the final refresh and explain what to do, not disappear as a brief flash.

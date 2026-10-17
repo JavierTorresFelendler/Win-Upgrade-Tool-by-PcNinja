@@ -60,6 +60,55 @@ internal static class Program
         if (!((Label)Field("_status")).Text.Contains("No existing installation media"))
             throw new Exception("Start click did not reach validation or its message was overwritten.");
         if (!start.Enabled) throw new Exception("Start was not restored after validation failure.");
+        var notice = (Label)Field("_operationNotice");
+        Invoke("RefreshSources", false);
+        if (!notice.Visible || !notice.Text.Contains("No existing installation media"))
+            throw new Exception("The actionable failure explanation disappeared during Refresh.");
+
+        // Test the real consent decision methods without downloads, mounting or Setup.
+        var confirmations = 0;
+        var accept = true;
+        SetField("_confirmUpgrade", new Func<string, string, bool>((message, title) =>
+        {
+            confirmations++;
+            if (title == "Download and upgrade" && (!message.Contains("validate") || !message.Contains("Back up")))
+                throw new Exception("Automatic consent did not explain the complete operation.");
+            return accept;
+        }));
+        object? Call(string name, params object?[] values) => type.GetMethod(name,
+            BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(form, values);
+        var consentImage = new InstallationImage(6, "Windows 11 Pro", "Professional", "x64", "10.0.26300", "Client", "en-US");
+        var consentSource = new MountedSource("X:\\", "X:\\setup.exe", "X:\\sources\\install.wim", [consentImage]);
+        foreach (var restart in new[] { true, false })
+        {
+            ((CheckBox)Field("_autoRestart")).Checked = restart;
+            confirmations = 0;
+            if (!(bool)Call("ConfirmAutomaticUpgrade", "Z:\\Downloads", restart)! ||
+                !(bool)Call("ConfirmPreparedUpgrade", consentSource, consentImage, 1, consentSource, restart)! || confirmations != 1)
+                throw new Exception("Automatic mode requires more than one consent or failed to retain restart intent.");
+        }
+        confirmations = 0;
+        Call("ConfirmPreparedUpgrade", consentSource, consentImage, 1, null, false);
+        Call("ConfirmPreparedUpgrade", consentSource with { Root = "Y:\\" }, consentImage, 1, consentSource, false);
+        Call("ConfirmPreparedUpgrade", consentSource, consentImage, 2, consentSource, false);
+        Call("ConfirmPreparedUpgrade", consentSource, consentImage, 1, consentSource, true);
+        if (confirmations != 4) throw new Exception("Manual, changed, ambiguous or changed-restart consent was bypassed.");
+        accept = false;
+        if ((bool)Call("ConfirmAutomaticUpgrade", "Z:\\Downloads", true)! ||
+            (bool)Call("ConfirmPreparedUpgrade", consentSource, consentImage, 1, null, false)!)
+            throw new Exception("Declining consent did not prevent continuation.");
+        // Exercise cancellation through Start itself. A declined prompt returns before
+        // DownloadIsoAsync, so this test cannot fetch/mount media or launch Setup.
+        Invoke("ApplyDownloadLanguagePolicy", "en-US");
+        choices[0].Checked = true;
+        confirmations = 0;
+        start.PerformClick();
+        Application.DoEvents();
+        if (confirmations != 1 || !((Label)Field("_status")).Text.Contains("No download") ||
+            Field("_operation") is not null)
+            throw new Exception("Declining the actual automatic Start did not stop before transfer.");
+        choices[1].Checked = true;
+        Invoke("ApplyDownloadLanguagePolicy", actualLanguage);
 
         using var cancellation = new CancellationTokenSource();
         SetField("_operation", cancellation);
@@ -136,7 +185,7 @@ internal static class Program
                 image.Save(Path.Combine(args[0], name));
             }
         }
-        Console.WriteLine("PASS: Language-gated automatic download with manual alternatives; two exclusive highlighted sources; real Start/Cancel; Setup lockout; source/image/restart/folder refresh retention; image reset on source change. No Setup launched.");
+        Console.WriteLine("PASS: Automatic single consent and invalidation; persistent failure notice; language-gated download with manual alternatives; two exclusive sources; real Start/Cancel; Setup lockout; source/image/restart/folder refresh retention. No Setup launched.");
         return 0;
     }
 }
