@@ -277,6 +277,7 @@ public sealed class UpgradeEngine
 
     public async Task<MountedSource> MountAndValidateAsync(string isoPath, CancellationToken cancellationToken)
     {
+        isoPath = Path.GetFullPath(isoPath);
         ValidateIsoFile(isoPath);
         AppLog.Info($"Mounting/locating exact ISO: {Path.GetFullPath(isoPath)}.");
         var escaped = isoPath.Replace("'", "''");
