@@ -1,5 +1,22 @@
 # RC5 user-message catalog
 
+## Pending next release: automatic flow and diagnostics
+
+- Automatic confirmation, default No: destination; download/reuse, validate and
+  start the compatible in-place upgrade; restart policy; experimental method,
+  backup and save-work reminder. A unique matching result does not ask twice.
+- Manual confirmation remains the selected image/index plus restart policy.
+  Browser fallback or a later manual Start never inherits automatic consent.
+- Mount timeout: "Could not detect the ISO drive within 30 seconds. Use Refresh,
+  or select the mounted drive with Folder... if it is visible in Explorer.
+  Otherwise remount the ISO manually. No upgrade was started."
+- PowerShell failures show a short decoded error, never raw CLIXML/progress;
+  details/log retain the original stderr and exit code.
+- Low Windows-drive space shows actual drive, available/required/missing space,
+  Refresh action and explains that moving only the ISO does not solve it.
+- Errors/no matching image stay in a multiline readiness warning through Refresh,
+  with optional diagnostic details. This is not a new wizard page.
+
 ## Pending next release: language-aware download choice
 
 These source changes are not yet included in the published RC5 executable.

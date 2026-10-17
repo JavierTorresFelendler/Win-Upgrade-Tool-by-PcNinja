@@ -1,7 +1,9 @@
 # Proposed next iteration and PR sequence
 
-Status: planning only, recorded on 2026-10-17. No merge, runtime change, new
-release or replacement test EXE is authorized by this document.
+Status: staged execution authorized by the owner on 2026-10-17. PR #8 merged;
+the automatic-flow/diagnostics change is in development. Stop for owner VM
+tests when needed. Stable publication and Internet self-update remain a separate
+owner checkpoint; no published RC5 asset replacement is authorized.
 
 ## Latest owner evidence
 
@@ -12,11 +14,11 @@ the tested checkpoint before treating this as acceptance of a particular PR.
 Do not erase the earlier Appraiser crash or mount/eject findings: successful
 later upgrades do not establish their original root causes or resolve every case.
 
-## Recommended delivery sequence (not yet approved)
+## Approved staged delivery sequence
 
 | Order | PR/work item | Acceptance boundary |
 | --- | --- | --- |
-| 1 | Review existing PR #8 for merge as the next source baseline | Confirm tested artifact, current-head CI and language/manual-selection scope; owner's explicit merge approval; no new release required |
+| 1 | PR #8 merged as the next source baseline | Completed; squash d2f671c; published RC5 unchanged |
 | 2 | A focused automatic-flow and diagnostics PR | One upfront assistant consent in automatic mode, manual confirmation retained; readable CLIXML/storage errors, mount lifecycle diagnostics; safe validation-reuse design/tests, no removal of final safety gates |
 | 3 | Implement the approved scope of design PR #9 in bounded checkpoints | Safe copy, correct space checks, local handoff and consent-scoped unsafe-ISO detach; mock tests plus disposable VM probes and owner field tests |
 | 4 | A separate target-aware Windows 10 / same-version repair PR | Finite supported test matrix, correct target Setup arguments, no downgrade or clean-install fallback; matching manual media first |

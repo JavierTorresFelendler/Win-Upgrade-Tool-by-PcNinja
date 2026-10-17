@@ -145,13 +145,18 @@ public sealed class UpgradeEngine
             ?? throw new InvalidOperationException("The Windows system drive could not be identified.");
         var drive = new DriveInfo(systemRoot);
         var valid = drive.IsReady && drive.AvailableFreeSpace >= MinimumSystemDriveFreeBytes;
-        var message = valid
-            ? $"{FormatBytes(drive.AvailableFreeSpace)} free on the Windows drive."
-            : $"At least {FormatBytes(MinimumSystemDriveFreeBytes)} must be free on the Windows drive. " +
-              $"Only {FormatBytes(drive.AvailableFreeSpace)} is currently available.";
+        var message = SystemDriveSpaceMessage(systemRoot, drive.AvailableFreeSpace);
         return new StorageCheck(valid, drive.RootDirectory.FullName, drive.DriveFormat,
             drive.AvailableFreeSpace, MinimumSystemDriveFreeBytes, message);
     }
+
+    internal static string SystemDriveSpaceMessage(string root, long availableBytes) =>
+        availableBytes >= MinimumSystemDriveFreeBytes
+            ? $"{FormatBytes(availableBytes)} free on the Windows drive ({root})."
+            : $"Not enough space on the Windows drive ({root}). " +
+              $"Available: {FormatBytes(availableBytes)}. Required: {FormatBytes(MinimumSystemDriveFreeBytes)}. " +
+              $"Free another {FormatBytes(MinimumSystemDriveFreeBytes - availableBytes)}, then Refresh. " +
+              "Moving the ISO to another drive does not free Windows upgrade workspace.";
 
     public StorageCheck CheckDownloadDestination(string destinationDirectory, long? expectedBytes = null)
     {
@@ -234,13 +239,17 @@ public sealed class UpgradeEngine
     {
         AutomaticDownloadPolicy.EnsureAvailable(CurrentWindows.Read().Language);
         InstallationSafety.EnsureSafe(AppContext.BaseDirectory, removeSelectedAnswerFiles: false);
-        return await DownloadWithTransportFallbackAsync(endpoint => IsoTransfer.DownloadAsync(_http, endpoint, Path.GetFullPath(destinationDirectory),
+        MountedSource? validatedSource = null;
+        var result = await DownloadWithTransportFallbackAsync(endpoint => IsoTransfer.DownloadAsync(_http, endpoint, Path.GetFullPath(destinationDirectory),
             remaining =>
             {
                 var storage = CheckDownloadDestination(destinationDirectory, remaining);
                 if (!storage.IsValid) throw new InvalidOperationException(storage.Message);
             }, progress, cancellationToken, expectedSha256 ?? ConfiguredIsoSha256,
-            validateMedia: async (path, token) => { await MountAndValidateAsync(path, token); }));
+            validateMedia: async (path, token) => { validatedSource = await MountAndValidateAsync(path, token); }));
+        // Reuse only this operation's exact completed validation, never a path/time-based cache.
+        return result with { ValidatedSource = validatedSource
+            ?? throw new InvalidOperationException("The downloaded ISO did not complete media validation.") };
     }
 
     internal static async Task<DownloadResult> DownloadWithTransportFallbackAsync(Func<Uri, Task<DownloadResult>> transfer)
@@ -269,16 +278,18 @@ public sealed class UpgradeEngine
     public async Task<MountedSource> MountAndValidateAsync(string isoPath, CancellationToken cancellationToken)
     {
         ValidateIsoFile(isoPath);
+        AppLog.Info($"Mounting/locating exact ISO: {Path.GetFullPath(isoPath)}.");
         var escaped = isoPath.Replace("'", "''");
-        var command = "$p='" + escaped + "';" +
+        var command = "$ProgressPreference='SilentlyContinue';$p='" + escaped + "';" +
             "$d=Get-DiskImage -ImagePath $p -ErrorAction SilentlyContinue;" +
             "if(-not $d -or -not $d.Attached){Mount-DiskImage -ImagePath $p -ErrorAction Stop|Out-Null};" +
             "$until=[DateTime]::UtcNow.AddSeconds(30);$v=$null;" +
             "do{$v=Get-DiskImage -ImagePath $p|Get-Volume -ErrorAction SilentlyContinue|Where-Object DriveLetter|Select-Object -First 1;" +
             "if(-not $v){Start-Sleep -Milliseconds 500}}while(-not $v -and [DateTime]::UtcNow -lt $until);" +
-            "if(-not $v){throw 'Windows did not assign a drive letter to the ISO.'};" +
+            "if(-not $v){throw 'PCNINJA_ISO_VOLUME_TIMEOUT'};" +
             "[Console]::Out.Write($v.DriveLetter+':\\')";
         var root = (await RunPowerShellAsync(command, cancellationToken)).Trim();
+        AppLog.Info($"Resolved exact ISO {Path.GetFullPath(isoPath)} to volume {root}.");
         return await ValidateMountedSourceAsync(root, cancellationToken);
     }
 
@@ -407,6 +418,7 @@ public sealed class UpgradeEngine
             RedirectStandardOutput = true,
             RedirectStandardError = true
         };
+        startInfo.WorkingDirectory = Environment.GetFolderPath(Environment.SpecialFolder.System);
         using var process = Process.Start(startInfo) ?? throw new InvalidOperationException("Windows could not mount the ISO.");
         var outputTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
         var errorTask = process.StandardError.ReadToEndAsync(cancellationToken);
@@ -422,7 +434,12 @@ public sealed class UpgradeEngine
         var output = await outputTask;
         var error = await errorTask;
         if (process.ExitCode != 0)
-            throw new InvalidOperationException(string.IsNullOrWhiteSpace(error) ? "Windows could not mount the ISO." : error.Trim());
+        {
+            var failure = new InvalidOperationException(PowerShellDiagnostics.MountFailureMessage(error),
+                new InvalidOperationException($"PowerShell exit code {process.ExitCode}. Raw stderr:\n{error}"));
+            AppLog.Error($"ISO mount helper failed: {failure}");
+            throw failure;
+        }
         return output;
     }
 

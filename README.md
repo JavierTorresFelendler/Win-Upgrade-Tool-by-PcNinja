@@ -28,7 +28,7 @@ PowerShell or CMD files are required.
 
 ## One-screen graphical workflow
 
-> **Pending next release:** The language policy and manual-download guidance below
+> **Pending next release:** The language policy, automatic consent and diagnostics below
 > are source changes, not a replacement for the published RC5 executable.
 
 The application shows the current Windows version, storage state, and source
@@ -37,6 +37,19 @@ choices on one screen:
 1. **Download the ISO automatically.** Choose a download drive/folder.
 2. **Use existing installation media.** Select an ISO, mounted drive, extracted
    Setup folder or network folder in one path field, using **ISO...** or **Folder...**.
+
+Automatic Start asks once **before** downloading/reusing media, explaining that
+validation and the compatible in-place upgrade follow with the chosen restart
+policy. A unique compatible image continues without a second assistant prompt.
+Manual media still asks after validation. Browser fallback, failures or ambiguous
+images stop unattended continuation; Windows Setup can still show its own errors.
+The assistant does not issue a forced reboot after failure.
+
+The automatic operation hands its successfully validated exact source to the GUI
+or CLI without immediate duplicate hashing/mounting. Final prelaunch validation
+is retained. Manual Inspect then Start reuse and automatic mount cleanup remain
+separate future work. Errors stay visible through Refresh; full details/log remain
+available. See [development test checklist](docs/AUTOMATIC-FLOW-TESTING.md).
 
 Automatic download currently supplies **English (en-US)** media. It is disabled
 when Windows' system-default UI language does not match, including en-GB; the

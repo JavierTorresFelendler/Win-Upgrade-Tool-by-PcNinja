@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Ask once before automatic download/reuse plus upgrade; retain manual-media
+  confirmation and stop unattended continuation on fallback/ambiguous selection.
+- Reuse this automatic attempt's validated mounted source in GUI and CLI;
+  retain final prelaunch safety/source/image/storage validation. No general
+  manual Inspect/Start cache or automatic dismount cleanup is introduced.
+- Decode bounded PowerShell CLIXML errors without showing serialized progress;
+  retain raw diagnostics and explain mount discovery timeouts actionably.
+- Keep preparation errors visible through Refresh; show the Windows drive's
+  available/required/missing upgrade space. Log exact ISO-to-volume resolution.
+
 - Disable automatic download unless the system-default UI language matches its
   en-US ISO; enforce the same policy in GUI, CLI and Core before any transfer.
 - Keep matching manually supplied media available regardless of language, with

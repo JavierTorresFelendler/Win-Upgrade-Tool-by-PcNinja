@@ -18,7 +18,8 @@ public sealed record DownloadResult(
     long? ExpectedBytes,
     string? Sha256 = null,
     bool Resumed = false,
-    bool Reused = false);
+    bool Reused = false,
+    MountedSource? ValidatedSource = null);
 
 public sealed record StorageCheck(
     bool IsValid,
