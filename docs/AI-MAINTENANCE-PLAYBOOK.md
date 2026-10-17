@@ -98,6 +98,11 @@ All paths below are relative to the repository root.
   the user-facing status message. A successful ISO hash is not a completed mount
   or DISM validation, and a drive-letter discovery timeout does not prove a
   corrupt ISO. Record the failing stage explicitly.
+- Distinguish an image left mounted from an image proven locked against eject.
+  Access denied when deleting a file on read-only ISO media does not establish a
+  process/handle leak. Before proposing detach cleanup, establish exact image
+  identity, mount ownership, running-from-media state and active consumers; an
+  awaited/disposed helper is not by itself evidence of an orphaned process.
 
 ### 5. Keep UI, CLI and outcome evidence consistent
 

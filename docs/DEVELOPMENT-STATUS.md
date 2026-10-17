@@ -69,8 +69,9 @@ metadata acceptance is not a real upgrade result.
   Windows Setup launch. This does not establish corruption or prove that Windows
   itself had no mounted volume; the helper may have failed to discover one.
 - After Start at 09:19:53, the same SHA-256 was recorded again at 09:23:09. The
-  supplied log ends there; the second attempt's final result is unknown. A hash
-  without an independent trusted expected value is not full media validation.
+  first snapshot ended there. The extended log now confirms the second attempt
+  failed with the same drive-letter timeout at 09:23:44. A hash without an
+  independent trusted expected value is not full media validation.
 - The screenshot shows `#< CLIXML` in the status line. Source review confirms
   that the helper throws raw PowerShell stderr on nonzero exit, then the GUI
   displays that raw exception message. The serialized output includes 96 progress
@@ -94,6 +95,36 @@ metadata acceptance is not a real upgrade result.
 - No application fix or replacement executable was produced during this report.
   The owner remains in field testing. Findings are recorded for a later authorized
   change; do not silently replace the test artifact being evaluated.
+
+### Reported ISO eject failure requiring VM restart (unresolved)
+
+- The owner reports the ISO remained mounted and could not be ejected until a VM
+  restart. The extended log shows the two mount-discovery timeouts above, followed
+  by selected-source access denied for an answer file on volume F at 09:24:47 and
+  another answer-file block at 09:24:51. No Setup launch is recorded in this log.
+- The log does not map the failed helper's backing ISO path to volume F, record
+  an eject attempt/result, identify a locking process, or show whether the app
+  was closed or running from that volume. Do not claim an application handle leak
+  or Windows Storage service fault as the proven cause.
+- Access denied while deleting an answer file on read-only ISO media is not
+  evidence that another process locked the volume. A mount remaining attached is
+  likewise different from a demonstrated eject-blocking open handle.
+- Source review finds no dismount/ownership cleanup after mounting/validation
+  fails. The PowerShell helper is awaited and disposed on normal nonzero exit;
+  that code path alone does not prove a helper process was left running.
+- Pending: track exact ISO/device/volume identity, pre-existing versus app-created
+  mounts, active consumers and operation stage; log bounded mount/eject results.
+  Design safe cleanup/release of only app-created mounts after failure/cancel when
+  unused. Never detach a user-preexisting mount on failure, interrupt Setup or
+  force-close unrelated processes. Keep approved unsafe-media remediation scoped
+  separately as proposed in PR #9.
+- Regression cases: mount then failed validation, cancel after mount, repeated
+  validation, pre-existing mount preserved, app launched from ISO versus local,
+  and a real in-use mount. Distinguish clean release from a readable manual-action
+  blocker; do not reboot the machine automatically to work around a locked image.
+- Useful next owner evidence: whether the EXE ran from the ISO or local storage,
+  whether eject still failed after fully closing it, and the exact Windows eject
+  error. This remains an investigation, not a product-code fix.
 
 ### Earlier findings
 
