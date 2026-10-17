@@ -92,6 +92,12 @@ All paths below are relative to the repository root.
   Do not replace the direct-provider transport with the manual catalog URL.
 - Wait for a mounted ISO's drive letter with a bounded timeout; mount success is
   not proof that the volume is ready for immediate validation.
+- PowerShell stderr can contain CLIXML combining progress records with genuine
+  errors. Diagnose the exit code and decoded error records separately; do not
+  treat all stderr as fatal or discard it as progress. Keep raw diagnostics out of
+  the user-facing status message. A successful ISO hash is not a completed mount
+  or DISM validation, and a drive-letter discovery timeout does not prove a
+  corrupt ISO. Record the failing stage explicitly.
 
 ### 5. Keep UI, CLI and outcome evidence consistent
 

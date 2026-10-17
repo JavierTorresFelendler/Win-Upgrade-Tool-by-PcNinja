@@ -61,6 +61,42 @@ metadata acceptance is not a real upgrade result.
 
 ## Recent owner evidence and pending follow-up
 
+### Validation repetition and mount diagnostics (investigation only)
+
+- The latest supplied test log records ISO hashing at 09:18:46, then failure at
+  09:19:23 because the mount helper did not discover a volume drive letter within
+  its 30-second poll. It does not record completed DISM image validation or a
+  Windows Setup launch. This does not establish corruption or prove that Windows
+  itself had no mounted volume; the helper may have failed to discover one.
+- After Start at 09:19:53, the same SHA-256 was recorded again at 09:23:09. The
+  supplied log ends there; the second attempt's final result is unknown. A hash
+  without an independent trusted expected value is not full media validation.
+- The screenshot shows `#< CLIXML` in the status line. Source review confirms
+  that the helper throws raw PowerShell stderr on nonzero exit, then the GUI
+  displays that raw exception message. The serialized output includes 96 progress
+  records and the real drive-letter timeout error. This is not merely harmless
+  progress misclassified as failure: an actual error is present.
+- Source review confirms that Inspect and Start both hash a selected ISO and
+  enumerate its images; StartUpgradeAsync repeats source/image validation before
+  launch. Prepared state currently preserves selection, not a reusable validation
+  result that avoids this work.
+- Pending: separate a concise, actionable mount error from full diagnostic detail;
+  suppress/parse serialized progress without hiding actual errors; improve logging
+  of attached-image/volume discovery and the exact failed stage.
+- Pending: design safe reuse of successful expensive validation within a session.
+  Define file identity, mount/source binding and invalidation rules; file size and
+  timestamps alone do not prove unchanged content. Never cache a failed attempt
+  as success or remove final attached-answer-file/storage/source/index safeguards.
+- Suggested acceptance cases: Validate then Start on unchanged media avoids
+  redundant full hashing; changed/replaced/ejected media invalidates the result;
+  a newly attached unsafe answer file still blocks; a drive-letter timeout gives
+  a readable message rather than XML; both GUI and CLI follow the same rules.
+- No application fix or replacement executable was produced during this report.
+  The owner remains in field testing. Findings are recorded for a later authorized
+  change; do not silently replace the test artifact being evaluated.
+
+### Earlier findings
+
 - The owner reported successful automatic ISO download on Windows 10 with RC5.
   Download success alone does not confirm the final upgrade from that file.
 - A mounted original ISO passed signature/image enumeration, but Start was
