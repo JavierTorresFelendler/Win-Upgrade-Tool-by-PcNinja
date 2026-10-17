@@ -59,6 +59,23 @@ Languages :
             var source = new MountedSource(selected, Path.Combine(selected, "setup.exe"), Path.Combine(selected, "sources", "install.swm"), [home, pro]);
             var current = new CurrentWindows("Professional", "en-US", 19045);
             Require(InstallationImages.Select(source, null, current) == pro, "Matching edition was not selected.");
+            Require(AutomaticDownloadPolicy.IsAvailable("en-US") && AutomaticDownloadPolicy.IsAvailable("EN-us"),
+                "The configured automatic ISO language was rejected.");
+            foreach (var language in new[] { "he-IL", "en-GB", "ru-RU", "ar-SA", "ja-JP", "de-DE" })
+            {
+                Require(!AutomaticDownloadPolicy.IsAvailable(language), "A mismatching automatic download was enabled.");
+                Reject(() => AutomaticDownloadPolicy.EnsureAvailable(language));
+                var reason = AutomaticDownloadPolicy.GetUnavailableReason(language)!;
+                Require(reason.Contains(language) && reason.Contains("en-US") && reason.Contains("https://iso.pcninja.pro") &&
+                    reason.Contains(UpgradeEngine.MicrosoftDownloadPage), "Language rejection omitted the reason or manual alternatives.");
+                var localImage = pro with { Language = language };
+                Require(InstallationImages.Select(source with { Images = [localImage] }, null, current with { Language = language }) == localImage,
+                    "Matching manually supplied non-US media was rejected because of its language.");
+            }
+            Require(!AutomaticDownloadPolicy.IsAvailable(null) && !AutomaticDownloadPolicy.IsAvailable(""),
+                "An unknown system language enabled automatic download.");
+            var mismatch = InstallationImages.GetIncompatibility(pro, current with { Language = "he-IL" })!;
+            Require(mismatch.Contains("he-IL") && mismatch.Contains("en-US"), "Image mismatch did not explain both languages.");
             Reject(() => InstallationImages.Select(source, 1, current));
             Reject(() => InstallationImages.Select(source, 99, current));
             Reject(() => InstallationImages.Select(source, 6, current with { Language = "he-IL" }));

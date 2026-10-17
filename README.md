@@ -21,12 +21,27 @@ PowerShell or CMD files are required.
 
 ## One-screen graphical workflow
 
+> **Pending next release:** The language policy and manual-download guidance below
+> are source changes, not a replacement for the published RC5 executable.
+
 The application shows the current Windows version, storage state, and source
 choices on one screen:
 
 1. **Download the ISO automatically.** Choose a download drive/folder.
 2. **Use existing installation media.** Select an ISO, mounted drive, extracted
    Setup folder or network folder in one path field, using **ISO...** or **Folder...**.
+
+Automatic download currently supplies **English (en-US)** media. It is disabled
+when Windows' system-default UI language does not match, including en-GB; the
+screen explains the mismatch and keeps manual media selection available.
+Matching manually supplied media is not restricted to English. Edition, x64,
+Windows 11 build and all other safety checks still apply; this is not a claim
+that every language/media combination has been field-tested.
+
+For PcNinja media, use [PcNinja ISO downloads](https://iso.pcninja.pro). For standard
+Microsoft Windows media, prefer the official Microsoft download page. Choose
+the same system UI language, download the ISO, then select it with **ISO...**.
+Changing the keyboard language does not change upgrade-language compatibility.
 
 Refresh after downloading, mounting media or connecting a USB drive. The exact
 source, image selection and restart policy are retained when the source is unchanged.
@@ -62,9 +77,9 @@ the button is disabled as **SETUP RUNNING**. Closing the assistant is blocked
 while it is busy. The application launches without a console window.
 
 If the direct automatic transfer is temporarily unavailable, the application
-opens the configured PcNinja browser fallback without forcing direct-download
-mode and switches to exact local-ISO selection. After the browser download
-finishes, select that file with **Browse**. The official
+opens [PcNinja ISO downloads](https://iso.pcninja.pro) for manual selection
+and switches to exact local-ISO selection. After the browser download
+finishes, select that file with **ISO...**. The official
 [Microsoft Windows 11 download page](https://www.microsoft.com/software-download/windows11)
 is always available as an additional fallback.
 

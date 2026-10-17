@@ -125,6 +125,7 @@ Show the detected Windows version, whether upgrades are supported, available
 space on the Windows drive, administrator state, log path, and the previous
 upgrade attempt. TargetWindowsObserved confirms only the running build/edition,
 not preservation of personal files or applications.
+Also reports the system UI language and automatic-download availability/reason.
 
 Usage:
   PcNinja-Win11-Upgrade-Assistant-RC5.exe status
@@ -244,6 +245,12 @@ cancellation, media safety and environmental errors preserve the existing ISO.
 The original filename is required; files are never guessed by a wildcard.
 A short-link TLS connection failure triggers a secure direct-provider attempt;
 provider blocks may still require the normal browser fallback.
+Automatic download currently provides en-US media and requires system UI
+language en-US. Other languages (including en-GB) must use matching manual
+media with --iso or --mounted; --download is rejected with exit code 3.
+Manual downloads: https://iso.pcninja.pro or
+https://www.microsoft.com/software-download/windows11
+For standard Microsoft Windows media, prefer Microsoft's download page.
 SHA-256 is calculated for ISO files. Supply --sha256 or PCNINJA_ISO_SHA256 to
 compare with a trusted value; a calculated hash alone is not proof of integrity.
 """;

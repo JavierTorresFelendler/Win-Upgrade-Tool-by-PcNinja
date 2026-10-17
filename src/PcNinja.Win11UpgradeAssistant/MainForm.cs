@@ -30,6 +30,8 @@ internal sealed class MainForm : Form
     private readonly Label _sourceSummary = new();
     private readonly Label _restartSummary = new();
     private readonly RadioButton _autoDownload = new();
+    private Label _automaticDownloadInfo = null!;
+    private bool _automaticDownloadAvailable;
     private readonly RadioButton _existingMedia = new();
     private readonly ComboBox _sources = new();
     private readonly ComboBox _downloadLocations = new();
@@ -136,6 +138,7 @@ internal sealed class MainForm : Form
         _installationImages.SelectedIndexChanged += (_, _) => UpdateImageInfo();
         _downloadLocations.SelectedIndexChanged += (_, _) => UpdateReadinessSummary();
 
+        ApplyDownloadLanguagePolicy(CurrentWindows.Read().Language);
         UpdateSourceControls();
         UpdateReadinessSummary();
         ResumeLayout(true);
@@ -256,7 +259,7 @@ internal sealed class MainForm : Form
         StyleSecondaryButton(_chooseDownloadFolder, "Choose folder...");
         _chooseDownloadFolder.Click += (_, _) => ChooseDownloadFolder();
         destinationRow.Controls.Add(_chooseDownloadFolder, 1, 0);
-        ConfigureSourcePanel(_autoSourcePanel, _autoDownload,
+        _automaticDownloadInfo = ConfigureSourcePanel(_autoSourcePanel, _autoDownload,
             "PcNinja preserves the original filename and validates the completed download.", destinationRow);
         content.Controls.Add(_autoSourcePanel);
 
@@ -309,7 +312,8 @@ internal sealed class MainForm : Form
             Padding = new Padding(0, 10, 0, 0)
         };
         footer.Controls.Add(DividerLine());
-        footer.Controls.Add(Kicker("MANUAL DOWNLOAD FALLBACKS"));
+        footer.Controls.Add(Kicker("MANUAL ISO DOWNLOADS"));
+        footer.Controls.Add(BodyText("For standard Microsoft Windows media, prefer Microsoft. For PcNinja media, use PcNinja ISO downloads. Select a matching language, then choose ISO... or Folder... above."));
         var downloadActions = new FlowLayoutPanel
         {
             AutoSize = true,
@@ -319,10 +323,10 @@ internal sealed class MainForm : Form
             BackColor = Surface,
             Margin = new Padding(0, 7, 0, 0)
         };
-        StyleSecondaryButton(_pcNinjaDownload, "Open PcNinja download page");
+        StyleSecondaryButton(_pcNinjaDownload, "PcNinja ISO downloads");
         _pcNinjaDownload.Margin = new Padding(0, 0, 8, 0);
         _pcNinjaDownload.Click += (_, _) => OpenPage(UpgradeEngine.PcNinjaBrowserFallbackPage);
-        StyleSecondaryButton(_microsoft, "Open Microsoft download page");
+        StyleSecondaryButton(_microsoft, "Microsoft ISO download");
         _microsoft.Margin = new Padding(0);
         _microsoft.Click += (_, _) => OpenPage(UpgradeEngine.MicrosoftDownloadPage);
         downloadActions.Controls.Add(_pcNinjaDownload);
@@ -483,6 +487,7 @@ internal sealed class MainForm : Form
         try
         {
             _engine.ValidateSupportedComputer();
+            ApplyDownloadLanguagePolicy(CurrentWindows.Read().Language);
             _systemValue.Text = _engine.GetOperatingSystemDescription();
             _processorValue.Text = GetProcessorDescription();
             _memoryValue.Text = GetMemoryDescription();
@@ -753,9 +758,12 @@ internal sealed class MainForm : Form
     private void UpdateImageInfo()
     {
         var current = CurrentWindows.Read();
+        var incompatibility = _installationImages.SelectedItem is InstallationImage selected
+            ? InstallationImages.GetIncompatibility(selected, current) : null;
+        _imageInfo.ForeColor = incompatibility is null ? Muted : Warning;
         _imageInfo.Text = _installationImages.SelectedItem is InstallationImage image
             ? $"This PC: {current.Edition}, {current.Language}. " +
-                (InstallationImages.GetIncompatibility(image, current) ?? $"Selected image {image.Index}: {image.Language}, {image.Architecture}, build {image.Version}.")
+                (incompatibility ?? $"Selected image {image.Index}: {image.Language}, {image.Architecture}, build {image.Version}.")
             : $"This PC: {current.Edition}, {current.Language}. Select an image after validation.";
     }
 
@@ -813,11 +821,12 @@ internal sealed class MainForm : Form
     private void UpdateSourceControls()
     {
         var idle = _operation is null;
+        _autoDownload.Enabled = idle && _automaticDownloadAvailable;
         _browse.Enabled = idle;
         _browseInstallationFolder.Enabled = idle;
         _sources.Enabled = idle;
-        _downloadLocations.Enabled = idle;
-        _chooseDownloadFolder.Enabled = idle;
+        _downloadLocations.Enabled = idle && _automaticDownloadAvailable;
+        _chooseDownloadFolder.Enabled = idle && _automaticDownloadAvailable;
         _inspectSource.Enabled = idle && _existingMedia.Checked;
         _installationImages.Enabled = idle && _preparedSource is not null;
         _autoSourcePanel.BackColor = _autoDownload.Checked ? AccentTint : SurfaceRaised;
@@ -826,6 +835,18 @@ internal sealed class MainForm : Form
         _existingMedia.Text = _existingMedia.Checked ? "✓ SELECTED  ·  Use existing installation media" : "Use existing installation media";
         _autoDownload.ForeColor = _autoDownload.Checked ? Success : Foreground;
         _existingMedia.ForeColor = _existingMedia.Checked ? Success : Foreground;
+    }
+
+    private void ApplyDownloadLanguagePolicy(string language)
+    {
+        _automaticDownloadAvailable = AutomaticDownloadPolicy.IsAvailable(language);
+        _automaticDownloadInfo.Text = _automaticDownloadAvailable
+            ? $"Automatic ISO: English ({AutomaticDownloadPolicy.ImageLanguage}). Original filename preserved; download validated."
+            : $"Automatic download unavailable: this Windows uses {language}; the automatic ISO is {AutomaticDownloadPolicy.ImageLanguage}. " +
+                "Download matching media using the links below, then choose ISO... or Folder....";
+        _automaticDownloadInfo.ForeColor = _automaticDownloadAvailable ? Muted : Warning;
+        if (!_automaticDownloadAvailable) _existingMedia.Checked = true;
+        UpdateSourceControls();
     }
 
     private void UpdateReadinessSummary()
@@ -862,7 +883,7 @@ internal sealed class MainForm : Form
         Margin = new Padding(0)
     };
 
-    private static void ConfigureSourcePanel(TableLayoutPanel panel, RadioButton radio, string description, Control selector)
+    private static Label ConfigureSourcePanel(TableLayoutPanel panel, RadioButton radio, string description, Control selector)
     {
         panel.AutoSize = true;
         panel.Dock = DockStyle.Top;
@@ -872,9 +893,11 @@ internal sealed class MainForm : Form
         panel.Padding = new Padding(12, 7, 12, 8);
         panel.Margin = new Padding(0, 6, 0, 0);
         panel.Controls.Add(radio);
-        panel.Controls.Add(BodyText(description, 22, 470));
+        var explanation = BodyText(description, 22, 470);
+        panel.Controls.Add(explanation);
         selector.Margin = new Padding(22, 7, 0, 0);
         panel.Controls.Add(selector);
+        return explanation;
     }
 
     private static TableLayoutPanel BuildTwoColumnRow()

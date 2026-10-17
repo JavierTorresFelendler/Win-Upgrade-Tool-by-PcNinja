@@ -38,7 +38,9 @@ public static class InstallationImages
         if (!image.Architecture.Equals("x64", StringComparison.OrdinalIgnoreCase) &&
             !image.Architecture.Equals("amd64", StringComparison.OrdinalIgnoreCase)) return "The image is not x64.";
         if (!image.Edition.Equals(current.Edition, StringComparison.OrdinalIgnoreCase)) return "The edition does not match this Windows installation.";
-        if (!image.Language.Equals(current.Language, StringComparison.OrdinalIgnoreCase)) return "The system UI language does not match.";
+        if (!image.Language.Equals(current.Language, StringComparison.OrdinalIgnoreCase))
+            return $"Language mismatch: this Windows installation uses {current.Language}, but the image uses {image.Language}. " +
+                "Choose Windows 11 media with the same system UI language; changing the keyboard language is not enough.";
         if (!System.Version.TryParse(image.Version, out var version) || version.Build < 22000 || version.Build < current.Build)
             return "The image is not an equal-or-newer Windows 11 build.";
         return null;

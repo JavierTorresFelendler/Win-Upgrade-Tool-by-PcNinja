@@ -11,7 +11,8 @@ namespace PcNinja.Win11Upgrade.Core;
 public sealed class UpgradeEngine
 {
     public const string DownloadEndpoint = "https://11oem.pcninja.pro";
-    public const string PcNinjaBrowserFallbackPage =
+    public const string PcNinjaBrowserFallbackPage = "https://iso.pcninja.pro";
+    private const string AutomaticDownloadProviderPage =
         "https://technionmail-my.sharepoint.com/:u:/g/personal/techsup_technion_ac_il/IQB4hCE2DRrGRqQuQYDafLdfAYjrr8R8MAqD4efXPsI-epA?e=aqZwxY";
     public const string MicrosoftDownloadPage = "https://www.microsoft.com/software-download/windows11";
     public const long MinimumIsoBytes = 3L * 1024 * 1024 * 1024;
@@ -231,6 +232,7 @@ public sealed class UpgradeEngine
     public async Task<DownloadResult> DownloadIsoAsync(string destinationDirectory,
         IProgress<DownloadProgress>? progress, CancellationToken cancellationToken, string? expectedSha256 = null)
     {
+        AutomaticDownloadPolicy.EnsureAvailable(CurrentWindows.Read().Language);
         InstallationSafety.EnsureSafe(AppContext.BaseDirectory, removeSelectedAnswerFiles: false);
         return await DownloadWithTransportFallbackAsync(endpoint => IsoTransfer.DownloadAsync(_http, endpoint, Path.GetFullPath(destinationDirectory),
             remaining =>
@@ -249,7 +251,7 @@ public sealed class UpgradeEngine
             // The short-link host may require TLS 1.3. Windows 10 can securely use the
             // provider route directly with OS-default TLS and normal certificate checks.
             AppLog.Info($"Short-link transport unavailable; trying the provider directly. {ex.InnerException.Message}");
-            return await transfer(new Uri(PcNinjaBrowserFallbackPage + "&download=1"));
+            return await transfer(new Uri(AutomaticDownloadProviderPage + "&download=1"));
         }
     }
 
@@ -387,8 +389,7 @@ public sealed class UpgradeEngine
 
     public static void OpenPcNinjaDownloadPage() => Process.Start(new ProcessStartInfo
     {
-        // This deliberately omits download=1. A signed-in browser can complete the
-        // fallback when SharePoint temporarily rejects repeated direct downloads.
+        // Manual language/version selection is separate from the internal automatic route.
         FileName = PcNinjaBrowserFallbackPage,
         UseShellExecute = true
     });

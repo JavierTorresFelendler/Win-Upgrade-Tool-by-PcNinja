@@ -1,5 +1,24 @@
 # RC5 user-message catalog
 
+## Pending next release: language-aware download choice
+
+These source changes are not yet included in the published RC5 executable.
+
+- Automatic download is available only when the system-default UI language
+  matches the automatic ISO (**en-US**); the disabled option explains both values.
+- Other languages use the existing ISO/drive/folder choice. Both manual-download
+  buttons stay available; PcNinja opens **https://iso.pcninja.pro**.
+- Guidance: "For standard Microsoft Windows media, prefer Microsoft. For PcNinja
+  media, use PcNinja ISO downloads. Select a matching language, then choose ISO...
+  or Folder... above."
+- Image mismatch: "Language mismatch: this Windows installation uses [system],
+  but the image uses [image]. Choose Windows 11 media with the same system UI
+  language; changing the keyboard language is not enough."
+- Selected-image incompatibility is shown in warning color beside the image
+  selector, not only in the bottom status line. Diagnostic details remain available.
+
+## Published RC5 behavior
+
 The interface and repository documentation are English. Routine failures use the
 main status area with **View details**. Destructive-installation risk is a
 blocking warning, not a Yes/No bypass. UAC and Windows Setup own their screens.
