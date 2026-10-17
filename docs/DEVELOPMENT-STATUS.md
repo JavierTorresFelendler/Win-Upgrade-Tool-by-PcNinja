@@ -101,7 +101,8 @@ metadata acceptance is not a real upgrade result.
 - The owner reports the ISO remained mounted and could not be ejected until a VM
   restart. The extended log shows the two mount-discovery timeouts above, followed
   by selected-source access denied for an answer file on volume F at 09:24:47 and
-  another answer-file block at 09:24:51. No Setup launch is recorded in this log.
+  another answer-file block at 09:24:51. No Setup launch is recorded in that early
+  segment; the later folder-source launch below is a separate attempt.
 - The log does not map the failed helper's backing ISO path to volume F, record
   an eject attempt/result, identify a locking process, or show whether the app
   was closed or running from that volume. Do not claim an application handle leak
@@ -122,9 +123,46 @@ metadata acceptance is not a real upgrade result.
   validation, pre-existing mount preserved, app launched from ISO versus local,
   and a real in-use mount. Distinguish clean release from a readable manual-action
   blocker; do not reboot the machine automatically to work around a locked image.
-- Useful next owner evidence: whether the EXE ran from the ISO or local storage,
-  whether eject still failed after fully closing it, and the exact Windows eject
-  error. This remains an investigation, not a product-code fix.
+- The owner subsequently confirmed the ISO file was local and eject still failed
+  after closing the assistant, requiring a VM restart. This does not establish
+  where the EXE itself ran or identify a locking process. Still useful: executable
+  location, exact eject error and live process/handle evidence before restarting.
+  This remains an investigation, not a product-code fix.
+
+### Windows Setup crash from a folder source (investigation only)
+
+- A later attempt is corroborated by the assistant log and Last-Upgrade state:
+  original build **19043** (Windows 10 21H1), target **22621** (Windows 11 22H2),
+  target edition Professional, image index 1. The owner's recollection of a 21H2
+  target is not what these recorded build numbers identify.
+- Source was an extracted folder using `sources/install.swm`, not a mounted ISO
+  for this launch. Signature and enumeration of three images passed. Enumeration
+  repeated at 09:32:10, 09:32:21 and 09:32:23; Setup launched at 09:32:24 and
+  returned at 09:33:09 (UTC+03:00). The repeated-enumeration finding is therefore
+  visible independently of the earlier mount failure.
+- The launched command used the existing upgrade-only switches plus image index 1
+  and InstallFrom bound to the first SWM. The process exit was **-1073741819**, or
+  **0xC0000005 (STATUS_ACCESS_VIOLATION)**. This indicates an invalid memory access
+  termination, not a filesystem Access Denied result. The faulting component is
+  not identified by the assistant log; do not blame a particular module or ISO.
+- Stored state OutcomeUnconfirmed is not proof of success or completed migration.
+  No forced reboot was issued. Do not infer Windows Setup never started from the
+  earlier mount errors: this later attempt did start its process.
+- SWM is supported by the documented InstallFrom option; the extension alone is
+  not a reason to declare this command invalid. Still verify the complete split
+  set and media consistency; metadata enumeration does not validate every part.
+- Needed before a diagnostic retry: capture the test machine's
+  `$WINDOWS.~BT/Sources/Panther/setupact.log` and `setuperr.log` from its Windows
+  volume, plus Application Error / Windows Error Reporting details around
+  09:33 (faulting application/module, exception code and offset). If staging logs
+  are absent, inspect Windows/Panther and the crash event; absence is not success.
+- Also request the SWM part names/sizes and Setup file version, without publishing
+  raw logs or customer data. No argument change, ISO deletion, clean-install
+  fallback or actual Setup execution is authorized by this investigation.
+- References: [Windows 10 build mapping](https://learn.microsoft.com/en-us/windows/release-health/release-information),
+  [Windows 11 build mapping](https://learn.microsoft.com/en-us/windows/release-health/windows11-release-information),
+  [Access violation](https://learn.microsoft.com/en-us/shows/inside/c0000005),
+  [InstallFrom](https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/windows-setup-command-line-options#installfrom).
 
 ### Earlier findings
 

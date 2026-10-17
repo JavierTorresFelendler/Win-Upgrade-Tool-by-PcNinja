@@ -116,6 +116,12 @@ All paths below are relative to the repository root.
 - Root Setup process exit 0 means its current stage completed, not that all files
   and apps survived a completed migration. Record uncertain outcomes honestly and
   use post-restart build/edition observations plus owner verification.
+- For a Setup process crash, pair the recorded attempt/source/build/index with
+  Panther logs and the faulting application/module in Windows crash events.
+  `0xC0000005` is an access violation, not filesystem Access Denied. Do not assign
+  a root cause from that generic exception code or assume the supplied ISO is
+  corrupt. Preserve evidence before retrying, and distinguish an earlier mount
+  failure from a later successfully launched Setup process in the same log.
 - Build >= 22000 identifies Windows 11 in this client's display normalization;
   registry ProductName alone can still say Windows 10. Keep Server detection separate.
 
