@@ -61,6 +61,20 @@ metadata acceptance is not a real upgrade result.
 
 ## Recent owner evidence and pending follow-up
 
+### New successful round and proposed delivery order
+
+- The owner reports a completed further round from Windows 10 through Windows 11
+  26H2 with successful results and is satisfied with the last test executable.
+  Exact artifact identity and per-source coverage were not restated; verify before
+  marking a particular PR accepted. Earlier failure investigations remain open.
+- Requested next: one upfront consent for automatic download plus upgrade (manual
+  source confirmation retained), Windows 10 target upgrades and equal-version
+  repair using target-aware Setup arguments, and application self-update.
+- [Next iteration plan](NEXT-ITERATION-PLAN.md) records source-backed behavior,
+  acceptance cases and proposed PR order. This is planning, not new runtime code
+  or permission to merge/release. PR #8 and design-only PR #9 had green CI when
+  checked; each new checkpoint needs its own result. No merge was performed.
+
 ### Validation repetition and mount diagnostics (investigation only)
 
 - The latest supplied test log records ISO hashing at 09:18:46, then failure at
