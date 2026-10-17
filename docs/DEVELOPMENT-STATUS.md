@@ -97,6 +97,18 @@ metadata acceptance is not a real upgrade result.
 
 ### Earlier findings
 
+- Future safe-media preparation is recorded separately in
+  [Draft PR #9](https://github.com/JavierTorresFelendler/pcninja-win11-upgrade-assistant/pull/9),
+  branch `design/safe-media-preparation`, file
+  `docs/design/SAFE-MEDIA-PREPARATION.md`. This is a design-only PR based on main;
+  that file is not part of this branch yet. The proposed flow chooses a suitable
+  local destination or lets the user choose manually, copies/validates into owned
+  staging, removes known answer files from the copy only, relocates an assistant
+  running from the ISO, then detaches the exact consented unsafe Windows ISO mounts.
+  Unremovable USB/hypervisor/locked media remains a manual blocker. Final attached
+  safety checks and explicit upgrade confirmation remain. No capability was
+  implemented/tested by that design; do not replace the owner's PR #8 test EXE.
+
 - The owner reported successful automatic ISO download on Windows 10 with RC5.
   Download success alone does not confirm the final upgrade from that file.
 - A mounted original ISO passed signature/image enumeration, but Start was
