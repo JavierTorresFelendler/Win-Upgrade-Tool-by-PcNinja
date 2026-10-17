@@ -30,7 +30,11 @@ verify preservation after upgrading. Do not perform these tests on production.
    and leave it running. It should download/reuse, validate, then start Setup
    without a second assistant Start question. Verify files/apps and final OS.
 2. Repeat with automatic restart off: `/noreboot` remains in the logged Setup
-   command, with no assistant-forced reboot. Restart manually when appropriate.
+   command, with no assistant-forced reboot. After Setup exit 0, an OK-only
+   **Restart required** information dialog and persistent readiness instruction
+   explain how to continue. OK never reboots. Restart manually when appropriate.
+   CLI `--no-restart` prints the same instruction; successful JSON includes
+   `manualRestartRequired`. No restart notice is shown for failure/transition.
 3. Decline the initial question: no transfer and no Setup. Start again, accept,
    cancel during preparation: no Setup, Start returns. A later Start asks again.
 4. Choose known-good manual ISO/folder/mounted media: review image and receive

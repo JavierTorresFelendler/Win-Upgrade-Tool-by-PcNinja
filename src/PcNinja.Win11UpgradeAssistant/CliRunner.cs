@@ -265,9 +265,12 @@ internal static class CliRunner
             return Fail(SetupFailed,
                 $"Windows Setup stopped with exit code {result.ExitCode}. No forced restart was issued.", options.Json);
         Write(new { started = true, setupExitCode = result.ExitCode, automaticRestart = !options.NoRestart,
+                manualRestartRequired = result.NeedsManualRestartNotice(!options.NoRestart),
                 isoPath = exactIsoPath, mountedRoot = source.Root, imageIndex = selectedImage.Index,
                 outcome = "PreparationCompleted" },
-            options.Json, "Windows Setup completed its current stage. Verify the final outcome after restarting.");
+            options.Json, result.NeedsManualRestartNotice(!options.NoRestart)
+                ? UpgradeResult.ManualRestartMessage
+                : "Windows Setup completed its current stage. Verify the final outcome after restarting.");
         return Success;
     }
 

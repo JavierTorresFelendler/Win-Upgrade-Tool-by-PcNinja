@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Show an OK-only manual-restart information dialog and persistent guidance after
+  successful Setup preparation with automatic restart off. CLI prints the same
+  action and adds `manualRestartRequired` to successful upgrade JSON; no forced
+  reboot or false final-upgrade success is introduced.
 - Ask once before automatic download/reuse plus upgrade; retain manual-media
   confirmation and stop unattended continuation on fallback/ambiguous selection.
 - Reuse this automatic attempt's validated mounted source in GUI and CLI;

@@ -232,6 +232,10 @@ Windows Setup arguments:
   /compat ignorewarning /imageindex <selected-index> /installfrom "<image-file>"
 
 --no-restart additionally supplies /noreboot. PcNinja never calls shutdown.exe.
+After Setup exit 0 with --no-restart, restart manually to continue the upgrade.
+Successful upgrade JSON includes manualRestartRequired. /noreboot suppresses
+the first post-preparation reboot, not later Setup reboots after manual restart.
+PreparationCompleted does not confirm a finished OS migration.
 
 Ctrl+C cancels download, checksum and preparation work (exit code 6). It does
 not interrupt Windows Setup after launch. Network failures may open the normal
