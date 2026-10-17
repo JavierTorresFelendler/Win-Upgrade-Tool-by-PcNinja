@@ -108,6 +108,17 @@ Start an upgrade from that ISO:
 
 ## Download an ISO automatically
 
+**Pending next release (not in the published RC5 EXE):** Automatic download
+requires system-default UI language **en-US**, matching the configured ISO.
+Other languages, including en-GB, return validation exit code **3** before a
+transfer. `status --json` reports `systemUiLanguage`,
+`automaticDownloadAvailable`, and `automaticDownloadUnavailableReason`.
+Matching manually supplied media remains available through `--iso`/`--mounted`.
+
+Use [PcNinja ISO downloads](https://iso.pcninja.pro) for PcNinja media, or prefer
+[Microsoft](https://www.microsoft.com/software-download/windows11) for standard
+Microsoft media. Select the same system UI language, edition and x64 architecture.
+
 Download to the default suitable fixed drive, validate, and start the upgrade:
 
 ```powershell

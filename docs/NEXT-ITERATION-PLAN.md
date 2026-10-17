@@ -1,0 +1,119 @@
+# Proposed next iteration and PR sequence
+
+Status: planning only, recorded on 2026-10-17. No merge, runtime change, new
+release or replacement test EXE is authorized by this document.
+
+## Latest owner evidence
+
+The owner reports completing a further round of upgrades from Windows 10 through
+Windows 11 26H2 successfully and is satisfied with the last test executable.
+The exact artifact/commit and per-scenario source types were not restated; confirm
+the tested checkpoint before treating this as acceptance of a particular PR.
+Do not erase the earlier Appraiser crash or mount/eject findings: successful
+later upgrades do not establish their original root causes or resolve every case.
+
+## Recommended delivery sequence (not yet approved)
+
+| Order | PR/work item | Acceptance boundary |
+| --- | --- | --- |
+| 1 | Review existing PR #8 for merge as the next source baseline | Confirm tested artifact, current-head CI and language/manual-selection scope; owner's explicit merge approval; no new release required |
+| 2 | A focused automatic-flow and diagnostics PR | One upfront assistant consent in automatic mode, manual confirmation retained; readable CLIXML/storage errors, mount lifecycle diagnostics; safe validation-reuse design/tests, no removal of final safety gates |
+| 3 | Implement the approved scope of design PR #9 in bounded checkpoints | Safe copy, correct space checks, local handoff and consent-scoped unsafe-ISO detach; mock tests plus disposable VM probes and owner field tests |
+| 4 | A separate target-aware Windows 10 / same-version repair PR | Finite supported test matrix, correct target Setup arguments, no downgrade or clean-install fallback; matching manual media first |
+| 5 | A separate application self-update PR | Versioned release manifest, verified portable download, channel separation, no update during active upgrade; failure preserves old EXE |
+
+Do not wait for every future feature to merge a useful tested improvement. Each
+runtime PR gets CI and a commit-identified test EXE; owner tests precede merge.
+Release tags/RC publication remain separate explicit decisions. PR #9 currently
+contains design only, so its green CI does not test the proposed runtime feature.
+If validation caching or mount cleanup needs a larger safety redesign, split it
+from the small confirmation/diagnostics PR rather than hiding untested behavior
+inside a usability patch. Self-update design may proceed while field tests run,
+but must not change the executable currently being evaluated.
+
+## Automatic mode: one upfront assistant confirmation
+
+- Capture an immutable operation intent at Start, before any download. Show that
+  consent covers downloading, validating and starting the compatible in-place
+  upgrade, plus the selected automatic/manual restart policy. Default Cancel.
+- After successful download/validation and a unique compatible image selection,
+  continue without a second assistant Start question. Preserve cancellation until
+  actual Setup launch. Do not add `/quiet` merely to hide this assistant's dialog.
+- Manual ISO/folder/mounted-media mode keeps its current post-validation review
+  and final confirmation. No global confirmation bypass and no third source mode.
+- The current GUI switches `_existingMedia.Checked` after a download: that display
+  state must not erase the original automatic intent or grant automatic intent to
+  a later manual source. A boolean tied only to the current radio is insufficient.
+- Browser fallback, changed source/target/restart policy, ambiguous or incompatible
+  indexes, unsafe media, insufficient space or failure cancels unattended
+  continuation. Require the relevant corrective action/new consent, not a guessed
+  image, warning bypass, clean install or forced reboot.
+- Unsafe-ISO detach consent remains scoped to its device list; upfront upgrade
+  consent does not permit arbitrary dismounts. Windows Setup may still need user
+  intervention for errors; this proposal removes redundant assistant prompts,
+  not every possible OS-owned dialog.
+- Tests: consent before transfer, Cancel causes no transfer/Setup, unique valid
+  automatic image starts once with no second prompt, manual path still confirms,
+  fallback/change invalidates consent, no double-click launches, safety still blocks.
+
+## Windows 10 targets and same-version repair
+
+There is no Windows 10 22H1 release. The proposed first Windows 10 target is
+22H2 (build 19045), using matching client x64 edition/system-UI-language media.
+Windows 10 Home/Pro normal support ended in October 2025; ESU eligibility is
+separate. Offer this as an explicit advanced upgrade/repair choice with lifecycle
+information, not as the default supported destination for every user.
+
+The target media determines the Setup profile, not just the installed OS. Both
+Windows 10 and 11 report NT version 10.0; major-version strings alone cannot
+select the profile. Validate actual client image build plus Setup version.
+
+Conceptual Windows 10 command, shown for review only (do not run on the developer):
+
+```cmd
+setup.exe /auto upgrade /dynamicupdate disable /compat ignorewarning
+```
+
+Do not add `/product server` for Windows 10 targets. `/EULA accept` is documented
+as new with Windows 11 and should not be copied blindly into older Setup commands.
+Bind `/imageindex` and `/installfrom` to the actual validated file/index as today;
+append `/noreboot` only for the user's manual-restart policy. Preserve the existing
+experimental Windows 11 profile until separately changed and tested. Current
+Core rejects image builds below 22000, so a command-only edit cannot enable this.
+
+Initial matrix to validate: 19043/19044 to 19045, 19045 to equal-feature 19045
+repair, existing Windows 10 to 11 paths and equal-feature Windows 11 repair.
+Reject Windows 11 to 10, lower feature builds, mismatched edition/language/x64
+and unsupported Server/LTSC paths. Same-version repair is a deliberate valid
+operation, not an available-update indicator; Setup must still offer apps/data
+preservation. Capture feature build and servicing revision without assuming that
+equal release labels prove compatibility or that an unchanged build proves repair
+success. Let Setup compatibility establish migration availability; never fall back
+to `/auto clean` or DataOnly. Do not promise every older-to-newer path works.
+
+Update eligibility, command building, history/reporting, GUI wording, CLI/help and
+fixtures together in Core-driven operations. Automatic download remains the
+configured Windows 11 en-US source; adding a Windows 10 catalog is separate work.
+
+## Application self-update (separate from OS upgrade)
+
+- Reuse the existing PcNinja release-manifest approach, adapted for this .NET
+  portable product; do not copy MSI replacement behavior into a portable EXE.
+- Check asynchronously, allow failure/offline use, compare complete release
+  versions including prerelease ordering, and download only a newer explicitly
+  selected release asset over HTTPS. Verify SHA-256 and signing policy honestly;
+  a checksum does not turn an unsigned EXE into a signed one.
+- Keep stable and opt-in preview separate. GitHub's latest-release endpoint
+  excludes prereleases; RC detection needs explicit preview policy. Temporary
+  authenticated/expiring PR artifacts are not a customer update feed.
+- Start with an explicit user-approved verified portable handoff, keep the old
+  file, and block app replacement during active copy/download/preparation/Setup.
+  Never expose a developer GitHub token or run `git pull` on a customer machine.
+- Test no update, newer/older/equal/RC versions, wrong hash, offline/rate limits,
+  interrupted transfer, file locks, permission failures and preservation of the
+  old executable. Publish a manifest only for an authorized actual release.
+
+References: [Windows Setup options](https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/windows-setup-command-line-options),
+[Windows 10 release/lifecycle information](https://learn.microsoft.com/en-us/windows/release-health/release-information),
+[upgrade paths](https://learn.microsoft.com/en-us/windows/deployment/upgrade/windows-upgrade-paths),
+[GitHub latest release](https://docs.github.com/en/rest/releases/releases#get-the-latest-release).

@@ -15,6 +15,8 @@ internal static class Program
         void Invoke(string name, params object[] values) => type.GetMethod(name, BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(form, values);
         form.Show();
         Application.DoEvents();
+        var actualLanguage = CurrentWindows.Read().Language;
+        Invoke("ApplyDownloadLanguagePolicy", "en-US");
         var start = (Button)Field("_start");
         if (!start.Enabled) throw new Exception("Start is disabled after startup on the test machine.");
         var choices = new[] { "_autoDownload", "_existingMedia" }.Select(name => (RadioButton)Field(name)).ToArray();
@@ -31,6 +33,24 @@ internal static class Program
             if (automaticPanel.BackColor == existingPanel.BackColor)
                 throw new Exception("The selected source is not uniquely highlighted.");
         }
+        foreach (var language in new[] { "he-IL", "en-GB", "ru-RU" })
+        {
+            choices[0].Checked = true;
+            Invoke("ApplyDownloadLanguagePolicy", language);
+            Invoke("SetBusy", true);
+            Invoke("SetBusy", false);
+            var note = (Label)Field("_automaticDownloadInfo");
+            if (choices[0].Enabled || choices[0].Checked || !choices[1].Checked ||
+                ((ComboBox)Field("_downloadLocations")).Enabled || ((Button)Field("_chooseDownloadFolder")).Enabled ||
+                !((Button)Field("_browse")).Enabled || !((Button)Field("_browseInstallationFolder")).Enabled ||
+                !((Button)Field("_pcNinjaDownload")).Enabled || !((Button)Field("_microsoft")).Enabled ||
+                !note.Text.Contains(language) || !note.Text.Contains("en-US"))
+                throw new Exception("Language gating hid manual alternatives, lost its explanation, or re-enabled automatic download.");
+        }
+        Invoke("ApplyDownloadLanguagePolicy", "en-US");
+        if (!choices[0].Enabled || !((ComboBox)Field("_downloadLocations")).Enabled)
+            throw new Exception("Automatic download did not return for matching en-US media.");
+        Invoke("ApplyDownloadLanguagePolicy", actualLanguage);
         // Exercise the real Click event, using an empty source so Setup can NEVER start.
         var sources = (ComboBox)Field("_sources");
         sources.Items.Clear();
@@ -76,6 +96,14 @@ internal static class Program
             var images = (ComboBox)Field("_installationImages");
             images.Items.Add(image);
             images.SelectedIndex = 0;
+            var otherLanguage = current.Language == "he-IL" ? "en-US" : "he-IL";
+            images.Items.Add(image with { Index = 7, Language = otherLanguage });
+            images.SelectedIndex = 1;
+            var mismatchInfo = (Label)Field("_imageInfo");
+            if (!mismatchInfo.Text.Contains(current.Language) || !mismatchInfo.Text.Contains(otherLanguage) ||
+                !mismatchInfo.Text.Contains("Language mismatch") || mismatchInfo.ForeColor == form.ForeColor)
+                throw new Exception("Language mismatch did not remain visible beside the selected image.");
+            images.SelectedIndex = 0;
             ((CheckBox)Field("_autoRestart")).Checked = false;
             Invoke("RefreshSources", false);
             if (sources.Text != Path.Combine(folder, "exact-selected.iso") || !Equals(images.SelectedItem, image) ||
@@ -108,7 +136,7 @@ internal static class Program
                 image.Save(Path.Combine(args[0], name));
             }
         }
-        Console.WriteLine("PASS: Two exclusive highlighted sources; real Start/Cancel; Setup lockout; source/image/restart/folder refresh retention; image reset on source change. No Setup launched.");
+        Console.WriteLine("PASS: Language-gated automatic download with manual alternatives; two exclusive highlighted sources; real Start/Cancel; Setup lockout; source/image/restart/folder refresh retention; image reset on source change. No Setup launched.");
         return 0;
     }
 }

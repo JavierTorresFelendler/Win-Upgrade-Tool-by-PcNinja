@@ -35,6 +35,26 @@ to obtain someone else's approval.
    tags as routine checkpoints. Merging a PR alone does not publish an EXE under
    **Releases**.
 
+## Remote-backup policy
+
+Each authorized, bounded development change must be committed and pushed to its
+working branch, with a Draft PR recording the scope and test results. Do not
+leave completed source changes only on a local disk while waiting for release
+approval. Additional checkpoints belong in the same PR, not a new PR per edit.
+Verify the pushed branch commit; if pushing fails, report the unbacked-up state.
+
+Backing up source is separate from merging or publishing. A testing/release hold
+keeps the published EXE and `main` unchanged; it does not prevent remote backup
+of already authorized development work. An instruction not to edit code still
+means findings only until implementation is authorized.
+
+`AGENTS.md` records this working agreement. Keep sanitized decisions, evidence and
+remaining tasks in [Development handoff](DEVELOPMENT-STATUS.md), so future work
+does not depend on one conversation. GitHub only preserves tracked, pushed
+files: it does not automatically back up Codex conversations, local memories,
+ignored test artifacts or customer data. Never upload those wholesale to this
+public repository.
+
 ## Automated checks and manual testing
 
 The `PR validation` check runs Core smoke tests, builds the portable EXE, checks

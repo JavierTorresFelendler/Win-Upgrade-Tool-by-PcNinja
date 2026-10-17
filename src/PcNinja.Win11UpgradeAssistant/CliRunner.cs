@@ -84,6 +84,7 @@ internal static class CliRunner
     private static int ShowStatus(UpgradeEngine engine, bool json)
     {
         var storage = engine.CheckSystemDriveSpace();
+        var language = CurrentWindows.Read().Language;
         string? supportError = null;
         try { engine.ValidateSupportedComputer(); }
         catch (Exception ex) { supportError = ex.Message; }
@@ -93,6 +94,9 @@ internal static class CliRunner
             operatingSystem = engine.GetOperatingSystemDescription(),
             upgradeSupported = supportError is null,
             supportError,
+            systemUiLanguage = language,
+            automaticDownloadAvailable = AutomaticDownloadPolicy.IsAvailable(language),
+            automaticDownloadUnavailableReason = AutomaticDownloadPolicy.GetUnavailableReason(language),
             isAdministrator = Program.IsAdministrator(),
             systemDrive = storage.RootPath,
             systemDriveFreeBytes = storage.AvailableBytes,
@@ -103,7 +107,10 @@ internal static class CliRunner
         Write(value, json,
             $"PcNinja Windows 11 Upgrade Assistant {Version}\n" +
             $"OS: {value.operatingSystem}\nUpgrade supported: {value.upgradeSupported}" +
-            (supportError is null ? "" : $" ({supportError})") + $"\nAdministrator: {value.isAdministrator}\n" +
+            (supportError is null ? "" : $" ({supportError})") +
+            $"\nSystem UI language: {language}\nAutomatic download available: {value.automaticDownloadAvailable}" +
+            (value.automaticDownloadUnavailableReason is null ? "" : $"\n{value.automaticDownloadUnavailableReason}") +
+            $"\nAdministrator: {value.isAdministrator}\n" +
             $"System storage: {storage.Message}\nLog: {AppLog.Path}" +
             (value.previousUpgrade is null ? "" : $"\nPrevious upgrade: {value.previousUpgrade.State}. {value.previousUpgrade.Message}"));
         return Success;
@@ -143,6 +150,9 @@ internal static class CliRunner
         if (sourceCount != 1)
             return Fail(InvalidArguments,
                 "Choose exactly one source: --iso <path>, --mounted <drive>, or --download.", options.Json);
+
+        if (options.Download && AutomaticDownloadPolicy.GetUnavailableReason(CurrentWindows.Read().Language) is string reason)
+            return Fail(ValidationFailed, reason, options.Json);
 
         var storage = engine.CheckSystemDriveSpace();
         if (!storage.IsValid) return Fail(ValidationFailed, storage.Message, options.Json);

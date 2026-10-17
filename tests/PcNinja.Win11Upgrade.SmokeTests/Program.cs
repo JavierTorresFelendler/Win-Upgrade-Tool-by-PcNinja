@@ -2,6 +2,8 @@ using PcNinja.Win11Upgrade.Core;
 
 var failures = new List<string>();
 var engine = new UpgradeEngine();
+if (!string.Equals(UpgradeEngine.PcNinjaBrowserFallbackPage, "https://iso.pcninja.pro", StringComparison.Ordinal))
+    failures.Add("Manual PcNinja downloads must use the public ISO catalog.");
 await TransferChecks.RunAsync();
 SafetyImageChecks.Run();
 if (UpgradeEngine.RequiredDownloadBytes(7L * 1024 * 1024 * 1024, true) != 28L * 1024 * 1024 * 1024)

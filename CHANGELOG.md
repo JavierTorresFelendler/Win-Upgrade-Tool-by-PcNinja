@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- Disable automatic download unless the system-default UI language matches its
+  en-US ISO; enforce the same policy in GUI, CLI and Core before any transfer.
+- Keep matching manually supplied media available regardless of language, with
+  explicit current/image language mismatch details beside the image selector.
+- Use https://iso.pcninja.pro for manual PcNinja ISO selection; preserve the
+  internal automatic transport and Microsoft's official manual alternative.
+- Recommend Microsoft for standard Microsoft media; document language behavior
+  and CLI availability diagnostics. Published RC5 assets remain unchanged.
+
 ## 1.1.0-rc.5
 
 - Reduced the GUI to automatic download or existing installation media, sharing
