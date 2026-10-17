@@ -3,7 +3,13 @@ namespace PcNinja.Win11Upgrade.Core;
 public sealed record MountedSource(string Root, string SetupPath, string? ImagePath = null,
     IReadOnlyList<InstallationImage>? Images = null);
 
-public sealed record UpgradeResult(int ExitCode, string SetupPath);
+public sealed record UpgradeResult(int ExitCode, string SetupPath)
+{
+    public const string ManualRestartMessage =
+        "Upgrade preparation is complete. Restart your computer to continue the upgrade.";
+
+    public bool NeedsManualRestartNotice(bool allowAutomaticRestart) => ExitCode == 0 && !allowAutomaticRestart;
+}
 
 public sealed record DownloadProgress(
     string DestinationPath,

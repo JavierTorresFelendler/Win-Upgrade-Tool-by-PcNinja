@@ -4,6 +4,11 @@ internal static class DiagnosticsChecks
 {
     internal static void Run()
     {
+        foreach (var code in new[] { 0, 1, unchecked((int)0xC0000005), 0x40010004 })
+            foreach (var automaticRestart in new[] { false, true })
+                if (new UpgradeResult(code, "unused-setup.exe").NeedsManualRestartNotice(automaticRestart) !=
+                    (code == 0 && !automaticRestart))
+                    throw new Exception("Manual-restart guidance was shown for a failure/transition or wrong restart policy.");
         const string xml = "#< CLIXML\r\n<Objs xmlns='http://schemas.microsoft.com/powershell/2004/04'><Obj S='progress'><S>Loading</S></Obj><S S='Error'>PCNINJA_ISO_VOLUME_TIMEOUT_x000D__x000A_</S></Objs>";
         var timeout = PowerShellDiagnostics.MountFailureMessage(xml);
         if (!timeout.Contains("30 seconds") || !timeout.Contains("Refresh") || timeout.Contains("CLIXML"))

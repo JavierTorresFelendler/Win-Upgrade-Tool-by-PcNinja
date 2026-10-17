@@ -13,6 +13,9 @@ $version = Invoke-Assistant @('--version')
 if ($LastCode -ne 0 -or $version.Trim() -ne $ExpectedVersion) { throw 'Version mismatch.' }
 $help = Invoke-Assistant @('help', 'all')
 if ($LastCode -ne 0) { throw 'Offline help failed.' }
+if (-not $help.Contains('manualRestartRequired') -or -not $help.Contains('restart manually to continue')) {
+    throw 'Offline help omitted successful manual-restart guidance.'
+}
 foreach ($option in @('--mounted', '--iso', '--download', '--image-index', '--sha256', '--no-restart', '--dry-run', '--yes', '--json')) {
     if (-not $help.Contains($option)) { throw "Offline help missing $option" }
 }

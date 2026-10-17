@@ -2,6 +2,11 @@
 
 ## Pending next release: automatic flow and diagnostics
 
+- Successful Setup preparation with automatic restart off: information dialog
+  **Restart required**, OK only: "Upgrade preparation is complete. Restart your
+  computer to continue the upgrade." Keep this instruction in the readiness panel
+  through Refresh and a waiting-for-manual-restart status. Dismissing it does not
+  reboot. No such popup on failure, cancel, transition or automatic restart.
 - Automatic confirmation, default No: destination; download/reuse, validate and
   start the compatible in-place upgrade; restart policy; experimental method,
   backup and save-work reminder. A unique matching result does not ask twice.

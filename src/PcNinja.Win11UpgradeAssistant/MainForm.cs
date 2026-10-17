@@ -48,6 +48,7 @@ internal sealed class MainForm : Form
     private readonly Label _operationNotice = new();
     private readonly LinkLabel _details = new();
     private Func<string, string, bool> _confirmUpgrade;
+    private Action<string> _showRestartNotice;
     private string? _lastErrorDetails;
     private readonly TableLayoutPanel _autoSourcePanel = new();
     private readonly TableLayoutPanel _existingSourcePanel = new();
@@ -74,6 +75,8 @@ internal sealed class MainForm : Form
         try { Icon = Icon.ExtractAssociatedIcon(Application.ExecutablePath); } catch { }
         _confirmUpgrade = (message, title) => MessageBox.Show(this, message, title,
             MessageBoxButtons.YesNo, MessageBoxIcon.Question, MessageBoxDefaultButton.Button2) == DialogResult.Yes;
+        _showRestartNotice = message => MessageBox.Show(this, message, "Restart required",
+            MessageBoxButtons.OK, MessageBoxIcon.Information);
         BuildUi();
         Shown += (_, _) => RefreshSources(true);
         FormClosing += (_, e) =>
@@ -738,14 +741,10 @@ internal sealed class MainForm : Form
             }
             _operation.Token.ThrowIfCancellationRequested();
             _status.Text = "Rechecking safety and starting Windows Setup...";
-            var result = await _engine.StartUpgradeAsync(source, selection.Index, _autoRestart.Checked, _operation.Token,
+            var automaticRestart = _autoRestart.Checked;
+            var result = await _engine.StartUpgradeAsync(source, selection.Index, automaticRestart, _operation.Token,
                 () => { _setupHasStarted = true; SetBusy(true); });
-            if (result.ExitCode == 0)
-                _status.Text = "Setup finished this stage. Check the upgrade result after restarting.";
-            else if (result.ExitCode == 0x40010004)
-                _status.Text = "Setup exited during the transition. Outcome not confirmed; reopen the assistant after restarting.";
-            else throw new InvalidOperationException(
-                $"Setup returned 0x{unchecked((uint)result.ExitCode):X8}. See View details/log. No forced restart was issued.");
+            PresentSetupResult(result, automaticRestart);
         }
         catch (OperationCanceledException) { _status.Text = "Operation cancelled."; }
         catch (Exception ex) { ShowIssue(ex); }
@@ -761,6 +760,23 @@ internal sealed class MainForm : Form
             RefreshSources(false);
             _status.Text = outcome;
         }
+    }
+
+    private void PresentSetupResult(UpgradeResult result, bool automaticRestart)
+    {
+        if (result.NeedsManualRestartNotice(automaticRestart))
+        {
+            _status.Text = "Waiting for manual restart. Restart your computer to continue the upgrade.";
+            ShowOperationNotice(UpgradeResult.ManualRestartMessage);
+            _operationNotice.ForeColor = Success;
+            _showRestartNotice(UpgradeResult.ManualRestartMessage);
+        }
+        else if (result.ExitCode == 0)
+            _status.Text = "Setup finished this stage. Check the upgrade result after restarting.";
+        else if (result.ExitCode == 0x40010004)
+            _status.Text = "Setup exited during the transition. Outcome not confirmed; reopen the assistant after restarting.";
+        else throw new InvalidOperationException(
+            $"Setup returned 0x{unchecked((uint)result.ExitCode):X8}. See View details/log. No forced restart was issued.");
     }
 
     private bool ConfirmAutomaticUpgrade(string destination, bool restart) => _confirmUpgrade(
@@ -785,6 +801,7 @@ internal sealed class MainForm : Form
     private void ShowOperationNotice(string message)
     {
         _operationNotice.Text = message;
+        _operationNotice.ForeColor = Warning;
         _operationNotice.Visible = true;
         if (_operationNotice.Parent?.Parent is ScrollableControl scrollHost)
             scrollHost.ScrollControlIntoView(_operationNotice);

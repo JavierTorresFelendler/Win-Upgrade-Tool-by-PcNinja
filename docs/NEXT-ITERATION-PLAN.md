@@ -1,7 +1,7 @@
 # Proposed next iteration and PR sequence
 
-Status: staged execution authorized by the owner on 2026-10-17. PR #8 merged;
-the automatic-flow/diagnostics change is in development. Stop for owner VM
+Status: staged execution authorized by the owner on 2026-10-17. PRs #8 and #10
+merged; manual-restart guidance is the next small follow-up. Stop for owner VM
 tests when needed. Stable publication and Internet self-update remain a separate
 owner checkpoint; no published RC5 asset replacement is authorized.
 
@@ -19,13 +19,15 @@ later upgrades do not establish their original root causes or resolve every case
 | Order | PR/work item | Acceptance boundary |
 | --- | --- | --- |
 | 1 | PR #8 merged as the next source baseline | Completed; squash d2f671c; published RC5 unchanged |
-| 2 | A focused automatic-flow and diagnostics PR | One upfront assistant consent in automatic mode, manual confirmation retained; readable CLIXML/storage errors, mount lifecycle diagnostics; safe validation-reuse design/tests, no removal of final safety gates |
-| 3 | Implement the approved scope of design PR #9 in bounded checkpoints | Safe copy, correct space checks, local handoff and consent-scoped unsafe-ISO detach; mock tests plus disposable VM probes and owner field tests |
-| 4 | A separate target-aware Windows 10 / same-version repair PR | Finite supported test matrix, correct target Setup arguments, no downgrade or clean-install fallback; matching manual media first |
+| 2 | Automatic-flow and diagnostics PR #10 | Merged after CI and owner feedback; add a separate small manual-restart explanation follow-up without changing Setup launch |
+| 3 | A separate target-aware Windows 10 / same-version repair PR | Not implemented; finite supported test matrix, actual media identity, correct target Setup arguments, no downgrade/clean fallback; matching manual media first |
+| Deferred | Design PR #9 safe-media preparation | Owner explicitly postponed this for the future in-ISO EXE; keep Draft, no runtime change or merge in the current pass |
 | 5 | A separate application self-update PR | Versioned release manifest, verified portable download, channel separation, no update during active upgrade; failure preserves old EXE |
 
 Do not wait for every future feature to merge a useful tested improvement. Each
-runtime PR gets CI and a commit-identified test EXE; owner tests precede merge.
+runtime PR gets CI and a commit-identified test EXE; changed upgrade flows need
+owner VM tests before promotion. A small presentation-only follow-up can be
+checked with local client GUI tests without rerunning Setup on the developer.
 Release tags/RC publication remain separate explicit decisions. PR #9 currently
 contains design only, so its green CI does not test the proposed runtime feature.
 If validation caching or mount cleanup needs a larger safety redesign, split it

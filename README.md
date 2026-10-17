@@ -44,6 +44,9 @@ policy. A unique compatible image continues without a second assistant prompt.
 Manual media still asks after validation. Browser fallback, failures or ambiguous
 images stop unattended continuation; Windows Setup can still show its own errors.
 The assistant does not issue a forced reboot after failure.
+With automatic restart off, successful Setup preparation shows **Restart required**
+and keeps the manual-restart instruction visible. OK only dismisses the message;
+restart your computer yourself to continue. This is not yet a completed migration.
 
 The automatic operation hands its successfully validated exact source to the GUI
 or CLI without immediate duplicate hashing/mounting. Final prelaunch validation

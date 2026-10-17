@@ -240,6 +240,11 @@ start "" /wait PcNinja-Win11-Upgrade-Assistant-RC5.exe status --json
 
 The assistant never calls `shutdown.exe`. `--no-restart` adds `/noreboot` to
 Windows Setup, and a failed Setup process does not trigger a forced restart.
+After exit 0 with `--no-restart`, the CLI explicitly says to restart manually to
+continue the upgrade. Successful upgrade JSON includes `manualRestartRequired`
+(`true` with `--no-restart`, otherwise `false`); existing exit codes are unchanged.
+`/noreboot` suppresses the first post-preparation reboot, not later Setup reboots
+after the user manually restarts. PreparationCompleted is not final OS success.
 
 ## Post-restart outcome
 

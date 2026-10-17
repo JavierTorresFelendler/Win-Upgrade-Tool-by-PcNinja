@@ -110,6 +110,27 @@ internal static class Program
         choices[1].Checked = true;
         Invoke("ApplyDownloadLanguagePolicy", actualLanguage);
 
+        var restartNotices = 0;
+        SetField("_showRestartNotice", new Action<string>(message =>
+        {
+            restartNotices++;
+            if (message != UpgradeResult.ManualRestartMessage)
+                throw new Exception("Restart popup did not explain preparation versus final upgrade.");
+        }));
+        Invoke("PresentSetupResult", new UpgradeResult(0, "unused-setup.exe"), false);
+        Invoke("RefreshSources", false);
+        if (restartNotices != 1 || !notice.Visible || notice.Text != UpgradeResult.ManualRestartMessage)
+            throw new Exception("Manual-restart popup or persistent notice is missing.");
+        Invoke("PresentSetupResult", new UpgradeResult(0, "unused-setup.exe"), true);
+        Invoke("PresentSetupResult", new UpgradeResult(0x40010004, "unused-setup.exe"), false);
+        try
+        {
+            Invoke("PresentSetupResult", new UpgradeResult(unchecked((int)0xC0000005), "unused-setup.exe"), false);
+            throw new Exception("A failed Setup was reported as prepared.");
+        }
+        catch (TargetInvocationException ex) when (ex.InnerException is InvalidOperationException) { }
+        if (restartNotices != 1) throw new Exception("Automatic/failure/transition result requested a manual restart.");
+
         using var cancellation = new CancellationTokenSource();
         SetField("_operation", cancellation);
         Invoke("SetBusy", true);
@@ -185,7 +206,7 @@ internal static class Program
                 image.Save(Path.Combine(args[0], name));
             }
         }
-        Console.WriteLine("PASS: Automatic single consent and invalidation; persistent failure notice; language-gated download with manual alternatives; two exclusive sources; real Start/Cancel; Setup lockout; source/image/restart/folder refresh retention. No Setup launched.");
+        Console.WriteLine("PASS: Manual-restart completion notice and failure/transition exclusion; automatic single consent and invalidation; persistent notices; language-gated download; two exclusive sources; real Start/Cancel; Setup lockout; refresh retention. No Setup launched.");
         return 0;
     }
 }

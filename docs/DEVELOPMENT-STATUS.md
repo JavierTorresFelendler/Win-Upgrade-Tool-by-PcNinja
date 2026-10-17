@@ -14,6 +14,10 @@ assistant's personal memory or skills installation.
   tests require participation or work reaches Internet application self-update.
   PR #8 was squash-merged as `d2f671c263d90458eaace871b55209337ab62a24` after
   passing PR validation. Published RC5 EXE/tags remain unchanged.
+- After owner-reported Windows 10 to early Windows 11 success and renewed merge
+  authorization, PR #10 was squash-merged as
+  `3ebd17e463bd090ae16b2a74797c7ddd047ef35f`. Its CI source checkpoint was
+  `ec7830c084222cd89b91a83b55fb0c38ca3545ee` (run `39051844550`).
 - Stop for owner testing of runtime changes before promoting unverified flows.
   Do not publish the first stable release or implement/activate self-update yet.
   The owner wants a first official version, then a distinct higher-version
@@ -23,9 +27,59 @@ assistant's personal memory or skills installation.
 - Product versions remain RC5 until a separate release decision. CI artifacts
   from a development commit are test builds, not a replacement RC5 release.
 
-## Current work: automatic consent and actionable diagnostics
+## Current work: manual-restart guidance
 
-Branch: `fix/automatic-consent-and-diagnostics`, based on merged PR #8.
+Branch: `fix/manual-restart-guidance`, based on merged PR #10.
+
+- When Setup returns 0 with automatic restart disabled, show an information
+  dialog titled **Restart required** with an OK button: "Upgrade preparation is
+  complete. Restart your computer to continue the upgrade."
+- Keep the same explanation in the readiness panel through Refresh, plus a
+  waiting-for-manual-restart status. OK only dismisses the dialog; it never
+  restarts the machine. Do not display this popup for failure, cancellation,
+  unconfirmed transition or automatic-restart mode.
+- CLI prints the same instruction for successful `--no-restart`; successful
+  upgrade JSON adds `manualRestartRequired`. Existing exit codes and
+  PreparationCompleted semantics remain: exit 0 is not final migration proof.
+- Core policy tests cover both restart settings and success/failure/transition
+  codes. Client GUI tests exercise the actual completion presenter with an
+  injected information-dialog sink; no Setup or reboot is invoked. Existing
+  Core/GUI/CLI regression suites and warnings-as-errors builds still apply.
+- This is a presentation-only follow-up to the owner-tested flow; it does not
+  change Setup arguments, launch, storage or answer-file gates. Keep the prior
+  test EXE and published RC5 immutable; CI produces a separately identified EXE.
+
+## Remaining scope and explicit deferrals
+
+| Work | Current disposition |
+| --- | --- |
+| Automatic consent, download handoff and readable diagnostics | Merged in #10; broader source/language/automatic-download field matrix remains distinct from one folder upgrade |
+| Manual-restart explanation | This small follow-up; local Core/GUI/CLI tests before CI/merge |
+| Windows 10 target upgrades and equal-version repair | Not implemented; needs target-aware eligibility, actual media identity, Setup profile, help/reporting and VM tests. Current EXE rejects all Windows 10 targets |
+| Safe ISO copy/clean/detach | Owner explicitly deferred; keep design-only PR #9 Draft for the future EXE shipped inside customized ISOs. Do not merge/implement it as part of this pass |
+| General manual Inspect/Start validation reuse | Deferred pending reliable identity/invalidation design; no size/timestamp-only cache |
+| Mount ownership/eject-lock cleanup | Investigation open; no proven locking process or general safe-detach fix |
+| Internet application self-update | Separate owner checkpoint before first stable publication, then two increasing official versions for the live update test; no active updater/feed yet |
+
+### Latest owner field evidence
+
+- The owner confirms Windows 10 to early Windows 11 worked after a manual
+  restart. The corresponding app record shows original build 19043, target
+  22621 Professional, exact folder/SWM image index 1, `/noreboot`, and Setup exit
+  0 after about 14 minutes. The initial impression of a crash was not supported
+  by that attempt's app logs; root Setup preparation completed without auto-reboot.
+- This is owner-reported completion, not independent confirmation of every app
+  or file. It does not close the distinct earlier morning Appraiser crash.
+  Do not conflate old Panther logs with this later attempt.
+- An earlier Windows 10 target test first hit en-US/en-GB mismatch and unsafe
+  secondary-media gates; later it reached the hardcoded Windows 11 target gate.
+  A valid matching Windows 10 target still cannot run in the current product.
+- The log also confirms successful selected-folder Autounattend.xml deletion.
+  No raw VM logs, JSON or screenshots are committed to this public repository.
+
+## Merged source: automatic consent and actionable diagnostics
+
+Merged PR #10: `fix/automatic-consent-and-diagnostics`.
 
 - Automatic mode asks once before transfer/reuse, covering validation, compatible
   in-place upgrade and the selected restart policy. A unique matching image then
@@ -53,7 +107,8 @@ Branch: `fix/automatic-consent-and-diagnostics`, based on merged PR #8.
   Builds use warnings-as-errors. No Windows Setup was launched locally.
 - Delivery/owner acceptance: see [automatic-flow test checklist](AUTOMATIC-FLOW-TESTING.md).
   A green CI compiles GUI checks but cannot replace their Windows client run or
-  a disposable-VM upgrade. Keep this runtime PR draft until owner test feedback.
+  a disposable-VM upgrade. Owner feedback and merge authorization were received;
+  untested matrix cases remain release-validation work, not implied passes.
 
 ## Merged source: language-aware automatic download
 

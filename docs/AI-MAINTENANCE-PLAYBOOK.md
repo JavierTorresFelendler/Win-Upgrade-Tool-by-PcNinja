@@ -123,6 +123,13 @@ All paths below are relative to the repository root.
 - Root Setup process exit 0 means its current stage completed, not that all files
   and apps survived a completed migration. Record uncertain outcomes honestly and
   use post-restart build/edition observations plus owner verification.
+- When automatic restart is off, exit 0 needs an explicit manual-restart
+  instruction (GUI information dialog plus persistent notice, CLI text/JSON).
+  Do not call that a crash or a finished OS migration. Never show a restart
+  instruction as a successful next step for failure/unconfirmed transition.
+- Correlate Panther timestamps with the exact recorded attempt before diagnosis;
+  an old morning Appraiser error is not evidence that an evening exit-0 attempt
+  crashed. Keep source metadata and process outcome separate from folder names.
 - For a Setup process crash, pair the recorded attempt/source/build/index with
   Panther logs and the faulting application/module in Windows crash events.
   `0xC0000005` is an access violation, not filesystem Access Denied. Do not assign
