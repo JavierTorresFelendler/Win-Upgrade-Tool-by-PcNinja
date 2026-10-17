@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Add an owner-scoped manual Windows 10 -> Windows 10 POC using existing image
+  selection. Detect the target family from image metadata; use `/auto upgrade`
+  without `/product server` or `/eula accept`. Do not compare Windows 10 build
+  order in this experiment; let Setup decide migration eligibility, with no
+  clean/data-only fallback. Windows 11 target behavior and all other gates remain.
+- Keep automatic download Windows 11-only; expose selected Setup profile and
+  build-order policy in CLI diagnostics. Windows 10 outcome verification remains
+  manual because shared-base metadata is not an exact feature-release identity.
 - Show an OK-only manual-restart information dialog and persistent guidance after
   successful Setup preparation with automatic restart off. CLI prints the same
   action and adds `manualRestartRequired` to successful upgrade JSON; no forced

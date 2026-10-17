@@ -47,7 +47,9 @@ public static class UpgradeHistory
     }
 
     internal static UpgradeAttempt Reconcile(UpgradeAttempt attempt, CurrentWindows current, bool setupInProgress) =>
-        !setupInProgress && current.Build != attempt.OriginalBuild && current.Build == attempt.TargetBuild &&
+        // Windows 10's shared-base image metadata is not a verified feature-release
+        // target in this POC. Keep manual outcome verification instead of a false match.
+        !setupInProgress && attempt.TargetBuild >= 22000 && current.Build != attempt.OriginalBuild && current.Build == attempt.TargetBuild &&
         current.Edition.Equals(attempt.TargetEdition, StringComparison.OrdinalIgnoreCase)
             ? attempt with { State = "TargetWindowsObserved", Message = "The target Windows build and edition are now running. Verify that your files and applications are intact." }
             : attempt;

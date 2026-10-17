@@ -253,7 +253,7 @@ internal sealed class MainForm : Form
         scrollHost.Controls.Add(content);
 
         content.Controls.Add(Kicker("INSTALLATION SOURCE"));
-        content.Controls.Add(SectionHeading("Choose how Windows 11 Setup is provided"));
+        content.Controls.Add(SectionHeading("Choose Windows installation media"));
         content.Controls.Add(BodyText("Download automatically, or use installation media you already have."));
 
         _autoDownload.Text = "Download the ISO automatically";
@@ -557,7 +557,7 @@ internal sealed class MainForm : Form
     {
         using var dialog = new OpenFileDialog
         {
-            Title = "Select a Windows 11 x64 ISO",
+            Title = "Select a Windows 10 or Windows 11 x64 ISO",
             Filter = "Windows ISO images (*.iso)|*.iso",
             CheckFileExists = true,
             Multiselect = false,
@@ -728,7 +728,7 @@ internal sealed class MainForm : Form
             if (_installationImages.SelectedItem is not InstallationImage selection)
             {
                 _status.Text = compatible.Count == 0
-                    ? $"No matching image for {current.Edition}, {current.Language}. Choose matching Windows 11 media."
+                    ? $"No matching image for {current.Edition}, {current.Language}. Choose matching Windows media."
                     : "Choose an installation image above, then click START UPGRADE again.";
                 ShowOperationNotice(_status.Text);
                 return;
@@ -792,9 +792,12 @@ internal sealed class MainForm : Form
         // Consent applies only to the result returned during this automatic attempt.
         // A later manual Start, ambiguous image or changed restart policy must confirm again.
         if (ReferenceEquals(source, automaticSource) && compatibleCount == 1 &&
+            InstallationImages.GetSetupProfile(selection) == WindowsSetupProfile.Windows11 &&
             (source.Images ?? []).Contains(selection) && _autoRestart.Checked == consentedRestart) return true;
         var restart = _autoRestart.Checked ? "Windows may restart automatically." : "Restart manually when Setup is ready.";
-        return _confirmUpgrade($"{selection.Name} (image {selection.Index})\n{restart}\n\nSave your work. Start the upgrade?",
+        var targetNotice = InstallationImages.GetSetupProfile(selection) == WindowsSetupProfile.Windows10
+            ? $"\n\n{InstallationImages.Windows10Notice}" : "";
+        return _confirmUpgrade($"{selection.Name} (image {selection.Index})\n{restart}{targetNotice}\n\nSave your work. Start the upgrade?",
             "Start upgrade");
     }
 
@@ -826,10 +829,14 @@ internal sealed class MainForm : Form
         var current = CurrentWindows.Read();
         var incompatibility = _installationImages.SelectedItem is InstallationImage selected
             ? InstallationImages.GetIncompatibility(selected, current) : null;
-        _imageInfo.ForeColor = incompatibility is null ? Muted : Warning;
+        _imageInfo.ForeColor = incompatibility is not null ||
+            _installationImages.SelectedItem is InstallationImage selectedImage &&
+            InstallationImages.GetSetupProfile(selectedImage) == WindowsSetupProfile.Windows10 ? Warning : Muted;
         _imageInfo.Text = _installationImages.SelectedItem is InstallationImage image
             ? $"This PC: {current.Edition}, {current.Language}. " +
-                (incompatibility ?? $"Selected image {image.Index}: {image.Language}, {image.Architecture}, build {image.Version}.")
+                (incompatibility ?? $"Selected image {image.Index}: {image.Language}, {image.Architecture}, image version {image.Version}." +
+                    (InstallationImages.GetSetupProfile(image) == WindowsSetupProfile.Windows10
+                        ? $" {InstallationImages.Windows10Notice}" : ""))
             : $"This PC: {current.Edition}, {current.Language}. Select an image after validation.";
     }
 
@@ -909,7 +916,7 @@ internal sealed class MainForm : Form
     {
         _automaticDownloadAvailable = AutomaticDownloadPolicy.IsAvailable(language);
         _automaticDownloadInfo.Text = _automaticDownloadAvailable
-            ? $"Automatic ISO: English ({AutomaticDownloadPolicy.ImageLanguage}). Original filename preserved; download validated."
+            ? $"Automatic Windows 11 ISO: English ({AutomaticDownloadPolicy.ImageLanguage}). Original filename preserved; download validated."
             : $"Automatic download unavailable: this Windows uses {language}; the automatic ISO is {AutomaticDownloadPolicy.ImageLanguage}. " +
                 "Download matching media using the links below, then choose ISO... or Folder....";
         _automaticDownloadInfo.ForeColor = _automaticDownloadAvailable ? Muted : Warning;

@@ -228,14 +228,19 @@ internal static class CliRunner
         }
         catch (InvalidOperationException ex) { return Fail(ValidationFailed, ex.Message, options.Json); }
         var matchingImages = InstallationImages.Compatible(source, CurrentWindows.Read());
+        var previewImage = selectedImage ?? (matchingImages.Count == 1 ? matchingImages[0] : null);
+        var previewProfile = previewImage is null ? null : InstallationImages.GetSetupProfile(previewImage);
         if (!startSetup || options.DryRun)
         {
             Write(new { valid = true, isoPath = exactIsoPath, mountedRoot = source.Root, setupPath = source.SetupPath,
                     imagePath = source.ImagePath, images = source.Images, compatibleImageIndexes = matchingImages.Select(image => image.Index),
-                    selectedImageIndex = selectedImage?.Index ?? (matchingImages.Count == 1 ? matchingImages[0].Index : (int?)null) },
+                    selectedImageIndex = previewImage?.Index, setupProfile = previewProfile?.ToString(),
+                    buildOrderChecked = previewProfile is null ? (bool?)null : previewProfile != WindowsSetupProfile.Windows10,
+                    policyNotice = previewProfile == WindowsSetupProfile.Windows10 ? InstallationImages.Windows10Notice : null },
                 options.Json, $"Validation passed.\nSource: {source.Root}\nImage file: {source.ImagePath}\n" +
                 string.Join("\n", (source.Images ?? []).Select(image => image.ToString())) +
-                $"\nCompatible indexes: {string.Join(", ", matchingImages.Select(image => image.Index))}");
+                $"\nCompatible indexes: {string.Join(", ", matchingImages.Select(image => image.Index))}" +
+                (previewProfile == WindowsSetupProfile.Windows10 ? $"\n{InstallationImages.Windows10Notice}" : ""));
             return Success;
         }
 
@@ -243,7 +248,9 @@ internal static class CliRunner
         {
             if (Console.IsInputRedirected)
                 return Fail(Cancelled, "Confirmation is required. Re-run interactively or add --yes.", options.Json);
-            Console.Error.WriteLine("WARNING: This uses an experimental unsupported-hardware upgrade method.");
+            Console.Error.WriteLine(InstallationImages.GetSetupProfile(selectedImage!) == WindowsSetupProfile.Windows10
+                ? $"WARNING: {InstallationImages.Windows10Notice}"
+                : "WARNING: This uses an experimental unsupported-hardware upgrade method.");
             Console.Error.WriteLine($"Image {selectedImage!.Index}: {selectedImage.Name}");
             Console.Error.WriteLine(options.NoRestart
                 ? "Automatic restart is disabled."
@@ -266,6 +273,8 @@ internal static class CliRunner
                 $"Windows Setup stopped with exit code {result.ExitCode}. No forced restart was issued.", options.Json);
         Write(new { started = true, setupExitCode = result.ExitCode, automaticRestart = !options.NoRestart,
                 manualRestartRequired = result.NeedsManualRestartNotice(!options.NoRestart),
+                setupProfile = InstallationImages.GetSetupProfile(selectedImage)?.ToString(),
+                buildOrderChecked = InstallationImages.GetSetupProfile(selectedImage) != WindowsSetupProfile.Windows10,
                 isoPath = exactIsoPath, mountedRoot = source.Root, imageIndex = selectedImage.Index,
                 outcome = "PreparationCompleted" },
             options.Json, result.NeedsManualRestartNotice(!options.NoRestart)

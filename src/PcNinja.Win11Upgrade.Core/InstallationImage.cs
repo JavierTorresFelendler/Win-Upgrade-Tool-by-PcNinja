@@ -5,6 +5,8 @@ using Microsoft.Win32;
 
 namespace PcNinja.Win11Upgrade.Core;
 
+public enum WindowsSetupProfile { Windows10, Windows11 }
+
 public sealed record InstallationImage(int Index, string Name, string Edition, string Architecture,
     string Version, string InstallationType, string Language)
 {
@@ -29,6 +31,25 @@ public sealed record CurrentWindows(string Edition, string Language, int Build)
 
 public static class InstallationImages
 {
+    public const string Windows10Notice = "Experimental Windows 10 path: build order is not checked. " +
+        "Windows Setup must allow keeping apps and files; otherwise stop. No clean-install fallback.";
+
+    public static WindowsSetupProfile? GetSetupProfile(InstallationImage image)
+    {
+        if (!image.InstallationType.Equals("Client", StringComparison.OrdinalIgnoreCase) ||
+            !System.Version.TryParse(image.Version, out var version) || version.Major != 10 || version.Minor != 0)
+            return null;
+        if (version.Build is >= 10240 and <= 19045) return WindowsSetupProfile.Windows10;
+        return version.Build >= 22000 ? WindowsSetupProfile.Windows11 : null;
+    }
+
+    internal static void EnsureAutomaticWindows11Source(MountedSource source)
+    {
+        if ((source.Images ?? []).Any(image => GetSetupProfile(image) == WindowsSetupProfile.Windows10))
+            throw new InvalidOperationException("Automatic download is for Windows 11 only. " +
+                "For Windows 10, choose an existing ISO or installation folder.");
+    }
+
     public static IReadOnlyList<InstallationImage> Compatible(MountedSource source, CurrentWindows current) =>
         (source.Images ?? []).Where(image => GetIncompatibility(image, current) is null).ToArray();
 
@@ -40,8 +61,17 @@ public static class InstallationImages
         if (!image.Edition.Equals(current.Edition, StringComparison.OrdinalIgnoreCase)) return "The edition does not match this Windows installation.";
         if (!image.Language.Equals(current.Language, StringComparison.OrdinalIgnoreCase))
             return $"Language mismatch: this Windows installation uses {current.Language}, but the image uses {image.Language}. " +
-                "Choose Windows 11 media with the same system UI language; changing the keyboard language is not enough.";
-        if (!System.Version.TryParse(image.Version, out var version) || version.Build < 22000 || version.Build < current.Build)
+                "Choose Windows media with the same system UI language; changing the keyboard language is not enough.";
+        var profile = GetSetupProfile(image);
+        if (profile is null) return "The image is not a recognized Windows 10 or Windows 11 client image.";
+        if (profile == WindowsSetupProfile.Windows10)
+        {
+            // Owner-approved POC: let Setup decide build-order/migration eligibility.
+            // Keep the family boundary: this does not enable Windows 11 -> Windows 10.
+            return current.Build is >= 10240 and <= 19045 ? null
+                : "The experimental Windows 10 target requires a Windows 10 computer. Windows 11 to Windows 10 is blocked.";
+        }
+        if (System.Version.Parse(image.Version).Build < current.Build)
             return "The image is not an equal-or-newer Windows 11 build.";
         return null;
     }
@@ -60,7 +90,7 @@ public static class InstallationImages
         var candidates = Compatible(source, current);
         if (candidates.Count == 1) return candidates[0];
         throw new InvalidOperationException(candidates.Count == 0
-            ? $"No matching upgrade image was found for {current.Edition}, {current.Language}, x64. Choose matching Windows 11 media."
+            ? $"No matching upgrade image was found for {current.Edition}, {current.Language}, x64. Choose matching Windows media."
             : "More than one matching image was found. Select an image index before starting Setup.");
     }
 

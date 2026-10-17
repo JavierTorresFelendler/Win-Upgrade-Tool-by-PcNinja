@@ -27,9 +27,43 @@ assistant's personal memory or skills installation.
 - Product versions remain RC5 until a separate release decision. CI artifacts
   from a development commit are test builds, not a replacement RC5 release.
 
-## Current work: manual-restart guidance
+## Current work: owner-scoped manual Windows 10 POC
 
-Branch: `fix/manual-restart-guidance`, based on merged PR #10.
+Branch: `feature/windows10-target-upgrades`, based on merged PR #11
+(`e356cca0d5cb71cddca550a807e1ff8815b62d82`). Published RC5 and prior test EXEs
+are unchanged. PR #11 CI was `39058458738`, source `f4443b7`.
+
+- The owner explicitly narrowed the experiment: reuse image selection, recognize
+  Windows 10 and select the appropriate command, without determining older/equal/
+  newer Windows 10 versions. This supersedes the stricter target-build plan;
+  it does not authorize automatic media extraction, downgrade promises or clean
+  installation. No offline-hive extraction/version resolver was added.
+- Core recognizes client Windows 10 image metadata (10.0 builds 10240-19045),
+  reuses the exact source/index and standard `/auto upgrade` profile without
+  `/product server` or `/eula accept`. Windows 11 keeps the old profile and build
+  comparison. Windows 11 -> 10 and unsupported families remain blocked.
+- Windows 10 trials require manual ISO/mounted/extracted/network media. Shared
+  download validation refuses Windows 10 images, including mixed media; the
+  existing automatic source is Windows 11 only in both GUI and CLI.
+- Preserve edition/UI-language/x64, signature/DISM, storage, answer-file and final
+  prelaunch gates. Setup must approve keeping apps/files or refuse; no quiet,
+  clean, data-only, disk selection or forced-reboot fallback is introduced.
+- GUI shows the experimental policy beside the image and in manual confirmation.
+  CLI help/validation/dry-run expose `setupProfile`, `buildOrderChecked` and a
+  policy notice, with profile/order also in successful upgrade JSON.
+- Windows 10 raw image build is not a verified feature-release target. Existing
+  history fields remain, but Windows 10 attempts cannot automatically become
+  TargetWindowsObserved. Exit 0 still means preparation only; verify manually.
+- Local Core/GUI/CLI tests cover accepted older/equal/newer Windows 10 fixtures,
+  cross-family and metadata rejection, exact WIM/ESD/SWM arguments/restart policy,
+  automatic-source blocking, Windows 11 regression and confirmation warnings.
+  No Windows Setup was run on the developer. CI and disposable owner VM tests
+  precede promotion of this changed upgrade flow; keep its PR Draft for testing.
+- Acceptance and rollback: [Windows 10 POC checklist](WINDOWS10-POC.md). Preserve
+  an old known-good EXE and VM snapshot; report code/log evidence without posting
+  raw customer data. Stable/self-update holds and deferred PR #9 are unchanged.
+
+## Merged source: manual-restart guidance (PR #11)
 
 - When Setup returns 0 with automatic restart disabled, show an information
   dialog titled **Restart required** with an OK button: "Upgrade preparation is
@@ -54,8 +88,8 @@ Branch: `fix/manual-restart-guidance`, based on merged PR #10.
 | Work | Current disposition |
 | --- | --- |
 | Automatic consent, download handoff and readable diagnostics | Merged in #10; broader source/language/automatic-download field matrix remains distinct from one folder upgrade |
-| Manual-restart explanation | This small follow-up; local Core/GUI/CLI tests before CI/merge |
-| Windows 10 target upgrades and equal-version repair | Not implemented; needs target-aware eligibility, actual media identity, Setup profile, help/reporting and VM tests. Current EXE rejects all Windows 10 targets |
+| Manual-restart explanation | Merged #11; Core/GUI/CLI tests and CI passed |
+| Windows 10 target upgrades and equal-version repair | Experimental manual POC on the current branch; no Windows 10 build-order comparison by explicit owner request; CI and VM acceptance pending, not yet in published RC5 |
 | Safe ISO copy/clean/detach | Owner explicitly deferred; keep design-only PR #9 Draft for the future EXE shipped inside customized ISOs. Do not merge/implement it as part of this pass |
 | General manual Inspect/Start validation reuse | Deferred pending reliable identity/invalidation design; no size/timestamp-only cache |
 | Mount ownership/eject-lock cleanup | Investigation open; no proven locking process or general safe-detach fix |
