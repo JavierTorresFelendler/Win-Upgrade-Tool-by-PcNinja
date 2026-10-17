@@ -2,6 +2,10 @@
 
 Updated: 2026-10-17. This is sanitized project context, not a backup of Codex chats.
 
+Reusable architecture, diagnosis and verification know-how lives in
+[AI maintenance playbook](AI-MAINTENANCE-PLAYBOOK.md), independently of any
+assistant's personal memory or skills installation.
+
 ## Published baseline and release hold
 
 - Published baseline: `v1.1.0-rc.5`, source commit
@@ -48,8 +52,12 @@ Passed locally on Windows 11, without launching Windows Setup:
 - Debug builds of GUI and Core test projects with warnings treated as errors:
   zero warnings/errors. No distributable release was produced.
 
-Still required: PR CI for the pushed commit and owner field tests with matching
-non-English media. Synthetic metadata acceptance is not a real upgrade result.
+GitHub PR validation passed for source checkpoint
+`2d471e39e01c3fc16449fccd8032ceadf8a91205` in Draft PR #8, run
+`39003768728`. A later documentation checkpoint has its own CI run; verify the
+current head rather than treating this result as approval for another commit.
+Owner field tests with matching non-English media are still required. Synthetic
+metadata acceptance is not a real upgrade result.
 
 ## Recent owner evidence and pending follow-up
 
@@ -71,7 +79,8 @@ non-English media. Synthetic metadata acceptance is not a real upgrade result.
 
 ## Resume procedure
 
-1. Read `AGENTS.md`, this document, the current branch and its Draft PR.
+1. Read `AGENTS.md`, the AI maintenance playbook, this document, the current branch
+   and its Draft PR.
 2. Inspect current git status and CI; do not assume a previous test applies to a
    different commit or that a conversation summary is release authorization.
 3. Keep owner-reported field evidence separate from automated/synthetic checks.

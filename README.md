@@ -8,6 +8,13 @@ in-place Windows 11 upgrade on unsupported x64 hardware.
 > compatibility behavior with Windows client Setup. Back up important files
 > before using it. Microsoft can change this behavior in future releases.
 
+## AI-assisted maintenance
+
+For AI-assisted maintenance, start with [AGENTS.md](AGENTS.md), the
+[AI maintenance playbook](docs/AI-MAINTENANCE-PLAYBOOK.md), and the
+[current development handoff](docs/DEVELOPMENT-STATUS.md). These files preserve
+project-specific decisions and working procedures across assistants and machines.
+
 ## Download
 
 Download the latest prerelease from the repository's **Releases** page:

@@ -1,5 +1,12 @@
 # Repository working agreement
 
+## Start here (any AI coding assistant)
+
+Read this file, `docs/AI-MAINTENANCE-PLAYBOOK.md`, and
+`docs/DEVELOPMENT-STATUS.md` before making changes. These repository files carry
+the project's reusable know-how across assistants and machines. Do not assume
+access to prior chats, local Codex skills, personal memories, or machine paths.
+
 ## Remote checkpoints
 
 - Keep approved development on a dedicated branch, never directly on `main`.
@@ -20,6 +27,12 @@
 - Keep repository documentation in English. The conversation may be in Hebrew.
 - Update `docs/DEVELOPMENT-STATUS.md` with implemented scope, verification,
   remaining work and release holds when these materially change.
+- When an investigation produces a validated, reusable lesson, update
+  `docs/AI-MAINTENANCE-PLAYBOOK.md` in the same PR. Preserve the reason, safe
+  procedure, verification and limitations, not just a summary that a fix worked.
+- Put temporary test results and pending hypotheses in the development handoff,
+  not in the permanent playbook as established facts. Do not silently overwrite
+  a decision; record why its replacement is needed and what evidence supports it.
 - Preserve decisions and sanitized acceptance evidence, not full conversations,
   personal Codex memories, credentials, ISOs, or raw customer logs/screenshots.
   This repository is public; inspect the staged diff before each push.
