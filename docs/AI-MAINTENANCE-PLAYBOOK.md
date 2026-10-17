@@ -122,6 +122,13 @@ All paths below are relative to the repository root.
   a root cause from that generic exception code or assume the supplied ISO is
   corrupt. Preserve evidence before retrying, and distinguish an earlier mount
   failure from a later successfully launched Setup process in the same log.
+- Local signature/image-metadata/hash validation is not Windows Setup's later
+  application/driver compatibility scan. An Appraiser crash after those local
+  checks identifies a different validation layer; do not remove that layer to
+  optimize away repeated work. Correlate the final exception with its phase;
+  earlier nonfatal Error entries or adjacent inventory messages are not
+  automatically root causes. A changed target Setup build is a changed test
+  variable, not proof that a previously failing ISO was corrupt.
 - Build >= 22000 identifies Windows 11 in this client's display normalization;
   registry ProductName alone can still say Windows 10. Keep Server detection separate.
 

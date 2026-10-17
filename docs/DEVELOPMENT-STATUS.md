@@ -164,6 +164,46 @@ metadata acceptance is not a real upgrade result.
   [Access violation](https://learn.microsoft.com/en-us/shows/inside/c0000005),
   [InstallFrom](https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/windows-setup-command-line-options#installfrom).
 
+### Panther follow-up: crash narrowed to compatibility appraisal
+
+- The owner supplied Setup's setupact/setuperr logs from the same failed attempt;
+  they end at 09:33:08, immediately before the assistant's recorded process exit.
+  The test VM is already undergoing another upgrade; do not request interruption
+  or run diagnostic repair/cleanup while that upgrade is active.
+- SetupHost identifies media Setup build 10.0.22621.1, host Professional x64 build
+  19043, host/default media UI language en-US, the selected folder/SWM source and
+  the requested automatic-upgrade command. This is not a logged language mismatch
+  or a failure to launch Setup.
+- At 09:33:08, CONX/Appraiser records ShimExceptionHandler exception 0xc0000005,
+  repeated eight times with the same exception address. Immediately beforehand,
+  application inventory reports completion (98 apps / 324 files), then the
+  appraisal path crashes. Repeated lines are not proof of eight upgrade attempts.
+  The reported module name is empty, so the precise faulting binary/stack remains
+  unknown. This narrows the failing subsystem, not the final root cause.
+- Earlier SdbpGetMergeSdbsDisabled [c0000034] messages are investigation clues,
+  not independently demonstrated causes: the initial requirements appraisal
+  subsequently completes with NoIssue. Similarly, the last driver-coverage line
+  before an exception does not establish that driver coverage caused the crash.
+- The supplied logs do not show a CRC/checksum failure, image decompression error,
+  or a confirmed corrupt SWM part. They do not prove that media is intact either.
+  File-not-found inventory messages for installed apps and early optional-footprint
+  warnings must not be presented as proof of a damaged ISO without correlation.
+- The existing signature/DISM/hash checks are distinct from Windows' later
+  application/driver compatibility appraisal. Preserve both safety layers; do not
+  remove Appraiser files, reinterpret the crash as success, or use clean-install
+  fallback to get past it. No product code/arguments were changed.
+- Future controlled comparison: reuse a VM snapshot with the exact same source
+  system and a verified complete media set, changing one factor at a time.
+  Capture compatibility XML and a crash event/dump if it recurs. Success with a
+  different target Setup build alone cannot prove corruption of the old ISO.
+- Dynamic Update was disabled in the recorded command. Microsoft documents that
+  Dynamic Update can refresh Setup/compatibility data, but this does not prove
+  that disabling it caused this crash. Any such experiment needs separate owner
+  authorization and unsupported-hardware regression testing; do not flip the
+  current default or silently modify the owner's ISO.
+- Reference: [Compatibility scan logs](https://learn.microsoft.com/en-us/troubleshoot/windows-client/setup-upgrade-and-drivers/use-windows-setup-compatibility-scan-logs-to-identify-blocking-issues),
+  [Setup Dynamic Update](https://learn.microsoft.com/en-us/windows/deployment/update/media-dynamic-update).
+
 ### Earlier findings
 
 - Future safe-media preparation is recorded separately in
