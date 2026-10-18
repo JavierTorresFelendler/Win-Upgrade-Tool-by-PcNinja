@@ -20,10 +20,10 @@ later upgrades do not establish their original root causes or resolve every case
 | Order | PR/work item | Acceptance boundary |
 | --- | --- | --- |
 | 1 | PR #8 merged as the next source baseline | Completed; squash d2f671c; published RC5 unchanged |
-| 2 | Automatic-flow and diagnostics PR #10 | Merged after CI and owner feedback; add a separate small manual-restart explanation follow-up without changing Setup launch |
-| 3 | A separate target-aware Windows 10 / same-version repair PR | Not implemented; finite supported test matrix, actual media identity, correct target Setup arguments, no downgrade/clean fallback; matching manual media first |
+| 2 | Automatic-flow PR #10 and manual-restart PR #11 | Both merged after CI; retain the separate recovery checkpoints |
+| 3 | Windows 10 POC in Draft PR #12 | Runtime source bdaee5e; first owner trial reportedly passed, another image under test. No intra-Windows-10 build-order comparison by owner request; no clean fallback |
 | Deferred | Design PR #9 safe-media preparation | Owner explicitly postponed this for the future in-ISO EXE; keep Draft, no runtime change or merge in the current pass |
-| 5 | A separate application self-update PR | Versioned release manifest, verified portable download, channel separation, no update during active upgrade; failure preserves old EXE |
+| 5 | Application self-update design | Proposed in design/APPLICATION-UPDATES.md; no runtime/feed/release change. Implementation and live version-pair test require their own owner checkpoint |
 
 Do not wait for every future feature to merge a useful tested improvement. Each
 runtime PR gets CI and a commit-identified test EXE; changed upgrade flows need
@@ -62,6 +62,13 @@ but must not change the executable currently being evaluated.
   fallback/change invalidates consent, no double-click launches, safety still blocks.
 
 ## Windows 10 targets and same-version repair
+
+**Historical stricter proposal below, superseded for the current POC.** The owner
+subsequently requested only family detection and command selection, delegating
+older/equal/newer Windows 10 migration eligibility to Setup. That scoped runtime
+is in Draft PR #12, not this documentation branch. Do not implement the old
+lower-build rejection/exact-version resolver from the following planning text
+as if it were still the current requirement. Windows 11 -> 10 remains blocked.
 
 There is no Windows 10 22H1 release. The proposed first Windows 10 target is
 22H2 (build 19045), using matching client x64 edition/system-UI-language media.
