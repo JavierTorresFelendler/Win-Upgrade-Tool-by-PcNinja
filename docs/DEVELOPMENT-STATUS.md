@@ -1,6 +1,6 @@
 # Development handoff
 
-Updated: 2026-10-17. This is sanitized project context, not a backup of Codex chats.
+Updated: 2026-10-18. This is sanitized project context, not a backup of Codex chats.
 
 Reusable architecture, diagnosis and verification know-how lives in
 [AI maintenance playbook](AI-MAINTENANCE-PLAYBOOK.md), independently of any
@@ -27,9 +27,39 @@ assistant's personal memory or skills installation.
 - Product versions remain RC5 until a separate release decision. CI artifacts
   from a development commit are test builds, not a replacement RC5 release.
 
-## Current work: manual-restart guidance
+## Current checkpoint: Windows 10 testing and app-update planning
 
-Branch: `fix/manual-restart-guidance`, based on merged PR #10.
+- Main includes PR #11, squash `e356cca0d5cb71cddca550a807e1ff8815b62d82`.
+  The current planning branch is `design/application-updates`, based on main;
+  it changes documentation only, not the EXE under owner testing.
+- Windows 10 runtime support is in **Draft PR #12**, source
+  `bdaee5ebf896bbe3f7ac655e7e813d1dfd41ea17`, CI `39060880094`. It is not
+  merged into main or present in this planning branch's runtime source.
+- On 2026-10-18 the owner reported the first Windows 10 -> Windows 10 trial
+  successful; a second image trial is in progress. Exact builds/index, restart
+  policy and explicit apps/files verification were not supplied in this update.
+  Do not claim the full matrix, same-version repair or older-image behavior passed.
+- Keep PR #12 Draft, its source and test EXE unchanged until feedback. No merge,
+  first stable publication or active updater/feed is authorized by this report.
+- [Application update design](design/APPLICATION-UPDATES.md) is proposed only:
+  automatic nonblocking discovery, consented verified portable update/recovery,
+  no replacement during OS upgrade, and owner-led two-stable-version testing.
+- Remaining requested work beyond self-update: finish PR #12 field tests/merge;
+  general manual Inspect/Start validation reuse with safe identity/invalidation;
+  investigate app-created mount cleanup/eject locks; owner wording review using
+  UI-MESSAGES.md. Safe-media copy/clean/detach remains deliberately deferred in
+  design-only PR #9 for the future in-ISO EXE, with later WinUpdate integration
+  a distinct product task. Do not turn optional catalog/localization ideas into
+  immediate release requirements or reintroduce Windows 10 build-order checks.
+- Release preparation also needs stable-capable packaging, centralized version
+  identity, final regression evidence and a signing/disclosure decision. These
+  are engineering release prerequisites/recommendations, not newly requested UI
+  features. Published RC5 remains unchanged. Older notes below are historical
+  checkpoints; verify live PR state rather than reading them as current holds.
+
+## Merged source: manual-restart guidance (PR #11)
+
+Merged from `fix/manual-restart-guidance`, based on PR #10.
 
 - When Setup returns 0 with automatic restart disabled, show an information
   dialog titled **Restart required** with an OK button: "Upgrade preparation is
@@ -54,12 +84,12 @@ Branch: `fix/manual-restart-guidance`, based on merged PR #10.
 | Work | Current disposition |
 | --- | --- |
 | Automatic consent, download handoff and readable diagnostics | Merged in #10; broader source/language/automatic-download field matrix remains distinct from one folder upgrade |
-| Manual-restart explanation | This small follow-up; local Core/GUI/CLI tests before CI/merge |
-| Windows 10 target upgrades and equal-version repair | Not implemented; needs target-aware eligibility, actual media identity, Setup profile, help/reporting and VM tests. Current EXE rejects all Windows 10 targets |
+| Manual-restart explanation | Merged #11; Core/GUI/CLI tests and CI passed |
+| Windows 10 target upgrades and equal-version repair | Runtime POC in Draft #12, not main; first trial reportedly passed, second image under test; Windows 10 build ordering intentionally delegated to Setup |
 | Safe ISO copy/clean/detach | Owner explicitly deferred; keep design-only PR #9 Draft for the future EXE shipped inside customized ISOs. Do not merge/implement it as part of this pass |
 | General manual Inspect/Start validation reuse | Deferred pending reliable identity/invalidation design; no size/timestamp-only cache |
 | Mount ownership/eject-lock cleanup | Investigation open; no proven locking process or general safe-detach fix |
-| Internet application self-update | Separate owner checkpoint before first stable publication, then two increasing official versions for the live update test; no active updater/feed yet |
+| Internet application self-update | Design only in design/APPLICATION-UPDATES.md; first stable must already contain the future updater, then test a higher official version with owner participation; no active feed/updater yet |
 
 ### Latest owner field evidence
 

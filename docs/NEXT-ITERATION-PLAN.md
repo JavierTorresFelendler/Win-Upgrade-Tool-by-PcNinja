@@ -1,7 +1,8 @@
 # Proposed next iteration and PR sequence
 
-Status: staged execution authorized by the owner on 2026-10-17. PRs #8 and #10
-merged; manual-restart guidance is the next small follow-up. Stop for owner VM
+Status: updated 2026-10-18. PRs #8, #10 and #11 are merged. Windows 10 runtime
+POC is in Draft #12; its first owner trial reportedly passed and another image is
+under test. This branch adds app-update design only. Stop for owner VM
 tests when needed. Stable publication and Internet self-update remain a separate
 owner checkpoint; no published RC5 asset replacement is authorized.
 
@@ -100,6 +101,12 @@ fixtures together in Core-driven operations. Automatic download remains the
 configured Windows 11 en-US source; adding a Windows 10 catalog is separate work.
 
 ## Application self-update (separate from OS upgrade)
+
+The owner requested planning, not activation while PR #12 is under test. See
+[the scoped design and two-stable-release acceptance plan](design/APPLICATION-UPDATES.md).
+The first official version must already include the future updater; only then
+can it be tested against a higher official version. Version numbers in the design
+are examples, not approved tags. No live manifest or release workflow is changed.
 
 - Reuse the existing PcNinja release-manifest approach, adapted for this .NET
   portable product; do not copy MSI replacement behavior into a portable EXE.
