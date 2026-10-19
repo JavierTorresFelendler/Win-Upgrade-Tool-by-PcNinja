@@ -14,7 +14,7 @@ internal static class CliRunner
     internal const int Cancelled = 6;
     internal const int SetupFailed = 7;
     internal const int OutcomeUnconfirmed = 8;
-    private const string Version = CliHelp.Version;
+    private static readonly string Version = CliHelp.Version;
     private static volatile bool _setupRunning;
 
     public static async Task<int> RunAsync(string[] args)
@@ -45,7 +45,7 @@ internal static class CliRunner
                     return Fail(InvalidArguments,
                         "Usage: completion powershell. Run 'help completion' for setup instructions.", false);
                 var executableName = Path.GetFileName(Environment.ProcessPath)
-                    ?? "PcNinja-Win11-Upgrade-Assistant-RC5.exe";
+                    ?? "Windows-Upgrade-Assistant-By-PcNinja.exe";
                 Console.WriteLine(CliHelp.GetPowerShellCompletion(executableName));
                 return Success;
             }
@@ -91,6 +91,7 @@ internal static class CliRunner
         var value = new
         {
             version = Version,
+            build = ProductIdentity.BuildVersion,
             operatingSystem = engine.GetOperatingSystemDescription(),
             upgradeSupported = supportError is null,
             supportError,
@@ -105,7 +106,7 @@ internal static class CliRunner
             previousUpgrade = UpgradeHistory.ReadStatus()
         };
         Write(value, json,
-            $"PcNinja Windows 11 Upgrade Assistant {Version}\n" +
+            $"{ProductIdentity.Name}\n" +
             $"OS: {value.operatingSystem}\nUpgrade supported: {value.upgradeSupported}" +
             (supportError is null ? "" : $" ({supportError})") +
             $"\nSystem UI language: {language}\nAutomatic download available: {value.automaticDownloadAvailable}" +

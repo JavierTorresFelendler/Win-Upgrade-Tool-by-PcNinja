@@ -1,6 +1,6 @@
 # Development handoff
 
-Updated: 2026-10-17. This is sanitized project context, not a backup of Codex chats.
+Updated: 2026-10-19. This is sanitized project context, not a backup of Codex chats.
 
 Reusable architecture, diagnosis and verification know-how lives in
 [AI maintenance playbook](AI-MAINTENANCE-PLAYBOOK.md), independently of any
@@ -27,7 +27,45 @@ assistant's personal memory or skills installation.
 - Product versions remain RC5 until a separate release decision. CI artifacts
   from a development commit are test builds, not a replacement RC5 release.
 
-## Current work: owner-scoped manual Windows 10 POC
+## Current follow-up: product identity and read-only rollback diagnostics
+
+- Branch `feature/upgrade-outcome-and-branding` is stacked on unchanged Windows
+  10 PR #12 source `bdaee5e`. Its PR targets that feature branch. Do not merge it
+  into the frozen owner test source while tests are in progress.
+- Owner confirmed Windows 10 Pro **21H1 (19043) -> 22H2 (19045)**, including
+  intact working apps/files. App logs show manual extracted-folder ESD index 1,
+  `/noreboot` and preparation exit 0; owner supplied post-restart system info.
+  This is not automatic-download coverage or proof of every Windows 10 path.
+- A distinct failed trial has completed rollback **0x800700B7 - 0x2000A**:
+  ReAgentOld.xml collision during Safe OS relocation. Neither media corruption
+  nor the origin of the duplicate is established. Raw VM logs are not committed.
+- Core reads bounded, correlated Panther/Rollback evidence and exposes
+  `RollbackObserved`/`SetupFailure` in existing GUI notices/details and CLI status.
+  No Recovery cleanup, Setup argument change or forced reboot. Missing or
+  uncorrelated evidence stays unknown. Last-Upgrade.json keeps process-stage
+  evidence; status computes the observation without overwriting that file.
+- Display name: **Windows Upgrade Assistant By PcNinja**. Fixed upcoming EXE/
+  Release asset: `Windows-Upgrade-Assistant-By-PcNinja.exe`. No GUI RC/version
+  branding; metadata/startup log/explicit CLI diagnostics retain release/commit
+  identity. Historical RC5 assets and the PR #12 test EXE stay unchanged.
+- Core, Windows client GUI and read-only CLI checks passed locally, including
+  warnings-as-errors builds, bounded UTF-8/UTF-16 and stale/source/index/active
+  Setup fixtures, persistent notices and branding. CI and owner acceptance of
+  this follow-up remain separate gates. No actual Windows Setup was run locally.
+- Owner wants popup/flow cleanup before exact wording review. Do not remove
+  safety/confirmation dialogs or add a wizard as part of this change.
+- ISO copy/extraction/clean/detach is **outside this standalone project**, for
+  another product/variation. PR #9 is reusable design context, not a required
+  outstanding standalone feature. Do not implement or merge it here.
+- PR #13 (`design/application-updates`) is design only for updating this EXE
+  through verified GitHub Release assets, not Windows OS updates. No updater,
+  feed, stable tag or Internet replacement is activated. Its design is not part
+  of this stacked branch. No merge/release has been performed.
+- Details: [product identity](PRODUCT-IDENTITY.md) and
+  [outcome diagnostics](SETUP-OUTCOME-DIAGNOSTICS.md). Older sections below are
+  historical checkpoints, not renewed authorization for deferred features.
+
+## Previous checkpoint: owner-scoped manual Windows 10 POC
 
 Branch: `feature/windows10-target-upgrades`, based on merged PR #11
 (`e356cca0d5cb71cddca550a807e1ff8815b62d82`). Published RC5 and prior test EXEs

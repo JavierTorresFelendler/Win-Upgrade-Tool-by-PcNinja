@@ -25,6 +25,11 @@ foreach ($option in @('--mounted', '--iso', '--download', '--image-index', '--sh
 }
 $status = (Invoke-Assistant @('status', '--json')) | ConvertFrom-Json
 if ($LastCode -ne 0 -or -not $status.operatingSystem -or -not $status.version) { throw 'Status JSON failed.' }
+if (-not $status.build -or -not $status.build.StartsWith($ExpectedVersion)) { throw 'Build provenance missing.' }
+if (-not $help.Contains('RollbackObserved') -or -not $help.Contains('SetupFailure')) { throw 'Rollback help missing.' }
+if ((Get-Item -LiteralPath $exe).VersionInfo.ProductName -ne 'Windows Upgrade Assistant By PcNinja') {
+    throw 'Product metadata branding mismatch.'
+}
 if (-not $status.systemUiLanguage -or $null -eq $status.automaticDownloadAvailable) { throw 'Language availability missing from status.' }
 $automaticExpected = $status.systemUiLanguage -ieq 'en-US'
 if ($status.automaticDownloadAvailable -ne $automaticExpected) { throw 'Incorrect automatic download language policy in status.' }

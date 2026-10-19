@@ -2,7 +2,7 @@ namespace PcNinja.Win11UpgradeAssistant;
 
 internal static class CliHelp
 {
-    internal const string Version = "1.1.0-rc.5";
+    internal static string Version => ProductIdentity.Version;
 
     private static readonly string[] Topics =
         ["status", "scan", "validate", "upgrade", "log-path", "completion"];
@@ -73,15 +73,15 @@ internal static class CliHelp
     };
 
     private const string General = """
-PcNinja Windows 11 Upgrade Assistant 1.1.0-rc.5
+Windows Upgrade Assistant By PcNinja
 
 The graphical interface opens when the EXE is started without arguments.
 Supplying a command starts CLI mode.
 
 Usage:
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe <command> [options]
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe help <command>
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe <command> --help
+  Windows-Upgrade-Assistant-By-PcNinja.exe <command> [options]
+  Windows-Upgrade-Assistant-By-PcNinja.exe help <command>
+  Windows-Upgrade-Assistant-By-PcNinja.exe <command> --help
 
 Commands:
   status       Show Windows, storage, administrator, and log information.
@@ -89,7 +89,7 @@ Commands:
   validate     Validate one exact ISO file or mounted Windows source.
   upgrade      Validate a source and start Windows Setup after confirmation.
   log-path     Print the application log path.
-  completion   Generate shell completion code. RC5 supports PowerShell.
+  completion   Generate shell completion code. PowerShell completion is supported.
   help         Show general help or detailed help for one command.
 
 Global options:
@@ -98,10 +98,10 @@ Global options:
   --version       Show the application version.
 
 Learn more:
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe help validate
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe help upgrade
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe help completion
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe help all
+  Windows-Upgrade-Assistant-By-PcNinja.exe help validate
+  Windows-Upgrade-Assistant-By-PcNinja.exe help upgrade
+  Windows-Upgrade-Assistant-By-PcNinja.exe help completion
+  Windows-Upgrade-Assistant-By-PcNinja.exe help all
 
 Exit codes:
   0  Success
@@ -126,10 +126,13 @@ space on the Windows drive, administrator state, log path, and the previous
 upgrade attempt. TargetWindowsObserved confirms only the running build/edition,
 not preservation of personal files or applications.
 Also reports the system UI language and automatic-download availability/reason.
+JSON includes the complete build identity. RollbackObserved and SetupFailure
+report a correlated completed Windows Setup rollback, including its result and
+extended codes. Missing, stale or incomplete logs do not prove success/failure.
 
 Usage:
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe status
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe status --json
+  Windows-Upgrade-Assistant-By-PcNinja.exe status
+  Windows-Upgrade-Assistant-By-PcNinja.exe status --json
 
 This command does not require Administrator permission and can report an
 unsupported Windows Server or LTSC host without attempting an upgrade.
@@ -141,8 +144,8 @@ COMMAND: scan
 Rescan sources without changing the computer. Aliases: refresh, rescan.
 
 Usage:
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe scan
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe scan --json
+  Windows-Upgrade-Assistant-By-PcNinja.exe scan
+  Windows-Upgrade-Assistant-By-PcNinja.exe scan --json
 
 The output contains:
   Local ISO files          Suitable .iso files found beside the application.
@@ -150,9 +153,9 @@ The output contains:
   Download locations      Ready fixed or removable drives and free space.
 
 Example workflow for a mounted ISO:
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe scan
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe validate --mounted E:\
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe upgrade --mounted E:\ --no-restart
+  Windows-Upgrade-Assistant-By-PcNinja.exe scan
+  Windows-Upgrade-Assistant-By-PcNinja.exe validate --mounted E:\
+  Windows-Upgrade-Assistant-By-PcNinja.exe upgrade --mounted E:\ --no-restart
 
 This command does not require Administrator permission.
 """;
@@ -163,14 +166,14 @@ COMMAND: validate
 Validate exactly one installation source without starting Windows Setup.
 
 Usage:
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe validate --iso <exact-iso-path> [--sha256 <hash>] [--image-index <index>] [--json]
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe validate --mounted <drive-or-folder> [--image-index <index>] [--json]
+  Windows-Upgrade-Assistant-By-PcNinja.exe validate --iso <exact-iso-path> [--sha256 <hash>] [--image-index <index>] [--json]
+  Windows-Upgrade-Assistant-By-PcNinja.exe validate --mounted <drive-or-folder> [--image-index <index>] [--json]
 
 Examples:
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe validate --iso "D:\ISO\Windows11.iso"
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe validate --mounted E:\
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe validate --mounted "C:\Win11 Extracted"
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe validate --mounted E:\ --json
+  Windows-Upgrade-Assistant-By-PcNinja.exe validate --iso "D:\ISO\Windows11.iso"
+  Windows-Upgrade-Assistant-By-PcNinja.exe validate --mounted E:\
+  Windows-Upgrade-Assistant-By-PcNinja.exe validate --mounted "C:\Win11 Extracted"
+  Windows-Upgrade-Assistant-By-PcNinja.exe validate --mounted E:\ --json
 
 --iso mounts the exact file, then validates the mounted media.
 --mounted accepts either an ISO that Windows already mounted or an extracted
@@ -211,13 +214,13 @@ Additional options:
   --json                   Emit a machine-readable final result.
 
 Examples:
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe upgrade --mounted E:\
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe upgrade --mounted "C:\Win11 Extracted"
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe upgrade --mounted E:\ --no-restart
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe upgrade --iso "D:\ISO\Windows11.iso" --dry-run
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe upgrade --iso "D:\ISO\Windows11.iso" --no-restart
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe upgrade --download --destination "F:\PcNinja Downloads"
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe upgrade --mounted E:\ --no-restart --yes --json
+  Windows-Upgrade-Assistant-By-PcNinja.exe upgrade --mounted E:\
+  Windows-Upgrade-Assistant-By-PcNinja.exe upgrade --mounted "C:\Win11 Extracted"
+  Windows-Upgrade-Assistant-By-PcNinja.exe upgrade --mounted E:\ --no-restart
+  Windows-Upgrade-Assistant-By-PcNinja.exe upgrade --iso "D:\ISO\Windows11.iso" --dry-run
+  Windows-Upgrade-Assistant-By-PcNinja.exe upgrade --iso "D:\ISO\Windows11.iso" --no-restart
+  Windows-Upgrade-Assistant-By-PcNinja.exe upgrade --download --destination "F:\PcNinja Downloads"
+  Windows-Upgrade-Assistant-By-PcNinja.exe upgrade --mounted E:\ --no-restart --yes --json
 
 The same-edition, x64, system-UI-language image is selected automatically only
 when exactly one match exists. Windows 11 targets must be equal-or-newer builds.
@@ -278,7 +281,7 @@ COMMAND: log-path
 Print the full path of the PcNinja upgrade log.
 
 Usage:
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe log-path
+  Windows-Upgrade-Assistant-By-PcNinja.exe log-path
 
 This command does not require Administrator permission.
 """;
@@ -289,7 +292,7 @@ COMMAND: completion
 Generate a PowerShell native argument completer for the current EXE name.
 
 Enable completion for the current PowerShell session:
-  & .\PcNinja-Win11-Upgrade-Assistant-RC5.exe completion powershell |
+  & .\Windows-Upgrade-Assistant-By-PcNinja.exe completion powershell |
     Out-String | Invoke-Expression
 
 After registration, press Tab to complete commands, relevant options, mounted
@@ -297,12 +300,12 @@ drives containing setup.exe, ISO paths, and destination directories.
 
 The command prints a script only. It does not modify $PROFILE automatically.
 To make it persistent, review the generated script and add it to your profile.
-PowerShell completion is supported in RC5; CMD receives the embedded help only.
+PowerShell completion is supported; CMD receives the embedded help only.
 """;
 
     private const string PowerShellCompletion = """
-# PcNinja Windows 11 Upgrade Assistant native completion (RC5)
-Register-ArgumentCompleter -Native -CommandName '__EXE_NAME__', 'PcNinja-Win11-Upgrade-Assistant.exe' -ScriptBlock {
+# Windows Upgrade Assistant By PcNinja native completion
+Register-ArgumentCompleter -Native -CommandName '__EXE_NAME__', 'Windows-Upgrade-Assistant-By-PcNinja.exe' -ScriptBlock {
     param($wordToComplete, $commandAst, $cursorPosition)
 
     $elements = @($commandAst.CommandElements | ForEach-Object { $_.Extent.Text.Trim("'").Trim('"') })

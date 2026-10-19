@@ -1,7 +1,8 @@
-# PcNinja Windows 11 Upgrade Assistant
+# Windows Upgrade Assistant By PcNinja
 
 Standalone Windows application for guiding advanced home users through an
-in-place Windows 11 upgrade on unsupported x64 hardware.
+in-place Windows upgrade on x64 hardware, including an experimental Windows 11
+compatibility method and a manual Windows 10 target path in development builds.
 
 > [!WARNING]
 > RC5 is prerelease software. It uses the undocumented `/product server`
@@ -25,6 +26,14 @@ PcNinja-Win11-Upgrade-Assistant-RC5.exe
 
 The portable x64 EXE contains both the graphical application and the CLI. No
 PowerShell or CMD files are required.
+
+Upcoming builds use the fixed filename **Windows-Upgrade-Assistant-By-PcNinja.exe**.
+The published RC5 download above is unchanged. Version/commit metadata remains
+in file properties, diagnostic logs, `version` and `status --json`, not the GUI
+title or executable filename. See [product identity](docs/PRODUCT-IDENTITY.md).
+
+Completed, correlated Windows Setup rollbacks are reported in the existing GUI
+warning/details area and CLI status. See [outcome diagnostics](docs/SETUP-OUTCOME-DIAGNOSTICS.md).
 
 ## One-screen graphical workflow
 

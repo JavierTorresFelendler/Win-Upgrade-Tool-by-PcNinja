@@ -7,7 +7,7 @@ internal static class Program
     private static int Main(string[] args)
     {
         ApplicationConfiguration.Initialize();
-        var assembly = Assembly.Load("PcNinja-Win11-Upgrade-Assistant");
+        var assembly = Assembly.Load("Windows-Upgrade-Assistant-By-PcNinja");
         var type = assembly.GetType("PcNinja.Win11UpgradeAssistant.MainForm", true)!;
         using var form = (Form)Activator.CreateInstance(type, nonPublic: true)!;
         object Field(string name) => type.GetField(name, BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(form)!;
@@ -22,6 +22,19 @@ internal static class Program
         var choices = new[] { "_autoDownload", "_existingMedia" }.Select(name => (RadioButton)Field(name)).ToArray();
         IEnumerable<Control> Descendants(Control parent) => parent.Controls.Cast<Control>()
             .SelectMany(control => new[] { control }.Concat(Descendants(control)));
+        if (form.Text != "Windows Upgrade Assistant By PcNinja" ||
+            Descendants(form).Any(control => control.Text.Contains("Version 1.1.0-rc.5")))
+            throw new Exception("Product branding exposed an obsolete name or release label.");
+        var previous = new UpgradeAttempt(DateTimeOffset.UtcNow, "unused", "unused", 1,
+            19043, 19041, "Professional", 0x40010004, "RollbackObserved", "Recovery collision: 0x800700B7 - 0x2000A.")
+        { SetupFailure = new("0x800700B7", "0x2000A", "Safe OS", "Recovery collision", "fixture.log") };
+        Invoke("PresentPreviousUpgrade", previous);
+        if (!((Label)Field("_operationNotice")).Text.Contains("0x800700B7") ||
+            !((LinkLabel)Field("_details")).Visible)
+            throw new Exception("Rollback diagnostics were hidden in the footer or missing details.");
+        Invoke("RefreshSources", false);
+        if (!((Label)Field("_operationNotice")).Text.Contains("0x800700B7"))
+            throw new Exception("Refresh erased the rollback explanation.");
         if (Descendants(form).OfType<RadioButton>().Count() != 2)
             throw new Exception("The GUI must contain exactly two primary source choices.");
         foreach (var choice in choices)

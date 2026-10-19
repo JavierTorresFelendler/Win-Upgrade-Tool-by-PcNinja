@@ -140,6 +140,12 @@ All paths below are relative to the repository root.
 - Correlate Panther timestamps with the exact recorded attempt before diagnosis;
   an old morning Appraiser error is not evidence that an evening exit-0 attempt
   crashed. Keep source metadata and process outcome separate from folder names.
+- Reconcile rollback only when Setup is not in progress, the original build is
+  running and the session header matches launch/media/image/index. Require
+  matching terminal failure and completed rollback evidence. Keep process exit
+  separate from Setup result/extended codes; 0x40010004 alone proves neither
+  success nor failure. Bound reads/regex work; stale/incomplete evidence stays
+  unknown. Never auto-clean Recovery following a duplicate-file failure.
 - For a Setup process crash, pair the recorded attempt/source/build/index with
   Panther logs and the faulting application/module in Windows crash events.
   `0xC0000005` is an access violation, not filesystem Access Denied. Do not assign
@@ -167,7 +173,7 @@ dotnet build tests/PcNinja.Win11Upgrade.SmokeTests/PcNinja.Win11Upgrade.SmokeTes
 dotnet run --project tests/PcNinja.Win11Upgrade.SmokeTests/PcNinja.Win11Upgrade.SmokeTests.csproj -c Debug --no-build
 dotnet build tests/PcNinja.Win11Upgrade.GuiChecks/PcNinja.Win11Upgrade.GuiChecks.csproj -c Debug -warnaserror
 dotnet run --project tests/PcNinja.Win11Upgrade.GuiChecks/PcNinja.Win11Upgrade.GuiChecks.csproj -c Debug --no-build
-& ./tests/Verify-Cli.ps1 -ExePath ./tests/PcNinja.Win11Upgrade.GuiChecks/bin/Debug/net8.0-windows/win-x64/PcNinja-Win11-Upgrade-Assistant.exe -ExpectedVersion '1.1.0-rc.5'
+& ./tests/Verify-Cli.ps1 -ExePath ./tests/PcNinja.Win11Upgrade.GuiChecks/bin/Debug/net8.0-windows/win-x64/Windows-Upgrade-Assistant-By-PcNinja.exe -ExpectedVersion '1.1.0-rc.5'
 git diff --check
 ```
 

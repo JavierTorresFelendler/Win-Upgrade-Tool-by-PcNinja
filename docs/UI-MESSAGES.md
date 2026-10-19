@@ -1,5 +1,16 @@
 # RC5 user-message catalog
 
+## Follow-up: branding and outcome evidence
+
+- GUI/product name: **Windows Upgrade Assistant By PcNinja**; footer **View log**.
+  Version/build identity remains metadata and explicit diagnostics, not visible
+  release branding. No additional popup is added by outcome reconciliation.
+- Correlated completed rollback shows its summary, actual result/extended codes
+  and phase in the existing persistent warning. **View details** includes the
+  Windows log path. Do not label a process exit code as its root cause.
+- Exact wording review follows owner-approved popup/flow cleanup. Existing
+  upgrade consent and unsafe-media safety remain unchanged in this change.
+
 ## Pending next release: manual Windows 10 POC
 
 - Reuse the existing two source modes and image selector. The automatic label
