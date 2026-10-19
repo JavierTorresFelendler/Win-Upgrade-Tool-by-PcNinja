@@ -45,7 +45,7 @@ internal static class CliRunner
                     return Fail(InvalidArguments,
                         "Usage: completion powershell. Run 'help completion' for setup instructions.", false);
                 var executableName = Path.GetFileName(Environment.ProcessPath)
-                    ?? "Windows-Upgrade-Assistant-By-PcNinja.exe";
+                    ?? ProductIdentity.ExecutableName;
                 Console.WriteLine(CliHelp.GetPowerShellCompletion(executableName));
                 return Success;
             }
