@@ -3,10 +3,18 @@
 The graphical interface opens when the EXE is started without arguments. The
 same standalone EXE becomes a command-line tool when a command is supplied.
 
+Upcoming name: **Windows Upgrade Assistant By PcNinja**, fixed EXE filename below.
+Published older RC assets are not renamed. Explicit `version` and `status --json`
+retain release identity; JSON status includes the complete `build` identity.
+Correlated completed Windows Setup rollback is exposed as `RollbackObserved`
+with `SetupFailure` result/extended codes, phase, explanation and log path.
+Missing/stale logs remain unknown. No Windows files are repaired or deleted.
+See [outcome diagnostics](SETUP-OUTCOME-DIAGNOSTICS.md) for correlation limits.
+
 ```powershell
-.\PcNinja-Win11-Upgrade-Assistant-RC5.exe --help
-.\PcNinja-Win11-Upgrade-Assistant-RC5.exe help upgrade
-.\PcNinja-Win11-Upgrade-Assistant-RC5.exe help all
+.\Windows-Upgrade-Assistant-By-PcNinja.exe --help
+.\Windows-Upgrade-Assistant-By-PcNinja.exe help upgrade
+.\Windows-Upgrade-Assistant-By-PcNinja.exe help all
 ```
 
 ## Permissions
@@ -20,16 +28,16 @@ or start Windows Setup must run from an elevated Command Prompt or PowerShell.
 The EXE contains its own documentation and does not require GitHub access:
 
 ```powershell
-.\PcNinja-Win11-Upgrade-Assistant-RC5.exe help
-.\PcNinja-Win11-Upgrade-Assistant-RC5.exe help validate
-.\PcNinja-Win11-Upgrade-Assistant-RC5.exe upgrade --help
-.\PcNinja-Win11-Upgrade-Assistant-RC5.exe help all
+.\Windows-Upgrade-Assistant-By-PcNinja.exe help
+.\Windows-Upgrade-Assistant-By-PcNinja.exe help validate
+.\Windows-Upgrade-Assistant-By-PcNinja.exe upgrade --help
+.\Windows-Upgrade-Assistant-By-PcNinja.exe help all
 ```
 
 Enable Tab completion for the current PowerShell session:
 
 ```powershell
-& .\PcNinja-Win11-Upgrade-Assistant-RC5.exe completion powershell |
+& .\Windows-Upgrade-Assistant-By-PcNinja.exe completion powershell |
     Out-String | Invoke-Expression
 ```
 
@@ -44,15 +52,15 @@ Show the Windows version, system-drive storage, administrator state, and log
 path:
 
 ```powershell
-.\PcNinja-Win11-Upgrade-Assistant-RC5.exe status
-.\PcNinja-Win11-Upgrade-Assistant-RC5.exe status --json
+.\Windows-Upgrade-Assistant-By-PcNinja.exe status
+.\Windows-Upgrade-Assistant-By-PcNinja.exe status --json
 ```
 
 Rescan ISO files found beside the application, mounted Windows media, and
 available download drives:
 
 ```powershell
-.\PcNinja-Win11-Upgrade-Assistant-RC5.exe scan
+.\Windows-Upgrade-Assistant-By-PcNinja.exe scan
 ```
 
 A mounted Windows ISO appears under `Mounted Windows sources`. The drive must
@@ -67,19 +75,19 @@ Test-Path E:\setup.exe
 Validate the mounted media without starting Windows Setup:
 
 ```powershell
-.\PcNinja-Win11-Upgrade-Assistant-RC5.exe validate --mounted E:\
+.\Windows-Upgrade-Assistant-By-PcNinja.exe validate --mounted E:\
 ```
 
 Validate it and start the upgrade:
 
 ```powershell
-.\PcNinja-Win11-Upgrade-Assistant-RC5.exe upgrade --mounted E:\
+.\Windows-Upgrade-Assistant-By-PcNinja.exe upgrade --mounted E:\
 ```
 
 Prevent Windows Setup from restarting automatically:
 
 ```powershell
-.\PcNinja-Win11-Upgrade-Assistant-RC5.exe upgrade --mounted E:\ --no-restart
+.\Windows-Upgrade-Assistant-By-PcNinja.exe upgrade --mounted E:\ --no-restart
 ```
 
 The drive is intentionally explicit. RC5 never guesses which mounted source to
@@ -89,7 +97,7 @@ An extracted folder containing `setup.exe` and the `sources` directory can use
 the same option:
 
 ```powershell
-.\PcNinja-Win11-Upgrade-Assistant-RC5.exe upgrade --mounted "C:\Win11 Extracted"
+.\Windows-Upgrade-Assistant-By-PcNinja.exe upgrade --mounted "C:\Win11 Extracted"
 ```
 
 ## Use a local ISO file
@@ -97,13 +105,13 @@ the same option:
 Mount and validate an exact ISO path without starting Setup:
 
 ```powershell
-.\PcNinja-Win11-Upgrade-Assistant-RC5.exe validate --iso "D:\ISO\Windows11.iso"
+.\Windows-Upgrade-Assistant-By-PcNinja.exe validate --iso "D:\ISO\Windows11.iso"
 ```
 
 Start an upgrade from that ISO:
 
 ```powershell
-.\PcNinja-Win11-Upgrade-Assistant-RC5.exe upgrade --iso "D:\ISO\Windows11.iso"
+.\Windows-Upgrade-Assistant-By-PcNinja.exe upgrade --iso "D:\ISO\Windows11.iso"
 ```
 
 ## Download an ISO automatically
@@ -122,13 +130,13 @@ Microsoft media. Select the same system UI language, edition and x64 architectur
 Download to the default suitable fixed drive, validate, and start the upgrade:
 
 ```powershell
-.\PcNinja-Win11-Upgrade-Assistant-RC5.exe upgrade --download
+.\Windows-Upgrade-Assistant-By-PcNinja.exe upgrade --download
 ```
 
 Select a download folder or removable NTFS/exFAT drive:
 
 ```powershell
-.\PcNinja-Win11-Upgrade-Assistant-RC5.exe upgrade --download --destination "E:\PcNinja Downloads"
+.\Windows-Upgrade-Assistant-By-PcNinja.exe upgrade --download --destination "E:\PcNinja Downloads"
 ```
 
 ## Validation, confirmation, and automation
@@ -137,14 +145,14 @@ Select a download folder or removable NTFS/exFAT drive:
 using the `upgrade` command:
 
 ```powershell
-.\PcNinja-Win11-Upgrade-Assistant-RC5.exe upgrade --iso "D:\ISO\Windows11.iso" --dry-run
+.\Windows-Upgrade-Assistant-By-PcNinja.exe upgrade --iso "D:\ISO\Windows11.iso" --dry-run
 ```
 
 An interactive upgrade requires typing `YES`. Automation must deliberately add
 `--yes` to bypass that prompt:
 
 ```powershell
-.\PcNinja-Win11-Upgrade-Assistant-RC5.exe upgrade --mounted E:\ --no-restart --yes
+.\Windows-Upgrade-Assistant-By-PcNinja.exe upgrade --mounted E:\ --no-restart --yes
 ```
 
 Add `--json` when the final result must be machine-readable. Progress and
@@ -158,8 +166,8 @@ starting Setup. In JSON, inspect `imagePath`, `images`,
 `compatibleImageIndexes` and `selectedImageIndex`.
 
 ```powershell
-.\PcNinja-Win11-Upgrade-Assistant-RC5.exe validate --mounted E:\ --json
-.\PcNinja-Win11-Upgrade-Assistant-RC5.exe upgrade --mounted E:\ --image-index 6 --no-restart
+.\Windows-Upgrade-Assistant-By-PcNinja.exe validate --mounted E:\ --json
+.\Windows-Upgrade-Assistant-By-PcNinja.exe upgrade --mounted E:\ --image-index 6 --no-restart
 ```
 
 Index 6 is only an example: never assume a fixed index for Pro. Without an explicit
@@ -216,8 +224,8 @@ SHA-256 is calculated for ISO files. For independent verification, obtain an
 expected hash from a trusted source and pass it explicitly:
 
 ```powershell
-.\PcNinja-Win11-Upgrade-Assistant-RC5.exe validate --iso "D:\Windows11.iso" --sha256 <64-hex-character-hash>
-.\PcNinja-Win11-Upgrade-Assistant-RC5.exe upgrade --download --sha256 <64-hex-character-hash> --no-restart
+.\Windows-Upgrade-Assistant-By-PcNinja.exe validate --iso "D:\Windows11.iso" --sha256 <64-hex-character-hash>
+.\Windows-Upgrade-Assistant-By-PcNinja.exe upgrade --download --sha256 <64-hex-character-hash> --no-restart
 ```
 
 Alternatively set `PCNINJA_ISO_SHA256` before launching the app. That setting
@@ -234,7 +242,7 @@ PowerShell invocation and redirected output remain supported. For reliable
 waiting and `%ERRORLEVEL%` handling in interactive CMD, use:
 
 ```bat
-start "" /wait PcNinja-Win11-Upgrade-Assistant-RC5.exe status --json
+start "" /wait Windows-Upgrade-Assistant-By-PcNinja.exe status --json
 ```
 
 ## Exit-code reference
@@ -273,4 +281,4 @@ build can be a shared base, not the exact installed feature release, so it never
 triggers `TargetWindowsObserved` automatically.
 
 For reliable waiting in PowerShell scripts with this GUI-subsystem EXE, capture
-output through a pipeline, for example `$result = & .\PcNinja-Win11-Upgrade-Assistant-RC5.exe status --json | Out-String`, then read `$LASTEXITCODE`.
+output through a pipeline, for example `$result = & .\Windows-Upgrade-Assistant-By-PcNinja.exe status --json | Out-String`, then read `$LASTEXITCODE`.

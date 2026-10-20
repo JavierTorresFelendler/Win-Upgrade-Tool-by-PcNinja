@@ -64,7 +64,7 @@ internal sealed class MainForm : Form
 
     public MainForm()
     {
-        Text = "PcNinja Windows 11 Upgrade Assistant - RC5";
+        Text = ProductIdentity.Name;
         StartPosition = FormStartPosition.CenterScreen;
         MinimumSize = new Size(1020, 700);
         Size = new Size(1160, 800);
@@ -200,7 +200,7 @@ internal sealed class MainForm : Form
         text.Controls.Add(new Label
         {
             AutoSize = true,
-            Text = "Windows 11 Upgrade Assistant",
+            Text = ProductIdentity.Name,
             Font = new Font("Segoe UI Semibold", 22F),
             ForeColor = Foreground,
             BackColor = Color.Transparent,
@@ -472,7 +472,7 @@ internal sealed class MainForm : Form
         var footer = new LinkLabel
         {
             AutoSize = true,
-            Text = $"Version 1.1.0-rc.5  ·  View log",
+            Text = "View log",
             LinkColor = AccentLight,
             ActiveLinkColor = Accent,
             VisitedLinkColor = AccentLight,
@@ -544,13 +544,23 @@ internal sealed class MainForm : Form
                 ? $"Refresh complete: {local.Count} ISO(s), {mounted.Count} mounted source(s), {locations.Count} download drive(s)."
                 : systemStorage.Message;
             if (initial && UpgradeHistory.ReadStatus() is { } previous)
-                _status.Text = $"Previous upgrade: {previous.State}. {previous.Message}";
+                PresentPreviousUpgrade(previous);
             _start.Enabled = true;
         }
         catch (Exception ex) { ShowIssue(ex); _start.Enabled = false; }
         ExistingPathChanged();
         UpdateSourceControls();
         UpdateReadinessSummary();
+    }
+
+    private void PresentPreviousUpgrade(UpgradeAttempt previous)
+    {
+        _status.Text = $"Previous upgrade: {previous.State}. {previous.Message}";
+        if (previous.SetupFailure is not { } failure) return;
+        ShowOperationNotice(previous.Message);
+        _lastErrorDetails = $"{failure.Summary}\nResult: {failure.ResultCode} - {failure.ExtendedCode}" +
+            $"\nPhase: {failure.Phase}\nWindows Setup log: {failure.LogPath}";
+        _details.Visible = true;
     }
 
     private void BrowseIso()

@@ -7,6 +7,7 @@ if (!string.Equals(UpgradeEngine.PcNinjaBrowserFallbackPage, "https://iso.pcninj
 await TransferChecks.RunAsync();
 SafetyImageChecks.Run();
 DiagnosticsChecks.Run();
+SetupOutcomeChecks.Run();
 Windows10TargetChecks.Run();
 if (UpgradeEngine.RequiredDownloadBytes(7L * 1024 * 1024 * 1024, true) != 28L * 1024 * 1024 * 1024)
     failures.Add("Combined ISO and Windows workspace reservation failed.");

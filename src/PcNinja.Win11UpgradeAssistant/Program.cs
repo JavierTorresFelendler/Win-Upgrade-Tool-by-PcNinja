@@ -11,6 +11,8 @@ internal static class Program
     [STAThread]
     private static int Main(string[] args)
     {
+        AppLog.Info($"{ProductIdentity.Name}; build {ProductIdentity.BuildVersion}; " +
+            $"mode: {(args.Length > 0 ? "CLI" : "GUI")}.");
         if (args.Length > 0)
         {
             AttachCommandLineConsole();
@@ -51,7 +53,7 @@ internal static class Program
         catch (Win32Exception ex) when (ex.NativeErrorCode == 1223)
         {
             MessageBox.Show("Run the app as administrator to continue.",
-                "PcNinja Windows 11 Upgrade Assistant", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                ProductIdentity.Name, MessageBoxButtons.OK, MessageBoxIcon.Information);
             return 5;
         }
         catch (Exception ex)
@@ -66,7 +68,7 @@ internal static class Program
         try { AppLog.Error(exception.ToString()); } catch { }
         MessageBox.Show(
             "Something went wrong. Open View log for details and try again.",
-            "PcNinja Windows 11 Upgrade Assistant",
+            ProductIdentity.Name,
             MessageBoxButtons.OK,
             MessageBoxIcon.Error);
     }
