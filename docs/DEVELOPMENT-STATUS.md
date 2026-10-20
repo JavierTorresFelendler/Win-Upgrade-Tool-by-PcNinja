@@ -6,6 +6,29 @@ Reusable architecture, diagnosis and verification know-how lives in
 [AI maintenance playbook](AI-MAINTENANCE-PLAYBOOK.md), independently of any
 assistant's personal memory or skills installation.
 
+## Current follow-up: approved main-window copy
+
+- The owner approved the main-window mockup and requested a separate PR with a
+  portable EXE for testing. Branch: `ui/main-window-copy-review`, based on RC6
+  main `77aa2b8`. No merge, new RC, stable release or replacement asset is approved.
+- Scope: concise headings/descriptions/control captions, remove duplicate source/
+  computer kickers, keep the two source choices and Start/Cancel behavior. Wrap
+  the longer computer/settings heading within the existing right panel.
+- Preserve the original mascot/icon and all real website/manual download link
+  handlers and targets. No Core, CLI, download, consent or Setup-policy changes.
+- The exact approved copy and deliberate differences from illustrative preview
+  data are recorded in `UI-MESSAGES.md`. Media validation remains a requirement,
+  not a hardcoded result; actual hardware values still come from the computer.
+- GUI fixtures cover new headings, selected/unselected captions, one original
+  embedded logo and public URL constants, alongside existing safety tests.
+  Local Release builds passed with warnings as errors, Core smoke fixtures and
+  Windows-client GUI checks passed, and the rendered normal/minimum-window
+  previews were inspected. Short summary values avoid minimum-width clipping.
+  No Windows Setup or real download was performed. PR CI supplies the separately
+  identified EXE/checksum/BUILD-INFO artifact; verify it before owner handoff.
+- Popup cleanup/wording, manual-validation reuse, eject investigation and app
+  self-update remain separate follow-ups. Published RC6 stays frozen.
+
 ## RC6 publication checkpoint
 
 - On 2026-10-20 the owner explicitly approved merging the tested changes and
