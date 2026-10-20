@@ -14,7 +14,7 @@
   when the EXE filename stays constant. Existing release assets remain immutable.
 - After an authorized **stable** publication, the public convenience URL can be:
   `https://github.com/JavierTorresFelendler/pcninja-win11-upgrade-assistant/releases/latest/download/Windows-Upgrade-Assistant-By-PcNinja.exe`.
-  This is not an active download promise: the current release is RC5, and the
+  This is not an active download promise: the current release is RC6, and the
   release workflow still requires RC metadata. Stable publication is separate.
 - A future app updater must resolve a version-pinned Release asset and verify
   version/hash/size. Do not download a mutable latest URL after checking a manifest

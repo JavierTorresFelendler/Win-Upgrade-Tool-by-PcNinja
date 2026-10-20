@@ -31,7 +31,7 @@ public sealed class UpgradeEngine
             CookieContainer = new CookieContainer()
         };
         _http = new HttpClient(handler) { Timeout = Timeout.InfiniteTimeSpan };
-        _http.DefaultRequestHeaders.UserAgent.ParseAdd("PcNinja-Win11-Upgrade-Assistant/1.1.0-rc.5");
+        _http.DefaultRequestHeaders.UserAgent.ParseAdd("PcNinja-Win11-Upgrade-Assistant/1.1.0-rc.6");
     }
 
     public string GetOperatingSystemDescription()

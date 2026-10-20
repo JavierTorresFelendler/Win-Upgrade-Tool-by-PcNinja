@@ -1,6 +1,15 @@
 # Changelog
 
-## Unreleased
+## 1.1.0-rc.6 - 2026-10-20
+
+- Rename the public product to Windows Upgrade Assistant By PcNinja. Use a fixed
+  Windows-Upgrade-Assistant-By-PcNinja.exe asset name without GUI release labels;
+  retain version/commit identity in file properties, startup logs and explicit
+  CLI diagnostics. Preserve historical release assets and history/log locations.
+- Add bounded, read-only Panther/Rollback correlation for completed rollback.
+  GUI and CLI status expose actual Setup result/extended codes and phase while
+  preserving the process-stage record. Missing/stale/incomplete evidence stays
+  unknown; no automatic Recovery cleanup or forced restart is introduced.
 
 - Add an owner-scoped manual Windows 10 -> Windows 10 POC using existing image
   selection. Detect the target family from image metadata; use `/auto upgrade`
@@ -31,7 +40,7 @@
 - Use https://iso.pcninja.pro for manual PcNinja ISO selection; preserve the
   internal automatic transport and Microsoft's official manual alternative.
 - Recommend Microsoft for standard Microsoft media; document language behavior
-  and CLI availability diagnostics. Published RC5 assets remain unchanged.
+  and CLI availability diagnostics. Historical RC5 assets remain unchanged.
 
 ## 1.1.0-rc.5
 

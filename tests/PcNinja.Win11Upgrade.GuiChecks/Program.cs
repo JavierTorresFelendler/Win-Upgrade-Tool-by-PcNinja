@@ -23,7 +23,7 @@ internal static class Program
         IEnumerable<Control> Descendants(Control parent) => parent.Controls.Cast<Control>()
             .SelectMany(control => new[] { control }.Concat(Descendants(control)));
         if (form.Text != "Windows Upgrade Assistant By PcNinja" ||
-            Descendants(form).Any(control => control.Text.Contains("Version 1.1.0-rc.5")))
+            Descendants(form).Any(control => control.Text.Contains("Version 1.1.0-rc.")))
             throw new Exception("Product branding exposed an obsolete name or release label.");
         var previous = new UpgradeAttempt(DateTimeOffset.UtcNow, "unused", "unused", 1,
             19043, 19041, "Professional", 0x40010004, "RollbackObserved", "Recovery collision: 0x800700B7 - 0x2000A.")
@@ -214,11 +214,11 @@ internal static class Program
             Invoke("RefreshSources", false);
             ((LinkLabel)Field("_details")).Visible = false;
             choices[0].Checked = true;
-            Save("RC5-Ready.png");
+            Save("Ready.png");
             using var previewOperation = new CancellationTokenSource();
             SetField("_operation", previewOperation);
             Invoke("SetBusy", true);
-            Save("RC5-Cancel.png");
+            Save("Cancel.png");
             SetField("_operation", null);
             Invoke("SetBusy", false);
             void Save(string name)

@@ -1,6 +1,6 @@
-# RC5 user-message catalog
+# RC6 user-message catalog
 
-## Follow-up: branding and outcome evidence
+## Branding and outcome evidence
 
 - GUI/product name: **Windows Upgrade Assistant By PcNinja**; footer **View log**.
   Version/build identity remains metadata and explicit diagnostics, not visible
@@ -11,7 +11,7 @@
 - Exact wording review follows owner-approved popup/flow cleanup. Existing
   upgrade consent and unsafe-media safety remain unchanged in this change.
 
-## Pending next release: manual Windows 10 POC
+## RC6: manual Windows 10 POC
 
 - Reuse the existing two source modes and image selector. The automatic label
   explicitly says Windows 11; manual browse accepts Windows 10/11 x64 media.
@@ -23,7 +23,7 @@
 - Language/no-matching-media wording is target-neutral. All existing file safety,
   signature, space, image-index, restart, failure and Cancel messages remain.
 
-## Pending next release: automatic flow and diagnostics
+## RC6: automatic flow and diagnostics
 
 - Successful Setup preparation with automatic restart off: information dialog
   **Restart required**, OK only: "Upgrade preparation is complete. Restart your
@@ -45,9 +45,9 @@
 - Errors/no matching image stay in a multiline readiness warning through Refresh,
   with optional diagnostic details. This is not a new wizard page.
 
-## Pending next release: language-aware download choice
+## RC6: language-aware download choice
 
-These source changes are not yet included in the published RC5 executable.
+These changes are included in RC6; historical RC5 assets remain unchanged.
 
 - Automatic download is available only when the system-default UI language
   matches the automatic ISO (**en-US**); the disabled option explains both values.
@@ -57,12 +57,12 @@ These source changes are not yet included in the published RC5 executable.
   media, use PcNinja ISO downloads. Select a matching language, then choose ISO...
   or Folder... above."
 - Image mismatch: "Language mismatch: this Windows installation uses [system],
-  but the image uses [image]. Choose Windows 11 media with the same system UI
+  but the image uses [image]. Choose Windows media with the same system UI
   language; changing the keyboard language is not enough."
 - Selected-image incompatibility is shown in warning color beside the image
   selector, not only in the bottom status line. Diagnostic details remain available.
 
-## Published RC5 behavior
+## Retained baseline behavior
 
 The interface and repository documentation are English. Routine failures use the
 main status area with **View details**. Destructive-installation risk is a

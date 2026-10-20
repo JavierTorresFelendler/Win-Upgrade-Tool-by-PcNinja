@@ -3,7 +3,7 @@
 The graphical interface opens when the EXE is started without arguments. The
 same standalone EXE becomes a command-line tool when a command is supplied.
 
-Upcoming name: **Windows Upgrade Assistant By PcNinja**, fixed EXE filename below.
+Product: **Windows Upgrade Assistant By PcNinja**, fixed EXE filename below.
 Published older RC assets are not renamed. Explicit `version` and `status --json`
 retain release identity; JSON status includes the complete `build` identity.
 Correlated completed Windows Setup rollback is exposed as `RollbackObserved`
@@ -90,7 +90,7 @@ Prevent Windows Setup from restarting automatically:
 .\Windows-Upgrade-Assistant-By-PcNinja.exe upgrade --mounted E:\ --no-restart
 ```
 
-The drive is intentionally explicit. RC5 never guesses which mounted source to
+The drive is intentionally explicit. The assistant never guesses which mounted source to
 use when more than one installation disc is present.
 
 An extracted folder containing `setup.exe` and the `sources` directory can use
@@ -116,7 +116,7 @@ Start an upgrade from that ISO:
 
 ## Download an ISO automatically
 
-**Pending next release (not in the published RC5 EXE):** Automatic download
+**RC6:** Automatic download
 requires system-default UI language **en-US**, matching the configured ISO.
 Other languages, including en-GB, return validation exit code **3** before a
 transfer. `status --json` reports `systemUiLanguage`,
@@ -201,7 +201,7 @@ retry. There is no bypass. Validation can mount an ISO and clean a selected sour
 but never launches Setup. Windows-owned cached Panther files are not deleted.
 Checks repeat immediately before Setup, so late-attached media can block launch.
 
-## RC5 cancellation, downloads and checksums
+## Cancellation, downloads and checksums
 
 Press **Ctrl+C** during download, checksum calculation or source preparation
 to request cancellation (exit code 6). Once Windows Setup has started, the
