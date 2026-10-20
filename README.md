@@ -2,11 +2,11 @@
 
 Standalone Windows application for guiding advanced home users through an
 in-place Windows upgrade on x64 hardware, including an experimental Windows 11
-compatibility method and a manual Windows 10 target path in development builds.
+compatibility method and an experimental manual Windows 10 target path.
 
 > [!WARNING]
-> RC5 is prerelease software. It uses the undocumented `/product server`
-> compatibility behavior with Windows client Setup. Back up important files
+> RC6 is prerelease software. Its Windows 11 path uses the undocumented
+> `/product server` compatibility behavior. Back up important files
 > before using it. Microsoft can change this behavior in future releases.
 
 ## AI-assisted maintenance
@@ -18,17 +18,18 @@ project-specific decisions and working procedures across assistants and machines
 
 ## Download
 
-Download the latest prerelease from the repository's **Releases** page:
+Download [RC6](https://github.com/JavierTorresFelendler/pcninja-win11-upgrade-assistant/releases/tag/v1.1.0-rc.6)
+from the repository's **Releases** page:
 
 ```text
-PcNinja-Win11-Upgrade-Assistant-RC5.exe
+Windows-Upgrade-Assistant-By-PcNinja.exe
 ```
 
 The portable x64 EXE contains both the graphical application and the CLI. No
 PowerShell or CMD files are required.
 
-Upcoming builds use the fixed filename **Windows-Upgrade-Assistant-By-PcNinja.exe**.
-The published RC5 download above is unchanged. Version/commit metadata remains
+RC6 uses that fixed filename; previous release assets remain unchanged.
+Version/commit metadata remains
 in file properties, diagnostic logs, `version` and `status --json`, not the GUI
 title or executable filename. See [product identity](docs/PRODUCT-IDENTITY.md).
 
@@ -37,8 +38,8 @@ warning/details area and CLI status. See [outcome diagnostics](docs/SETUP-OUTCOM
 
 ## One-screen graphical workflow
 
-> **Pending next release:** The language policy, automatic consent, diagnostics and Windows 10 POC below
-> are source changes, not a replacement for the published RC5 executable.
+> **Included in RC6:** Language-aware automatic download, upfront automatic
+> consent, readable diagnostics and the manual Windows 10 POC described below.
 
 The application shows the current Windows version, storage state, and source
 choices on one screen:
@@ -47,7 +48,7 @@ choices on one screen:
 2. **Use existing installation media.** Select an ISO, mounted drive, extracted
    Setup folder or network folder in one path field, using **ISO...** or **Folder...**.
 
-Development test builds also accept a manually supplied **Windows 10 client x64**
+RC6 also accepts a manually supplied **Windows 10 client x64**
 image on Windows 10, using the same image selector and `--image-index`. By owner
 request, this POC does **not compare build order inside Windows 10**: older,
 same-build and newer images may be offered to Windows Setup, which must allow
@@ -155,7 +156,7 @@ Mounted media/extracted folders do not support whole-ISO checksum comparison.
 
 Routine errors appear in the main window; **View details** shows diagnostics.
 See the [message catalog](docs/UI-MESSAGES.md) for the short English wording
-used in RC5 and the [RC5 test notes](docs/RC5-TESTING.md) for coverage and limits.
+used in RC6 and the [RC6 test notes](docs/RC6-TESTING.md) for coverage and limits.
 
 ## CLI
 
@@ -167,22 +168,22 @@ See the [complete CLI guide](docs/CLI.md) for mounted ISO drives, automatic
 downloads, validation-only runs, JSON output, confirmations, and exit codes.
 
 ```powershell
-.\PcNinja-Win11-Upgrade-Assistant-RC5.exe help
-.\PcNinja-Win11-Upgrade-Assistant-RC5.exe help all
-.\PcNinja-Win11-Upgrade-Assistant-RC5.exe help upgrade
-.\PcNinja-Win11-Upgrade-Assistant-RC5.exe status --json
-.\PcNinja-Win11-Upgrade-Assistant-RC5.exe scan
-.\PcNinja-Win11-Upgrade-Assistant-RC5.exe validate --iso "D:\Windows11.iso"
-.\PcNinja-Win11-Upgrade-Assistant-RC5.exe validate --mounted E:\
-.\PcNinja-Win11-Upgrade-Assistant-RC5.exe upgrade --iso "D:\Windows11.iso" --no-restart
-.\PcNinja-Win11-Upgrade-Assistant-RC5.exe upgrade --mounted E:\ --no-restart
-.\PcNinja-Win11-Upgrade-Assistant-RC5.exe upgrade --download --destination "E:\PcNinja Downloads"
+.\Windows-Upgrade-Assistant-By-PcNinja.exe help
+.\Windows-Upgrade-Assistant-By-PcNinja.exe help all
+.\Windows-Upgrade-Assistant-By-PcNinja.exe help upgrade
+.\Windows-Upgrade-Assistant-By-PcNinja.exe status --json
+.\Windows-Upgrade-Assistant-By-PcNinja.exe scan
+.\Windows-Upgrade-Assistant-By-PcNinja.exe validate --iso "D:\Windows11.iso"
+.\Windows-Upgrade-Assistant-By-PcNinja.exe validate --mounted E:\
+.\Windows-Upgrade-Assistant-By-PcNinja.exe upgrade --iso "D:\Windows11.iso" --no-restart
+.\Windows-Upgrade-Assistant-By-PcNinja.exe upgrade --mounted E:\ --no-restart
+.\Windows-Upgrade-Assistant-By-PcNinja.exe upgrade --download --destination "E:\PcNinja Downloads"
 ```
 
 Enable PowerShell completion for the current session:
 
 ```powershell
-& .\PcNinja-Win11-Upgrade-Assistant-RC5.exe completion powershell | Out-String | Invoke-Expression
+& .\Windows-Upgrade-Assistant-By-PcNinja.exe completion powershell | Out-String | Invoke-Expression
 ```
 
 Mount, validation, download-and-mount, and upgrade operations must be launched

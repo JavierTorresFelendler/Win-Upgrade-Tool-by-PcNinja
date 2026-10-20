@@ -1,12 +1,39 @@
 # Development handoff
 
-Updated: 2026-10-19. This is sanitized project context, not a backup of Codex chats.
+Updated: 2026-10-20. This is sanitized project context, not a backup of Codex chats.
 
 Reusable architecture, diagnosis and verification know-how lives in
 [AI maintenance playbook](AI-MAINTENANCE-PLAYBOOK.md), independently of any
 assistant's personal memory or skills installation.
 
-## Published baseline and release hold
+## RC6 publication checkpoint
+
+- On 2026-10-20 the owner explicitly approved merging the tested changes and
+  publishing **1.1.0-rc.6**, then returning to remaining work. This supersedes
+  older RC5/PR #12/#14 release holds below, not the stable/self-update hold.
+- Windows 10 PR #12 merged as `a51797f79589717eaa4d485368f12b84e919331f`.
+  Branding/outcome PR #14 merged as `ad346b3c172379b388862000b7a9e0aa7fdffe37`
+  after retargeting to main and passing fresh integration CI `39360400032`.
+- Release branch `release/rc6` updates metadata to `1.1.0-rc.6` / file version
+  `1.1.0.6`, documentation and version-neutral GUI checks only; no new upgrade
+  command, downloader behavior, popup-flow rewrite or ISO preparation feature.
+- Publish only after the release-preparation PR passes checks and is merged.
+  Tag `v1.1.0-rc.6` must point to that reviewed main commit. The existing tag
+  workflow builds the fixed-name EXE plus SHA256SUMS.txt and BUILD-INFO.txt,
+  enforces the 100,000,000-byte cap and publishes a GitHub **prerelease**.
+  Verify the uploaded asset hash, version/commit, size and read-only CLI before
+  reporting completion. Preserve all prior release tags/assets and frozen EXEs.
+- RC6 includes PRs #8/#10/#11/#12/#14. Owner-reported Windows 10/11 stability
+  and the explicit 19043 -> 19045 apps/files check are acceptance evidence,
+  not proof that all customized images or migration paths work.
+- Still outstanding: popup/flow cleanup before exact wording review, safe manual
+  validation reuse, mount/eject investigation and application self-update design
+  in PR #13. ISO copy/clean/detach remains another project's variation (PR #9
+  design only). Do not merge those designs or activate an updater/feed here.
+- See [RC6 notes](RELEASE-RC6.md) and [verification](RC6-TESTING.md). Published
+  release provenance is recorded in BUILD-INFO and the release-preparation PR.
+
+## Historical RC5 baseline and release hold
 
 - Published baseline: `v1.1.0-rc.5`, source commit
   `408628f67469e263be69825faccd046994148046`.
