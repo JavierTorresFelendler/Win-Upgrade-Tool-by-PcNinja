@@ -163,12 +163,25 @@ starting Setup. In JSON, inspect `imagePath`, `images`,
 ```
 
 Index 6 is only an example: never assume a fixed index for Pro. Without an explicit
-index, exactly one matching edition/language/x64/equal-or-newer Windows 11 image
-must exist. Duplicate eligible images require `--image-index`; nonexistent or
+index, exactly one matching edition/language/x64 image must exist. Windows 11
+targets must be equal-or-newer builds. The manual Windows 10 -> Windows 10 POC
+does not compare build order; Windows Setup decides whether apps/files can be
+preserved. Windows 11 -> 10 remains blocked. Duplicate eligible images require
+`--image-index`; nonexistent or
 incompatible indexes are rejected. `--image-index` is accepted by `validate`,
 `upgrade` and dry runs, and is listed in embedded help and option completion.
 The command binds `/ImageIndex` and `/InstallFrom` to the validated file; split
 images use the first `install.swm`. Image indexes are never guessed by completion.
+
+Windows 10 uses the existing `--iso` or `--mounted` options, including WIM/ESD/SWM
+media; no new flag or automatic Windows 10 downloader is introduced. Its command
+is `/auto upgrade /dynamicupdate disable /compat ignorewarning`, with the exact
+`/imageindex`, `/installfrom` and optional `/noreboot`. Windows 11 retains its
+existing experimental command. Validation/dry-run JSON adds `setupProfile`,
+`buildOrderChecked` and `policyNotice` for the unique/explicit selected image;
+profile/policy are null when selection is ambiguous. Successful upgrade JSON also
+reports profile/build-order policy. Eligibility is not proof that Setup will
+approve migration. See [POC scope and VM checklist](WINDOWS10-POC.md).
 
 ## Answer-file safety
 
@@ -255,6 +268,9 @@ exit `0x40010004` returns CLI code 8, not success; other nonzero Setup exits ret
 observed build change with no active Setup. It does not prove files/apps were kept.
 Same-build upgrades remain unconfirmed without additional evidence. No scheduled
 task, startup entry, background service or forced restart is added.
+Windows 10 POC attempts also require manual verification: the recorded image
+build can be a shared base, not the exact installed feature release, so it never
+triggers `TargetWindowsObserved` automatically.
 
 For reliable waiting in PowerShell scripts with this GUI-subsystem EXE, capture
 output through a pipeline, for example `$result = & .\PcNinja-Win11-Upgrade-Assistant-RC5.exe status --json | Out-String`, then read `$LASTEXITCODE`.

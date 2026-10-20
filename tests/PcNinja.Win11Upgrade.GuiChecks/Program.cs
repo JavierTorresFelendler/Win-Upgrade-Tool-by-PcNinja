@@ -68,9 +68,11 @@ internal static class Program
         // Test the real consent decision methods without downloads, mounting or Setup.
         var confirmations = 0;
         var accept = true;
+        var lastConfirmation = "";
         SetField("_confirmUpgrade", new Func<string, string, bool>((message, title) =>
         {
             confirmations++;
+            lastConfirmation = message;
             if (title == "Download and upgrade" && (!message.Contains("validate") || !message.Contains("Back up")))
                 throw new Exception("Automatic consent did not explain the complete operation.");
             return accept;
@@ -93,6 +95,14 @@ internal static class Program
         Call("ConfirmPreparedUpgrade", consentSource, consentImage, 2, consentSource, false);
         Call("ConfirmPreparedUpgrade", consentSource, consentImage, 1, consentSource, true);
         if (confirmations != 4) throw new Exception("Manual, changed, ambiguous or changed-restart consent was bypassed.");
+        var windows10Image = consentImage with { Name = "Windows 10 Pro", Version = "10.0.19041" };
+        var windows10Source = consentSource with { Images = [windows10Image] };
+        confirmations = 0;
+        Call("ConfirmPreparedUpgrade", windows10Source, windows10Image, 1, null, false);
+        if (confirmations != 1 || !lastConfirmation.Contains(InstallationImages.Windows10Notice))
+            throw new Exception("Windows 10 manual confirmation omitted the POC build-order/migration warning.");
+        Call("ConfirmPreparedUpgrade", windows10Source, windows10Image, 1, windows10Source, false);
+        if (confirmations != 2) throw new Exception("Windows 10 inherited unattended Windows 11 consent.");
         accept = false;
         if ((bool)Call("ConfirmAutomaticUpgrade", "Z:\\Downloads", true)! ||
             (bool)Call("ConfirmPreparedUpgrade", consentSource, consentImage, 1, null, false)!)

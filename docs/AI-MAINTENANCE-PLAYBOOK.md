@@ -79,9 +79,19 @@ All paths below are relative to the repository root.
 - Automatic download availability follows the configured image language in shared
   Core logic, not only a disabled GUI control. Manual matching media has no
   English-only restriction. A higher build alone does not prove a supported path.
-- Current target eligibility is Windows 11 client x64, equal-or-newer build and
-  matching edition/language. Future OS catalog expansion needs separate design
-  and field tests; discussion is not an implemented capability.
+- Windows 11 targets retain equal-or-newer build eligibility. The owner-scoped
+  manual Windows 10 POC intentionally does not compare intra-Windows-10 build
+  order; preserve edition/language/x64/client gates and Windows 11 -> 10 blocking.
+  This is a test policy delegated to Setup, not a guarantee that downgrades work.
+  Do not reintroduce build-order checks or broaden this exception silently.
+- Select the command profile from actual image metadata, never the ISO/folder
+  name or installed OS alone. Windows 10 omits `/product server` and `/eula accept`;
+  Windows 11 retains its existing profile. Automatic download stays Windows 11-only.
+- Windows 10 2004-22H2 share system files. In the intentionally simple POC,
+  raw DISM image metadata is not an independently verified feature-release build.
+  Do not infer 22H2 from a filename or report automatic target-build confirmation
+  from a shared base. No offline registry extraction was implemented; manual
+  outcome verification is required. See [Windows 10 POC](WINDOWS10-POC.md).
 
 ### 4. Distinguish storage and transport failures
 

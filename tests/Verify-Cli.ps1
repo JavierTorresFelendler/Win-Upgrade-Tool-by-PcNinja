@@ -16,6 +16,10 @@ if ($LastCode -ne 0) { throw 'Offline help failed.' }
 if (-not $help.Contains('manualRestartRequired') -or -not $help.Contains('restart manually to continue')) {
     throw 'Offline help omitted successful manual-restart guidance.'
 }
+if (-not $help.Contains('Windows 10 -> Windows 10') -or -not $help.Contains('does NOT compare build order') -or
+    -not $help.Contains('Windows 10 target arguments:') -or -not $help.Contains('buildOrderChecked')) {
+    throw 'Offline help omitted the Windows 10 POC profile/policy.'
+}
 foreach ($option in @('--mounted', '--iso', '--download', '--image-index', '--sha256', '--no-restart', '--dry-run', '--yes', '--json')) {
     if (-not $help.Contains($option)) { throw "Offline help missing $option" }
 }

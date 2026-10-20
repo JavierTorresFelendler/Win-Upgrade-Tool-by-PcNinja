@@ -1,5 +1,17 @@
 # RC5 user-message catalog
 
+## Pending next release: manual Windows 10 POC
+
+- Reuse the existing two source modes and image selector. The automatic label
+  explicitly says Windows 11; manual browse accepts Windows 10/11 x64 media.
+- Windows 10 image/confirmation warning: "Experimental Windows 10 path: build
+  order is not checked. Windows Setup must allow keeping apps and files;
+  otherwise stop. No clean-install fallback."
+- Windows 11 -> 10: "The experimental Windows 10 target requires a Windows 10
+  computer. Windows 11 to Windows 10 is blocked."
+- Language/no-matching-media wording is target-neutral. All existing file safety,
+  signature, space, image-index, restart, failure and Cancel messages remain.
+
 ## Pending next release: automatic flow and diagnostics
 
 - Successful Setup preparation with automatic restart off: information dialog

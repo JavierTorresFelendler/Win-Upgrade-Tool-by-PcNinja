@@ -246,7 +246,12 @@ public sealed class UpgradeEngine
                 var storage = CheckDownloadDestination(destinationDirectory, remaining);
                 if (!storage.IsValid) throw new InvalidOperationException(storage.Message);
             }, progress, cancellationToken, expectedSha256 ?? ConfiguredIsoSha256,
-            validateMedia: async (path, token) => { validatedSource = await MountAndValidateAsync(path, token); }));
+            validateMedia: async (path, token) =>
+            {
+                var source = await MountAndValidateAsync(path, token);
+                InstallationImages.EnsureAutomaticWindows11Source(source);
+                validatedSource = source;
+            }));
         // Reuse only this operation's exact completed validation, never a path/time-based cache.
         return result with { ValidatedSource = validatedSource
             ?? throw new InvalidOperationException("The downloaded ISO did not complete media validation.") };
@@ -361,7 +366,10 @@ public sealed class UpgradeEngine
         if (!string.Equals(source.ImagePath, selectedSource.ImagePath, StringComparison.OrdinalIgnoreCase) ||
             !(source.Images ?? []).SequenceEqual(selectedSource.Images ?? []))
             throw new InvalidOperationException("Installation media changed. Validate and select the image again.");
-        var image = InstallationImages.Select(source, imageIndex, CurrentWindows.Read());
+        var current = CurrentWindows.Read();
+        var image = InstallationImages.Select(source, imageIndex, current);
+        AppLog.Info($"Selected Setup profile: {InstallationImages.GetSetupProfile(image)}; " +
+            $"image {image.Index}; image metadata version {image.Version}; current build {current.Build}.");
         var arguments = BuildSetupArguments(source, image, allowAutomaticRestart);
         var setupPath = source.SetupPath;
         InstallationSafety.EnsureSafe(source.Root, removeSelectedAnswerFiles: false);
@@ -389,7 +397,13 @@ public sealed class UpgradeEngine
     {
         if (source.ImagePath is null || !(source.Images ?? []).Contains(image))
             throw new InvalidOperationException("The selected image is not bound to the validated source.");
-        return "/product server /auto upgrade /eula accept /dynamicupdate disable /compat ignorewarning" +
+        var command = InstallationImages.GetSetupProfile(image) switch
+        {
+            WindowsSetupProfile.Windows10 => "/auto upgrade /dynamicupdate disable /compat ignorewarning",
+            WindowsSetupProfile.Windows11 => "/product server /auto upgrade /eula accept /dynamicupdate disable /compat ignorewarning",
+            _ => throw new InvalidOperationException("No supported Setup command profile was found for the selected image.")
+        };
+        return command +
             $" /imageindex {image.Index} /installfrom \"{source.ImagePath}\"" + (automaticRestart ? "" : " /noreboot");
     }
 

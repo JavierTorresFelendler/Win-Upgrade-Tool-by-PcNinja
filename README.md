@@ -28,7 +28,7 @@ PowerShell or CMD files are required.
 
 ## One-screen graphical workflow
 
-> **Pending next release:** The language policy, automatic consent and diagnostics below
+> **Pending next release:** The language policy, automatic consent, diagnostics and Windows 10 POC below
 > are source changes, not a replacement for the published RC5 executable.
 
 The application shows the current Windows version, storage state, and source
@@ -37,6 +37,14 @@ choices on one screen:
 1. **Download the ISO automatically.** Choose a download drive/folder.
 2. **Use existing installation media.** Select an ISO, mounted drive, extracted
    Setup folder or network folder in one path field, using **ISO...** or **Folder...**.
+
+Development test builds also accept a manually supplied **Windows 10 client x64**
+image on Windows 10, using the same image selector and `--image-index`. By owner
+request, this POC does **not compare build order inside Windows 10**: older,
+same-build and newer images may be offered to Windows Setup, which must allow
+keeping apps/files or stop. This is not a promise of downgrade/repair support.
+Windows 11 to 10 remains blocked; Windows 11 target build checks are unchanged.
+Automatic download remains Windows 11 only. See [Windows 10 POC tests](docs/WINDOWS10-POC.md).
 
 Automatic Start asks once **before** downloading/reusing media, explaining that
 validation and the compatible in-place upgrade follow with the chosen restart
@@ -120,8 +128,8 @@ Before starting Setup, the application validates:
 - answer-file safety on the selected source and other attached media, repeated
   immediately before Setup; narrowly scoped writable selected-source answer
   files are removed, while secondary/read-only media blocks the upgrade
-- actual image index, matching edition (including N/Single Language), x64,
-  system-default UI language, and equal-or-newer Windows 11 build
+- actual image index, matching edition (including N/Single Language), x64 and
+  system-default UI language; equal-or-newer build for Windows 11 targets only
 
 Downloading onto the Windows drive reserves space for both the remaining ISO
 bytes and the 20 GB upgrade workspace, plus a 1 GB download margin. Windows

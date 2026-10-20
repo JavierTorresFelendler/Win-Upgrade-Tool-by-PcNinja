@@ -219,17 +219,30 @@ Examples:
   PcNinja-Win11-Upgrade-Assistant-RC5.exe upgrade --download --destination "F:\PcNinja Downloads"
   PcNinja-Win11-Upgrade-Assistant-RC5.exe upgrade --mounted E:\ --no-restart --yes --json
 
-The same-edition, x64, system-UI-language, equal-or-newer Windows 11 image is
-selected automatically only when exactly one match exists. Otherwise specify
+The same-edition, x64, system-UI-language image is selected automatically only
+when exactly one match exists. Windows 11 targets must be equal-or-newer builds.
+For Windows 10 -> Windows 10, this POC does NOT compare build order: Setup must
+decide whether an in-place upgrade/repair keeping apps and files is available.
+Windows 11 -> Windows 10 remains blocked. Windows 10 targets require manually
+supplied --iso or --mounted media; --download remains Windows 11 only.
+Validation/dry-run JSON reports setupProfile and buildOrderChecked (null if no
+unique/explicit image was selected). These are policy details, not proof of
+migration support. Otherwise specify
 --image-index after inspecting validate output. An explicit incompatible image
 is rejected; there is no clean-install or arbitrary edition-change fallback.
 
 Without --yes, type YES at the final safety prompt. Non-interactive execution
 without --yes is cancelled. Administrator permission is required.
 
-Windows Setup arguments:
+Windows 11 target arguments (existing experimental profile):
   /product server /auto upgrade /eula accept /dynamicupdate disable
   /compat ignorewarning /imageindex <selected-index> /installfrom "<image-file>"
+
+Windows 10 target arguments:
+  /auto upgrade /dynamicupdate disable /compat ignorewarning
+  /imageindex <selected-index> /installfrom "<image-file>"
+No /product server or /eula accept for Windows 10. No /quiet, clean or data-only
+fallback is added. A refused migration must stop, not switch installation type.
 
 --no-restart additionally supplies /noreboot. PcNinja never calls shutdown.exe.
 After Setup exit 0 with --no-restart, restart manually to continue the upgrade.
