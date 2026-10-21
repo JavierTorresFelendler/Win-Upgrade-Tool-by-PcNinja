@@ -943,7 +943,7 @@ internal sealed class MainForm : Form
 
     private static Panel CreateCard()
     {
-        var card = new Panel
+        var card = new CardPanel
         {
             Dock = DockStyle.Fill,
             BackColor = Surface,
@@ -956,6 +956,17 @@ internal sealed class MainForm : Form
             e.Graphics.DrawRectangle(pen, rectangle);
         };
         return card;
+    }
+
+    private sealed class CardPanel : Panel
+    {
+        public CardPanel()
+        {
+            // The border follows Width/Height. Repaint the old border's entire
+            // surface as well as newly exposed strips when the card resizes.
+            ResizeRedraw = true;
+            DoubleBuffered = true;
+        }
     }
 
     private static Panel CreateScrollHost() => new()

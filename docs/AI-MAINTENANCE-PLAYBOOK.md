@@ -162,6 +162,20 @@ All paths below are relative to the repository root.
 - Build >= 22000 identifies Windows 11 in this client's display normalization;
   registry ProductName alone can still say Windows 10. Keep Server detection separate.
 
+### 6. Resize redraw is separate from a fresh screenshot
+
+- A custom border painted from current Width/Height on an ordinary Panel can
+  leave old edge lines after resize if only newly exposed strips are repainted.
+  Set ResizeRedraw on the actual bordered card, with local double buffering to
+  reduce flicker. Double buffering alone does not request full invalidation.
+- Keep this local to the custom-painted panels; do not add global composited
+  window styles, timers, Refresh loops or changes to upgrade operations.
+- GUI regression should check styles and full client invalidation/paint during
+  live repeated resize. DrawToBitmap or explicit Refresh/Invalidate can hide the
+  original defect, so a clean static screenshot is not proof of a resize fix.
+- Local client fixtures do not cover every DPI/graphics/remote-session case;
+  repeat the original owner scenario on the affected machine after release.
+
 ## Safe verification recipe
 
 Run from the repository root on a Windows client with the .NET 8 SDK. Read the
@@ -173,7 +187,7 @@ dotnet build tests/PcNinja.Win11Upgrade.SmokeTests/PcNinja.Win11Upgrade.SmokeTes
 dotnet run --project tests/PcNinja.Win11Upgrade.SmokeTests/PcNinja.Win11Upgrade.SmokeTests.csproj -c Debug --no-build
 dotnet build tests/PcNinja.Win11Upgrade.GuiChecks/PcNinja.Win11Upgrade.GuiChecks.csproj -c Debug -warnaserror
 dotnet run --project tests/PcNinja.Win11Upgrade.GuiChecks/PcNinja.Win11Upgrade.GuiChecks.csproj -c Debug --no-build
-& ./tests/Verify-Cli.ps1 -ExePath ./tests/PcNinja.Win11Upgrade.GuiChecks/bin/Debug/net8.0-windows/win-x64/Windows-Upgrade-Assistant-By-PcNinja.exe -ExpectedVersion '1.1.0-rc.6'
+& ./tests/Verify-Cli.ps1 -ExePath ./tests/PcNinja.Win11Upgrade.GuiChecks/bin/Debug/net8.0-windows/win-x64/Windows-Upgrade-Assistant-By-PcNinja.exe -ExpectedVersion '1.1.0-rc.7'
 git diff --check
 ```
 

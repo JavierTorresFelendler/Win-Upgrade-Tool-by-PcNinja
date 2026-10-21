@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.1.0-rc.7 - 2026-10-21
+
+- Simplify approved main-window headings, source descriptions and control labels
+  from PR #16; preserve the original branding and real website/download links.
+- Redraw the full dashboard card on resize and enable double buffering to avoid
+  old border trails when stretching/maximizing/restoring the window. Add live
+  resize invalidation and window-state regression coverage.
+- No upgrade/download/CLI-policy or confirmation-flow changes. Keep the fixed
+  EXE filename and metadata-only version identity; preserve all previous releases.
+
 ## 1.1.0-rc.6 - 2026-10-20
 
 - Rename the public product to Windows Upgrade Assistant By PcNinja. Use a fixed

@@ -1,12 +1,34 @@
 # Development handoff
 
-Updated: 2026-10-20. This is sanitized project context, not a backup of Codex chats.
+Updated: 2026-10-21. This is sanitized project context, not a backup of Codex chats.
 
 Reusable architecture, diagnosis and verification know-how lives in
 [AI maintenance playbook](AI-MAINTENANCE-PLAYBOOK.md), independently of any
 assistant's personal memory or skills installation.
 
-## Current follow-up: approved main-window copy
+## RC7 authorization and scope
+
+- On 2026-10-21 the owner authorized combining the reported resize-rendering fix
+  with another ready PR and building RC7; otherwise work should wait. PR #16 was
+  the suitable implemented, green, conflict-free change. It is now merged as
+  `ad9782e`; PRs #9/#13 remain design-only and are not release candidates.
+- Branch `release/rc7-resize-redraw` adds the narrowly scoped card redraw fix,
+  client GUI regression coverage and RC7 metadata/documentation. Do not merge
+  until checks pass. Tag v1.1.0-rc.7 only on reviewed merged main source, then
+  verify the uploaded release binary/commit/hash/CLI/size before handoff.
+- Preserve original mascot/icon/public links and all Core/CLI operational logic.
+  Only the HTTP user-agent version label changes outside the GUI. Popup flow,
+  validation reuse, mount/eject investigation, app self-update and ISO preparation
+  remain deferred. Existing RC6 and older releases stay unchanged.
+- See `RELEASE-RC7.md` and `RC7-TESTING.md`. Owner regression on the originally
+  affected display/DPI remains distinct from local client fixtures and CI.
+- Local verification: warnings-as-errors Release builds and full Core/client GUI
+  suites pass. The new fixture first failed on the old plain Panel with missing
+  ResizeRedraw, then passed after the scoped panel subclass was added, including
+  full invalidation/paint on live resize and maximize/minimize/restore. No real
+  Windows Setup, reboot or ISO download was performed.
+
+## Merged main-window copy (PR #16; historical test checkpoint)
 
 - The owner approved the main-window mockup and requested a separate PR with a
   portable EXE for testing. Branch: `ui/main-window-copy-review`, based on RC6
