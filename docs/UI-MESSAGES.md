@@ -1,9 +1,9 @@
-# RC6 user-message catalog
+# User-message catalog
 
-## Post-RC6 review: main-window copy (test branch only)
+## RC7: approved main-window copy
 
-The owner approved the simplified main-window preview. Published RC6 remains
-unchanged. This pass changes headings, descriptions and related control captions,
+The owner approved the simplified main-window preview and its inclusion in RC7.
+Published RC6 remains unchanged. This pass changes headings, descriptions and related control captions,
 not popup flow, download providers, validation, Setup commands or CLI contracts.
 
 | Area | Approved wording |

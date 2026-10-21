@@ -5,7 +5,7 @@ in-place Windows upgrade on x64 hardware, including an experimental Windows 11
 compatibility method and an experimental manual Windows 10 target path.
 
 > [!WARNING]
-> RC6 is prerelease software. Its Windows 11 path uses the undocumented
+> RC7 is prerelease software. Its Windows 11 path uses the undocumented
 > `/product server` compatibility behavior. Back up important files
 > before using it. Microsoft can change this behavior in future releases.
 
@@ -18,7 +18,7 @@ project-specific decisions and working procedures across assistants and machines
 
 ## Download
 
-Download [RC6](https://github.com/JavierTorresFelendler/pcninja-win11-upgrade-assistant/releases/tag/v1.1.0-rc.6)
+Download [RC7](https://github.com/JavierTorresFelendler/Windows-Upgrade-Assistant-by-PcNinja/releases/tag/v1.1.0-rc.7)
 from the repository's **Releases** page:
 
 ```text
@@ -28,7 +28,7 @@ Windows-Upgrade-Assistant-By-PcNinja.exe
 The portable x64 EXE contains both the graphical application and the CLI. No
 PowerShell or CMD files are required.
 
-RC6 uses that fixed filename; previous release assets remain unchanged.
+RC7 uses that fixed filename; previous release assets remain unchanged.
 Version/commit metadata remains
 in file properties, diagnostic logs, `version` and `status --json`, not the GUI
 title or executable filename. See [product identity](docs/PRODUCT-IDENTITY.md).
@@ -38,17 +38,19 @@ warning/details area and CLI status. See [outcome diagnostics](docs/SETUP-OUTCOM
 
 ## One-screen graphical workflow
 
-> **Included in RC6:** Language-aware automatic download, upfront automatic
-> consent, readable diagnostics and the manual Windows 10 POC described below.
+> **New in RC7:** Simpler main-window wording and full dashboard-card redraw
+> during resize. Original branding, public links and upgrade behavior are preserved.
+> Includes RC6's language-aware download, upfront automatic consent, diagnostics
+> and manual Windows 10 POC described below.
 
 The application shows the current Windows version, storage state, and source
 choices on one screen:
 
-1. **Download the ISO automatically.** Choose a download drive/folder.
-2. **Use existing installation media.** Select an ISO, mounted drive, extracted
+1. **Download Windows 11 automatically.** Choose a download drive/folder.
+2. **Use an ISO, drive or folder.** Select an ISO, mounted drive, extracted
    Setup folder or network folder in one path field, using **ISO...** or **Folder...**.
 
-RC6 also accepts a manually supplied **Windows 10 client x64**
+RC7 also accepts a manually supplied **Windows 10 client x64**
 image on Windows 10, using the same image selector and `--image-index`. By owner
 request, this POC does **not compare build order inside Windows 10**: older,
 same-build and newer images may be offered to Windows Setup, which must allow
@@ -156,7 +158,7 @@ Mounted media/extracted folders do not support whole-ISO checksum comparison.
 
 Routine errors appear in the main window; **View details** shows diagnostics.
 See the [message catalog](docs/UI-MESSAGES.md) for the short English wording
-used in RC6 and the [RC6 test notes](docs/RC6-TESTING.md) for coverage and limits.
+used in RC6 and the [RC7 test notes](docs/RC7-TESTING.md) for current coverage and limits.
 
 ## CLI
 

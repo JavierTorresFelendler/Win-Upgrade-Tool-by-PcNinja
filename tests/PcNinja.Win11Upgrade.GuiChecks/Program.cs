@@ -22,6 +22,8 @@ internal static class Program
         var choices = new[] { "_autoDownload", "_existingMedia" }.Select(name => (RadioButton)Field(name)).ToArray();
         IEnumerable<Control> Descendants(Control parent) => parent.Controls.Cast<Control>()
             .SelectMany(control => new[] { control }.Concat(Descendants(control)));
+        ResizeChecks.Run(form, Descendants(form).OfType<Panel>()
+            .Where(panel => panel.Padding == new Padding(20)).ToArray());
         if (form.Text != "Windows Upgrade Assistant By PcNinja" ||
             Descendants(form).Any(control => control.Text.Contains("Version 1.1.0-rc.")))
             throw new Exception("Product branding exposed an obsolete name or release label.");
