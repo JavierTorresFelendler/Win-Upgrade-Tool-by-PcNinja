@@ -25,6 +25,27 @@ internal static class Program
         if (form.Text != "Windows Upgrade Assistant By PcNinja" ||
             Descendants(form).Any(control => control.Text.Contains("Version 1.1.0-rc.")))
             throw new Exception("Product branding exposed an obsolete name or release label.");
+        var captions = Descendants(form).Select(control => control.Text).ToHashSet();
+        foreach (var caption in new[]
+        {
+            "Upgrade Windows 10 or Windows 11 while keeping your apps and files.",
+            "Choose your installation source", "Windows installation image",
+            "Manual ISO downloads", "Your computer && upgrade settings"
+        })
+            if (!captions.Contains(caption)) throw new Exception($"Approved GUI heading is missing: {caption}");
+        if (captions.Contains("INSTALLATION SOURCE") || captions.Contains("THIS COMPUTER") ||
+            captions.Contains("Upgrade readiness") || ((Button)Field("_inspectSource")).Text != "Validate")
+            throw new Exception("Duplicate headings or the old Inspect images caption remain.");
+        if (!Descendants(form).OfType<LinkLabel>().Any(link => link.Text == "www.pcninja.pro" && link.Links.Count > 0) ||
+            UpgradeEngine.PcNinjaBrowserFallbackPage != "https://iso.pcninja.pro" ||
+            UpgradeEngine.MicrosoftDownloadPage != "https://www.microsoft.com/software-download/windows11")
+            throw new Exception("Branding or public download links changed during the copy review.");
+        if (Descendants(form).OfType<PictureBox>().Count(picture => picture.Image is not null) != 1)
+            throw new Exception("The single PcNinja header logo is missing or duplicated.");
+        using (var mascot = assembly.GetManifestResourceStream("PcNinja.Win11UpgradeAssistant.Assets.PcNinja-mascot.png")!)
+            if (Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(mascot)) !=
+                "4FDA4958ECA3DD6A337985BB95AE00CE5A06CDA269B95EBC20D2A54ED65A09BC")
+                throw new Exception("The original embedded PcNinja logo was replaced.");
         var previous = new UpgradeAttempt(DateTimeOffset.UtcNow, "unused", "unused", 1,
             19043, 19041, "Professional", 0x40010004, "RollbackObserved", "Recovery collision: 0x800700B7 - 0x2000A.")
         { SetupFailure = new("0x800700B7", "0x2000A", "Safe OS", "Recovery collision", "fixture.log") };
@@ -45,6 +66,9 @@ internal static class Program
             var existingPanel = (Control)Field("_existingSourcePanel");
             if (automaticPanel.BackColor == existingPanel.BackColor)
                 throw new Exception("The selected source is not uniquely highlighted.");
+            if (!choices[0].Text.EndsWith("Download Windows 11 automatically") ||
+                !choices[1].Text.EndsWith("Use an ISO, drive or folder"))
+                throw new Exception("Selecting a source restored the old source captions.");
         }
         foreach (var language in new[] { "he-IL", "en-GB", "ru-RU" })
         {
@@ -211,10 +235,22 @@ internal static class Program
         if (args.Length > 0)
         {
             Directory.CreateDirectory(args[0]);
+            // Clear injected fixture state so the preview is not mistaken for
+            // a real pending upgrade or a selected customer installation path.
+            sources.Text = "";
+            SetField("_preparedSource", null);
+            SetField("_preparedKey", null);
+            ((ComboBox)Field("_installationImages")).Items.Clear();
+            ((CheckBox)Field("_autoRestart")).Checked = true;
             Invoke("RefreshSources", false);
+            ((Label)Field("_operationNotice")).Visible = false;
             ((LinkLabel)Field("_details")).Visible = false;
             choices[0].Checked = true;
             Save("Ready.png");
+            var normalSize = form.Size;
+            form.Size = form.MinimumSize;
+            Save("Minimum.png");
+            form.Size = normalSize;
             using var previewOperation = new CancellationTokenSource();
             SetField("_operation", previewOperation);
             Invoke("SetBusy", true);
@@ -229,7 +265,7 @@ internal static class Program
                 image.Save(Path.Combine(args[0], name));
             }
         }
-        Console.WriteLine("PASS: Manual-restart completion notice and failure/transition exclusion; automatic single consent and invalidation; persistent notices; language-gated download; two exclusive sources; real Start/Cancel; Setup lockout; refresh retention. No Setup launched.");
+        Console.WriteLine("PASS: Approved GUI copy and original logo/public links; manual-restart completion notice and failure/transition exclusion; automatic single consent and invalidation; persistent notices; language-gated download; two exclusive sources; real Start/Cancel; Setup lockout; refresh retention. No Setup launched.");
         return 0;
     }
 }

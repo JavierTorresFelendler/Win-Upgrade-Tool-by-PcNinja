@@ -209,7 +209,7 @@ internal sealed class MainForm : Form
         text.Controls.Add(new Label
         {
             AutoSize = true,
-            Text = "A guided in-place upgrade for advanced Windows 10 and Windows 11 users",
+            Text = "Upgrade Windows 10 or Windows 11 while keeping your apps and files.",
             ForeColor = Muted,
             BackColor = Color.Transparent,
             Margin = new Padding(1, 4, 0, 0)
@@ -225,7 +225,7 @@ internal sealed class MainForm : Form
             BackColor = Background,
             Margin = new Padding(14, 14, 0, 0)
         };
-        StyleSecondaryButton(_refresh, "Refresh sources");
+        StyleSecondaryButton(_refresh, "Refresh");
         _refresh.Margin = new Padding(0, 0, 8, 0);
         _refresh.Click += (_, _) => RefreshSources(false);
         actions.Controls.Add(_refresh);
@@ -252,11 +252,10 @@ internal sealed class MainForm : Form
         };
         scrollHost.Controls.Add(content);
 
-        content.Controls.Add(Kicker("INSTALLATION SOURCE"));
-        content.Controls.Add(SectionHeading("Choose Windows installation media"));
-        content.Controls.Add(BodyText("Download automatically, or use installation media you already have."));
+        content.Controls.Add(SectionHeading("Choose your installation source"));
+        content.Controls.Add(BodyText("Download automatically, or select an ISO, drive or folder."));
 
-        _autoDownload.Text = "Download the ISO automatically";
+        _autoDownload.Text = "Download Windows 11 automatically";
         StyleRadio(_autoDownload, true);
         var destinationRow = BuildTwoColumnRow();
         _downloadLocations.DropDownStyle = ComboBoxStyle.DropDownList;
@@ -267,10 +266,10 @@ internal sealed class MainForm : Form
         _chooseDownloadFolder.Click += (_, _) => ChooseDownloadFolder();
         destinationRow.Controls.Add(_chooseDownloadFolder, 1, 0);
         _automaticDownloadInfo = ConfigureSourcePanel(_autoSourcePanel, _autoDownload,
-            "PcNinja preserves the original filename and validates the completed download.", destinationRow);
+            "English (en-US). The ISO is checked before the upgrade starts.", destinationRow);
         content.Controls.Add(_autoSourcePanel);
 
-        _existingMedia.Text = "Use existing installation media";
+        _existingMedia.Text = "Use an ISO, drive or folder";
         StyleRadio(_existingMedia);
         var existingRow = BuildTwoColumnRow();
         _sources.DropDownStyle = ComboBoxStyle.DropDown;
@@ -287,24 +286,24 @@ internal sealed class MainForm : Form
         existingRow.Controls.Add(_sources, 0, 0);
         existingRow.Controls.Add(browseActions, 1, 0);
         ConfigureSourcePanel(_existingSourcePanel, _existingMedia,
-            "Choose an ISO, mounted drive, extracted folder or network setup folder.", existingRow);
+            "Windows 10 or 11 media, on this computer or your network.", existingRow);
         content.Controls.Add(_existingSourcePanel);
 
         content.Controls.Add(DividerLine());
-        content.Controls.Add(Kicker("INSTALLATION IMAGE"));
+        content.Controls.Add(Kicker("Windows installation image"));
         var imageRow = BuildTwoColumnRow();
         _installationImages.DropDownStyle = ComboBoxStyle.DropDownList;
         StyleCombo(_installationImages);
         _installationImages.DropDownWidth = 700;
         imageRow.Controls.Add(_installationImages, 0, 0);
-        StyleSecondaryButton(_inspectSource, "Inspect images");
+        StyleSecondaryButton(_inspectSource, "Validate");
         _inspectSource.Click += async (_, _) => { if (_operation is null) await PrepareOrUpgradeAsync(false); };
         imageRow.Controls.Add(_inspectSource, 1, 0);
         content.Controls.Add(imageRow);
         _imageInfo.AutoSize = true;
         _imageInfo.MaximumSize = new Size(550, 0);
         _imageInfo.ForeColor = Muted;
-        _imageInfo.Text = "Images are read from your selected media before Setup starts.";
+        _imageInfo.Text = "A matching image is selected automatically when possible.";
         _imageInfo.Margin = new Padding(0, 7, 0, 0);
         content.Controls.Add(_imageInfo);
 
@@ -319,8 +318,8 @@ internal sealed class MainForm : Form
             Padding = new Padding(0, 10, 0, 0)
         };
         footer.Controls.Add(DividerLine());
-        footer.Controls.Add(Kicker("MANUAL ISO DOWNLOADS"));
-        footer.Controls.Add(BodyText("For standard Microsoft Windows media, prefer Microsoft. For PcNinja media, use PcNinja ISO downloads. Select a matching language, then choose ISO... or Folder... above."));
+        footer.Controls.Add(Kicker("Manual ISO downloads"));
+        footer.Controls.Add(BodyText("Use Microsoft for standard Windows, or PcNinja for PcNinja media. Choose the same language as your installed Windows."));
         var downloadActions = new FlowLayoutPanel
         {
             AutoSize = true,
@@ -330,10 +329,10 @@ internal sealed class MainForm : Form
             BackColor = Surface,
             Margin = new Padding(0, 7, 0, 0)
         };
-        StyleSecondaryButton(_pcNinjaDownload, "PcNinja ISO downloads");
+        StyleSecondaryButton(_pcNinjaDownload, "PcNinja downloads");
         _pcNinjaDownload.Margin = new Padding(0, 0, 8, 0);
         _pcNinjaDownload.Click += (_, _) => OpenPage(UpgradeEngine.PcNinjaBrowserFallbackPage);
-        StyleSecondaryButton(_microsoft, "Microsoft ISO download");
+        StyleSecondaryButton(_microsoft, "Microsoft downloads");
         _microsoft.Margin = new Padding(0);
         _microsoft.Click += (_, _) => OpenPage(UpgradeEngine.MicrosoftDownloadPage);
         downloadActions.Controls.Add(_pcNinjaDownload);
@@ -374,8 +373,7 @@ internal sealed class MainForm : Form
         };
         scrollHost.Controls.Add(content);
 
-        content.Controls.Add(Kicker("THIS COMPUTER"));
-        content.Controls.Add(SectionHeading("Upgrade readiness"));
+        content.Controls.Add(SectionHeading("Your computer && upgrade settings", 280));
 
         var computer = new TableLayoutPanel
         {
@@ -399,17 +397,17 @@ internal sealed class MainForm : Form
         ConfigureSystemDetailValue(_processorValue, "Detecting processor...");
         ConfigureSystemDetailValue(_memoryValue, "Detecting memory...");
         ConfigureSystemDetailValue(_systemStorage, "Checking storage...");
-        computer.Controls.Add(SystemDetailRow("CPU", _processorValue));
+        computer.Controls.Add(SystemDetailRow("Processor", _processorValue));
         computer.Controls.Add(SystemDetailRow("Memory", _memoryValue));
-        computer.Controls.Add(SystemDetailRow("System drive", _systemStorage));
+        computer.Controls.Add(SystemDetailRow("Windows drive", _systemStorage));
         content.Controls.Add(computer);
 
-        content.Controls.Add(ReadinessRow("Installation source", _sourceSummary));
-        content.Controls.Add(ReadinessRow("Validation", ValueLabel("Required before Setup", AccentLight)));
-        content.Controls.Add(ReadinessRow("Restart policy", _restartSummary));
+        content.Controls.Add(ReadinessRow("Selected source", _sourceSummary));
+        content.Controls.Add(ReadinessRow("Media validation", ValueLabel("Required", AccentLight)));
+        content.Controls.Add(ReadinessRow("Restart", _restartSummary));
         content.Controls.Add(DividerLine());
 
-        _autoRestart.Text = "Allow Windows Setup to restart automatically";
+        _autoRestart.Text = "Restart automatically when needed";
         _autoRestart.Checked = true;
         _autoRestart.AutoSize = true;
         _autoRestart.ForeColor = Foreground;
@@ -417,7 +415,7 @@ internal sealed class MainForm : Form
         _autoRestart.Margin = new Padding(0, 2, 0, 2);
         content.Controls.Add(_autoRestart);
         content.Controls.Add(BodyText(
-            "Turn off to restart manually after Setup finishes.",
+            "Turn off to restart manually after upgrade preparation.",
             22, 280));
 
         var warning = new Label
@@ -425,7 +423,7 @@ internal sealed class MainForm : Form
             AutoSize = true,
             Dock = DockStyle.Top,
             MaximumSize = new Size(340, 0),
-            Text = "Experimental compatibility method\nBack up important files before starting the upgrade.",
+            Text = "Experimental compatibility method.\nBack up important files before upgrading.",
             ForeColor = Warning,
             BackColor = Color.FromArgb(53, 45, 43),
             Padding = new Padding(12, 10, 12, 10),
@@ -829,7 +827,7 @@ internal sealed class MainForm : Form
             _preparedSource = null;
             _preparedKey = null;
             _installationImages.Items.Clear();
-            _imageInfo.Text = "Source changed. Inspect images or Start to validate this media.";
+            _imageInfo.Text = "Source changed. Click Validate or START UPGRADE to check this media.";
         }
         UpdateReadinessSummary();
     }
@@ -847,7 +845,7 @@ internal sealed class MainForm : Form
                 (incompatibility ?? $"Selected image {image.Index}: {image.Language}, {image.Architecture}, image version {image.Version}." +
                     (InstallationImages.GetSetupProfile(image) == WindowsSetupProfile.Windows10
                         ? $" {InstallationImages.Windows10Notice}" : ""))
-            : $"This PC: {current.Edition}, {current.Language}. Select an image after validation.";
+            : $"This PC: {current.Edition}, {current.Language}. A matching image is selected automatically when possible.";
     }
 
     private void ShowIssue(Exception error)
@@ -916,8 +914,8 @@ internal sealed class MainForm : Form
         _installationImages.Enabled = idle && _preparedSource is not null;
         _autoSourcePanel.BackColor = _autoDownload.Checked ? AccentTint : SurfaceRaised;
         _existingSourcePanel.BackColor = _existingMedia.Checked ? AccentTint : SurfaceRaised;
-        _autoDownload.Text = _autoDownload.Checked ? "✓ SELECTED  ·  Download the ISO automatically" : "Download the ISO automatically";
-        _existingMedia.Text = _existingMedia.Checked ? "✓ SELECTED  ·  Use existing installation media" : "Use existing installation media";
+        _autoDownload.Text = _autoDownload.Checked ? "✓ SELECTED  ·  Download Windows 11 automatically" : "Download Windows 11 automatically";
+        _existingMedia.Text = _existingMedia.Checked ? "✓ SELECTED  ·  Use an ISO, drive or folder" : "Use an ISO, drive or folder";
         _autoDownload.ForeColor = _autoDownload.Checked ? Success : Foreground;
         _existingMedia.ForeColor = _existingMedia.Checked ? Success : Foreground;
     }
@@ -926,9 +924,9 @@ internal sealed class MainForm : Form
     {
         _automaticDownloadAvailable = AutomaticDownloadPolicy.IsAvailable(language);
         _automaticDownloadInfo.Text = _automaticDownloadAvailable
-            ? $"Automatic Windows 11 ISO: English ({AutomaticDownloadPolicy.ImageLanguage}). Original filename preserved; download validated."
+            ? $"English ({AutomaticDownloadPolicy.ImageLanguage}). The ISO is checked before the upgrade starts."
             : $"Automatic download unavailable: this Windows uses {language}; the automatic ISO is {AutomaticDownloadPolicy.ImageLanguage}. " +
-                "Download matching media using the links below, then choose ISO... or Folder....";
+                "Download matching media below, then select it with ISO... or Folder....";
         _automaticDownloadInfo.ForeColor = _automaticDownloadAvailable ? Muted : Warning;
         if (!_automaticDownloadAvailable) _existingMedia.Checked = true;
         UpdateSourceControls();
@@ -937,9 +935,9 @@ internal sealed class MainForm : Form
     private void UpdateReadinessSummary()
     {
         _sourceSummary.Text = _existingMedia.Checked
-            ? (string.IsNullOrWhiteSpace(_sources.Text) ? "Existing ISO / drive / folder" : _sources.Text)
+            ? (string.IsNullOrWhiteSpace(_sources.Text) ? "ISO, drive or folder" : _sources.Text)
             : _downloadLocations.SelectedItem is StorageLocation location ? $"Automatic · {location.RootPath}" : "Automatic download";
-        _restartSummary.Text = _autoRestart.Checked ? "Automatic when required" : "Manual / noreboot";
+        _restartSummary.Text = _autoRestart.Checked ? "Automatic" : "Manual restart";
         _restartSummary.ForeColor = _autoRestart.Checked ? AccentLight : Warning;
     }
 
@@ -1133,9 +1131,10 @@ internal sealed class MainForm : Form
         Margin = new Padding(0, 0, 0, 4)
     };
 
-    private static Label SectionHeading(string text) => new()
+    private static Label SectionHeading(string text, int maximumWidth = 520) => new()
     {
         AutoSize = true,
+        MaximumSize = new Size(maximumWidth, 0),
         Text = text,
         Font = new Font("Segoe UI Semibold", 17F),
         ForeColor = Foreground,

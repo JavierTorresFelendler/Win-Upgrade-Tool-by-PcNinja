@@ -1,5 +1,43 @@
 # RC6 user-message catalog
 
+## Post-RC6 review: main-window copy (test branch only)
+
+The owner approved the simplified main-window preview. Published RC6 remains
+unchanged. This pass changes headings, descriptions and related control captions,
+not popup flow, download providers, validation, Setup commands or CLI contracts.
+
+| Area | Approved wording |
+| --- | --- |
+| Header subtitle | Upgrade Windows 10 or Windows 11 while keeping your apps and files. |
+| Source heading | Choose your installation source |
+| Source description | Download automatically, or select an ISO, drive or folder. |
+| Automatic choice | Download Windows 11 automatically |
+| Automatic description (available) | English (en-US). The ISO is checked before the upgrade starts. |
+| Existing-media choice | Use an ISO, drive or folder |
+| Existing-media description | Windows 10 or 11 media, on this computer or your network. |
+| Image heading / action | Windows installation image / Validate |
+| Image guidance | A matching image is selected automatically when possible. |
+| Manual downloads | Use Microsoft for standard Windows, or PcNinja for PcNinja media. Choose the same language as your installed Windows. |
+| Computer heading | Your computer & upgrade settings |
+| Restart checkbox | Restart automatically when needed |
+| Restart guidance | Turn off to restart manually after upgrade preparation. |
+
+Remove the redundant INSTALLATION SOURCE and THIS COMPUTER kickers. Refresh,
+PcNinja downloads and Microsoft downloads are shorter button captions. Preserve
+START UPGRADE/CANCEL, ISO..., Folder..., View log and View details. The manual
+restart summary says Automatic or Manual restart, not the internal /noreboot switch.
+
+Keep the original embedded mascot, application icon, product name and clickable
+www.pcninja.pro header. Public destinations remain https://www.pcninja.pro,
+https://iso.pcninja.pro and https://www.microsoft.com/software-download/windows11.
+The internal automatic provider and browser-fallback behavior are unchanged.
+
+Unlike the illustrative preview, the application does not display invented
+hardware values or a static Not checked yet result. Its validation row remains
+the policy Required; actual outcomes remain in existing notices. Short summary
+values avoid clipping at the supported minimum window width.
+The following RC6 sections describe the published baseline where wording differs.
+
 ## Branding and outcome evidence
 
 - GUI/product name: **Windows Upgrade Assistant By PcNinja**; footer **View log**.
@@ -81,7 +119,7 @@ blocking warning, not a Yes/No bypass. UAC and Windows Setup own their screens.
 | Cancel requested | Cancelling the current operation... | Inline; CANCELLING... |
 | Cancel complete | Operation cancelled. | Inline; Start restored |
 | No source | No existing installation media selected. Choose an ISO, drive or folder. | Inline + details |
-| Source changed | Source changed. Inspect images or Start to validate this media. | Inline |
+| Source changed | Source changed. Click Validate or START UPGRADE to check this media. | Inline |
 | Multiple eligible images | Choose an installation image above, then click START UPGRADE again. | Inline; same screen |
 | No matching image | No matching image for [edition, language]. Choose matching Windows 11 media. | Inline |
 | Existing download | Validating the existing ISO... | Inline; Cancel available |
