@@ -5,6 +5,9 @@ var engine = new UpgradeEngine();
 if (!string.Equals(UpgradeEngine.PcNinjaBrowserFallbackPage, "https://iso.pcninja.pro", StringComparison.Ordinal))
     failures.Add("Manual PcNinja downloads must use the public ISO catalog.");
 await TransferChecks.RunAsync();
+IsoFileProofChecks.Run();
+await IsoValidationSessionChecks.RunAsync();
+await IsoMountCommandChecks.RunAsync();
 SafetyImageChecks.Run();
 DiagnosticsChecks.Run();
 SetupOutcomeChecks.Run();

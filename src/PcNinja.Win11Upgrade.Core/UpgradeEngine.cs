@@ -5,6 +5,7 @@ using System.Runtime.InteropServices;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Security.Cryptography;
+using System.Text.Json;
 
 namespace PcNinja.Win11Upgrade.Core;
 
@@ -20,6 +21,7 @@ public sealed class UpgradeEngine
     private const long UnknownDownloadReserveBytes = 12L * 1024 * 1024 * 1024;
     private const long DownloadSafetyMarginBytes = 1L * 1024 * 1024 * 1024;
     private readonly HttpClient _http;
+    private readonly IsoValidationSession _isoValidation;
 
     public UpgradeEngine()
     {
@@ -32,6 +34,9 @@ public sealed class UpgradeEngine
         };
         _http = new HttpClient(handler) { Timeout = Timeout.InfiniteTimeSpan };
         _http.DefaultRequestHeaders.UserAgent.ParseAdd("PcNinja-Win11-Upgrade-Assistant/1.1.0-rc.7");
+        _isoValidation = new(IsoFileProof.TryOpen, ResolveIsoMountAsync, HashIsoStreamAsync,
+            (root, token, progress) => ValidateMountedSourceAsync(root, token, progress: progress),
+            (root, token) => Task.Run(() => ValidateMountedSource(root, removeSelectedAnswerFiles: false), token));
     }
 
     public string GetOperatingSystemDescription()
@@ -227,12 +232,45 @@ public sealed class UpgradeEngine
         expected = expected is null ? null : NormalizeSha256(expected);
         await using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read,
             1024 * 1024, FileOptions.Asynchronous | FileOptions.SequentialScan);
-        var actual = Convert.ToHexString(await SHA256.HashDataAsync(stream, token).ConfigureAwait(false));
+        var actual = await HashIsoStreamAsync(stream, token, null).ConfigureAwait(false);
         if (expected is not null && !actual.Equals(expected, StringComparison.OrdinalIgnoreCase))
             throw new InvalidDataException("The ISO checksum does not match. Download a fresh copy before upgrading.");
         AppLog.Info($"ISO SHA256: {actual}. Trusted expected hash supplied: {expected is not null}.");
         return actual;
     }
+
+    internal static async Task<string> HashIsoStreamAsync(Stream stream, CancellationToken token,
+        IProgress<string>? progress)
+    {
+        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        var buffer = new byte[1024 * 1024];
+        long readTotal = 0;
+        var lastPercent = -1;
+        int read;
+        while ((read = await stream.ReadAsync(buffer, token).ConfigureAwait(false)) != 0)
+        {
+            hash.AppendData(buffer, 0, read);
+            readTotal += read;
+            var percent = stream.Length == 0 ? 100 : (int)(readTotal * 100 / stream.Length);
+            if (percent != lastPercent)
+            {
+                progress?.Report($"Checking the ISO checksum... {percent}%");
+                lastPercent = percent;
+            }
+        }
+        token.ThrowIfCancellationRequested();
+        return Convert.ToHexString(hash.GetHashAndReset());
+    }
+
+    public Task<IsoPreparationResult> PrepareIsoAsync(string path, string? expectedSha256,
+        CancellationToken token, IProgress<string>? progress = null)
+    {
+        try { ValidateIsoFile(path); }
+        catch { _isoValidation.Invalidate(); throw; }
+        return _isoValidation.PrepareAsync(path, expectedSha256, progress, token);
+    }
+
+    public void InvalidateIsoValidation() => _isoValidation.Invalidate();
 
     public async Task<DownloadResult> DownloadIsoAsync(string destinationDirectory,
         IProgress<DownloadProgress>? progress, CancellationToken cancellationToken, string? expectedSha256 = null)
@@ -248,9 +286,17 @@ public sealed class UpgradeEngine
             }, progress, cancellationToken, expectedSha256 ?? ConfiguredIsoSha256,
             validateMedia: async (path, token) =>
             {
-                var source = await MountAndValidateAsync(path, token);
+                var source = await MountAndValidateAsync(path, token, new InlineProgress<string>(stage =>
+                    progress?.Report(new(path, 0, null, null, stage))));
                 InstallationImages.EnsureAutomaticWindows11Source(source);
                 validatedSource = source;
+            }, validateExistingIso: async (path, expected, token) =>
+            {
+                var prepared = await PrepareIsoAsync(path, expected, token, new InlineProgress<string>(stage =>
+                    progress?.Report(new(path, 0, null, null, stage))));
+                InstallationImages.EnsureAutomaticWindows11Source(prepared.Source);
+                validatedSource = prepared.Source;
+                return prepared.Sha256;
             }));
         // Reuse only this operation's exact completed validation, never a path/time-based cache.
         return result with { ValidatedSource = validatedSource
@@ -280,23 +326,48 @@ public sealed class UpgradeEngine
             throw new InvalidOperationException($"The selected ISO is unexpectedly small ({FormatBytes(size)}).");
     }
 
-    public async Task<MountedSource> MountAndValidateAsync(string isoPath, CancellationToken cancellationToken)
+    public async Task<MountedSource> MountAndValidateAsync(string isoPath, CancellationToken cancellationToken,
+        IProgress<string>? progress = null)
     {
         isoPath = Path.GetFullPath(isoPath);
         ValidateIsoFile(isoPath);
-        AppLog.Info($"Mounting/locating exact ISO: {Path.GetFullPath(isoPath)}.");
+        var mount = await ResolveIsoMountAsync(isoPath, true, cancellationToken)
+            ?? throw new InvalidOperationException("The selected ISO's mounted drive could not be identified.");
+        return await ValidateMountedSourceAsync(mount.Root, cancellationToken, progress: progress);
+    }
+
+    private static async Task<IsoMountIdentity?> ResolveIsoMountAsync(string isoPath, bool attachIfMissing,
+        CancellationToken cancellationToken)
+    {
+        isoPath = Path.GetFullPath(isoPath);
+        var json = (await RunPowerShellAsync(BuildIsoMountCommand(isoPath, attachIfMissing), cancellationToken)).Trim();
+        var mount = JsonSerializer.Deserialize<IsoMountIdentity>(json);
+        if (mount is null) return null;
+        if (!string.Equals(Path.GetFullPath(mount.ImagePath), isoPath, StringComparison.OrdinalIgnoreCase) ||
+            string.IsNullOrWhiteSpace(mount.Root))
+            throw new InvalidOperationException("Windows returned a different ISO mount. Refresh and try again.");
+        if (attachIfMissing) AppLog.Info(mount.MountedNow
+            ? $"Mounted exact ISO {isoPath} at {mount.Root}."
+            : $"Using already mounted exact ISO {isoPath} at {mount.Root}.");
+        return mount;
+    }
+
+    internal static string BuildIsoMountCommand(string isoPath, bool attachIfMissing)
+    {
+        isoPath = Path.GetFullPath(isoPath);
         var escaped = isoPath.Replace("'", "''");
-        var command = "$ProgressPreference='SilentlyContinue';$p='" + escaped + "';" +
+        return "$ProgressPreference='SilentlyContinue';[Console]::OutputEncoding=[Text.UTF8Encoding]::new($false);$p='" + escaped + "';" +
             "$d=Get-DiskImage -ImagePath $p -ErrorAction SilentlyContinue;" +
-            "if(-not $d -or -not $d.Attached){Mount-DiskImage -ImagePath $p -ErrorAction Stop|Out-Null};" +
-            "$until=[DateTime]::UtcNow.AddSeconds(30);$v=$null;" +
-            "do{$v=Get-DiskImage -ImagePath $p|Get-Volume -ErrorAction SilentlyContinue|Where-Object DriveLetter|Select-Object -First 1;" +
-            "if(-not $v){Start-Sleep -Milliseconds 500}}while(-not $v -and [DateTime]::UtcNow -lt $until);" +
-            "if(-not $v){throw 'PCNINJA_ISO_VOLUME_TIMEOUT'};" +
-            "[Console]::Out.Write($v.DriveLetter+':\\')";
-        var root = (await RunPowerShellAsync(command, cancellationToken)).Trim();
-        AppLog.Info($"Resolved exact ISO {Path.GetFullPath(isoPath)} to volume {root}.");
-        return await ValidateMountedSourceAsync(root, cancellationToken);
+            "$mounted=$false;if(-not $d -or -not $d.Attached){" +
+            (attachIfMissing ? "Mount-DiskImage -ImagePath $p -ErrorAction Stop|Out-Null;$mounted=$true;"
+                : "[Console]::Out.Write('null');exit 0;") + "};" +
+            "$until=[DateTime]::UtcNow.AddSeconds(" + (attachIfMissing ? "30" : "0") + ");$v=$null;" +
+            "do{$d=Get-DiskImage -ImagePath $p -ErrorAction Stop;" +
+            "$v=$d|Get-Volume -ErrorAction SilentlyContinue|Where-Object DriveLetter|Select-Object -First 1;" +
+            "if(-not $v -and [DateTime]::UtcNow -lt $until){Start-Sleep -Milliseconds 500}}while(-not $v -and [DateTime]::UtcNow -lt $until);" +
+            "if(-not $v){" + (attachIfMissing ? "throw 'PCNINJA_ISO_VOLUME_TIMEOUT'" : "[Console]::Out.Write('null');exit 0") + "};" +
+            "[Console]::Out.Write((@{ImagePath=[string]$d.ImagePath;DevicePath=[string]$d.DevicePath;" +
+            "VolumeId=[string]$v.UniqueId;Root=($v.DriveLetter+':\\');MountedNow=$mounted}|ConvertTo-Json -Compress))";
     }
 
     public MountedSource ValidateMountedSource(string root, bool removeSelectedAnswerFiles = true)
@@ -317,8 +388,9 @@ public sealed class UpgradeEngine
     }
 
     public async Task<MountedSource> ValidateMountedSourceAsync(string root, CancellationToken cancellationToken,
-        bool removeSelectedAnswerFiles = true)
+        bool removeSelectedAnswerFiles = true, IProgress<string>? progress = null)
     {
+        progress?.Report("Checking Microsoft signature and media safety...");
         var source = await Task.Run(() => ValidateMountedSource(root, removeSelectedAnswerFiles), cancellationToken).ConfigureAwait(false);
         cancellationToken.ThrowIfCancellationRequested();
         var sourcesDirectory = Path.Combine(source.Root, "sources");
@@ -338,9 +410,11 @@ public sealed class UpgradeEngine
                 $"Windows could not validate the installation image (DISM exit code {result.ExitCode}). " +
                 "The ISO may be incomplete or damaged.");
         var images = new List<InstallationImage>();
-        foreach (var index in InstallationImages.ParseIndexes(result.Output))
+        var indexes = InstallationImages.ParseIndexes(result.Output).ToArray();
+        foreach (var index in indexes)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            progress?.Report($"Reading Windows image {images.Count + 1} of {indexes.Length}...");
             var details = await RunProcessAsync(dism,
                 $"/English /Get-WimInfo /WimFile:\"{installImage}\" /Index:{index}", cancellationToken);
             if (details.ExitCode != 0)
@@ -421,7 +495,7 @@ public sealed class UpgradeEngine
         UseShellExecute = true
     });
 
-    private static async Task<string> RunPowerShellAsync(string command, CancellationToken cancellationToken)
+    internal static async Task<string> RunPowerShellAsync(string command, CancellationToken cancellationToken)
     {
         var encoded = Convert.ToBase64String(Encoding.Unicode.GetBytes(command));
         var startInfo = new ProcessStartInfo
@@ -431,6 +505,7 @@ public sealed class UpgradeEngine
             UseShellExecute = false,
             CreateNoWindow = true,
             WindowStyle = ProcessWindowStyle.Hidden,
+            StandardOutputEncoding = new UTF8Encoding(false),
             RedirectStandardOutput = true,
             RedirectStandardError = true
         };
@@ -547,6 +622,11 @@ public sealed class UpgradeEngine
     };
 
     public static string FormatBytes(long bytes) => $"{bytes / 1024d / 1024d / 1024d:N2} GB";
+
+    private sealed class InlineProgress<T>(Action<T> report) : IProgress<T>
+    {
+        public void Report(T value) => report(value);
+    }
 }
 
 public static class AuthenticodeVerifier

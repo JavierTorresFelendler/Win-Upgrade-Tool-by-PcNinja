@@ -125,6 +125,14 @@ All paths below are relative to the repository root.
   Hand that exact result to GUI/CLI rather than immediately repeating it. This
   bounded handoff is not a general cache: retain final prelaunch revalidation,
   and do not skip later manual ISO checks based only on size/timestamps.
+- For later session reuse, require unchanged-file evidence and exact mount
+  identity, not an attachment flag or drive letter. On fixed NTFS, verify the
+  exact retained CLOSE journal record: last-USN alone is vulnerable to coalesced
+  same-kind writes under a long-lived external handle. Missing/reset/trimmed
+  journal evidence means full validation. Keep guards operation-scoped and repeat
+  signatures/attached-media safety even on hits. Do not seed this cache from a
+  fresh transfer hash made before obtaining file proof. See
+  [ISO session validation](ISO-VALIDATION-REUSE.md) for the limits and safe fixtures.
 - Refresh must preserve the exact source, index and restart policy when valid.
   Changing source invalidates the old index. Failure/cancel messages must survive
   the final refresh and explain what to do, not disappear as a brief flash.
