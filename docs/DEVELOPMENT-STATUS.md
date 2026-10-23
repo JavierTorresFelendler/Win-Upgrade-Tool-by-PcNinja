@@ -27,7 +27,10 @@ assistant's personal memory or skills installation.
 - Local Release warnings-as-errors builds and Core/headless CLI/client GUI suites
   passed, including quiet/restart combinations, native failure/uncertain outcomes,
   every assistant failure group and GUI preference restoration/consent invalidation.
-  CI and portable-artifact verification are separate gates before handoff.
+  Local portable EXE CLI checks also passed (help/JSON/quiet consent/Tab completion/
+  invalid options/subsystem/size). CI and downloaded-artifact verification remain
+  separate gates before handoff. The PowerShell wrapper example explicitly
+  propagates the captured EXE exit code for management-agent use.
 - See `CLI-AUTOMATION.md`, updated offline help/completion and `UI-MESSAGES.md`.
   Existing app self-update/ISO-copy designs remain outside this feature.
 

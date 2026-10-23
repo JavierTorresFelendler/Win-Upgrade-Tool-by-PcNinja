@@ -25,6 +25,7 @@ $ready = $assistantExitCode -eq 0 -and
 # This example deliberately does not restart the computer.
 $output
 "CONTROLLER_READY_FOR_RESTART=$ready"
+exit $assistantExitCode
 ```
 
 For an ISO use `--iso '<exact ISO path>'`; image selection, validation and safety
@@ -83,6 +84,8 @@ Version/help/log-path remain their existing plain-text commands.
 
 The result contract is agent-neutral: capture output and native exit code in
 BigFix or another runner. The caller must wait for this EXE, not just launch it.
+If wrapping it in PowerShell, propagate the captured exit code explicitly as
+above; successful output/log-writing commands must not mask a failed EXE.
 Do not use exit 0 alone: status, validation and dry runs also succeed. Parse/transport
 failure, killed process or management-agent timeout never authorizes restart.
 The assistant does not configure BigFix, call shutdown.exe or restart a failed
