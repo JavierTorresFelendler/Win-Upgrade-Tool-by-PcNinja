@@ -1,5 +1,13 @@
 # Roadmap
 
+## Proposed: safe preparation of unattended media (design only)
+
+See [Safe media preparation](design/SAFE-MEDIA-PREPARATION.md) for the proposed
+automatic destination/manual-folder flow, app-owned copy and answer-file cleanup,
+local launcher handoff, consent-scoped unsafe-ISO detachment, storage accounting
+and VM acceptance probes. This is not implemented in RC5 and does not authorize
+replacing the owner's current test EXE. Existing fail-closed safety remains.
+
 ## RC5 implemented requirements - owner field testing pending
 
 The owner authorized implementation, protected-PR merge and RC5 prerelease
