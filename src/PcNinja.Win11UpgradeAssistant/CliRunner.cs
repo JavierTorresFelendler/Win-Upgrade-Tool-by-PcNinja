@@ -51,6 +51,8 @@ internal static class CliRunner
             }
 
             var options = CliOptions.Parse(args);
+            if (options.Quiet && !options.Yes && !options.DryRun)
+                return Fail(Cancelled, "Quiet upgrade requires explicit --yes consent. Windows Setup was not started.", options.Json);
             if (options.Command == "version") { Console.WriteLine(Version); return Success; }
             if (options.Command == "log-path") { Console.WriteLine(AppLog.Path); return Success; }
 
@@ -113,7 +115,8 @@ internal static class CliRunner
             (value.automaticDownloadUnavailableReason is null ? "" : $"\n{value.automaticDownloadUnavailableReason}") +
             $"\nAdministrator: {value.isAdministrator}\n" +
             $"System storage: {storage.Message}\nLog: {AppLog.Path}" +
-            (value.previousUpgrade is null ? "" : $"\nPrevious upgrade: {value.previousUpgrade.State}. {value.previousUpgrade.Message}"));
+            (value.previousUpgrade is null ? "" : $"\nPrevious upgrade: {value.previousUpgrade.State}. {value.previousUpgrade.Message}"),
+            "STATUS_REPORTED");
         return Success;
     }
 
@@ -124,7 +127,7 @@ internal static class CliRunner
         var drives = engine.FindDownloadLocations();
         if (json)
         {
-            Write(new { localIsos = local, mountedSources = mounted, downloadLocations = drives }, true, "");
+            Write(new { localIsos = local, mountedSources = mounted, downloadLocations = drives }, true, "", "SOURCES_SCANNED");
         }
         else
         {
@@ -134,6 +137,8 @@ internal static class CliRunner
             WriteList(mounted.Select(source => source.Root));
             Console.WriteLine("Download locations:");
             WriteList(drives.Select(drive => drive.ToString()));
+            Console.WriteLine("RESULT_CODE=SOURCES_SCANNED; EXIT_CODE=0; READY_FOR_RESTART=false");
+            AppLog.Info("CLI result: SOURCES_SCANNED; exit: 0; readyForRestart: False.");
         }
         return Success;
     }
@@ -165,7 +170,7 @@ internal static class CliRunner
             if (options.Download)
             {
                 var destination = options.Destination ?? GetDefaultDestination(engine);
-                var progress = options.Json ? null : new Progress<DownloadProgress>(item =>
+                var progress = options.Json || options.Quiet ? null : new Progress<DownloadProgress>(item =>
                 {
                     var progressText = item.Stage ?? (item.Percentage.HasValue ? $"{item.Percentage}%" : UpgradeEngine.FormatBytes(item.BytesReceived));
                     Console.Error.Write($"\rDownloading {Path.GetFileName(item.DestinationPath)}: {progressText}     ");
@@ -174,13 +179,13 @@ internal static class CliRunner
                 try
                 {
                     download = await engine.DownloadIsoAsync(destination, progress, token, options.Sha256);
-                    if (!options.Json) Console.Error.WriteLine();
+                    if (!options.Json && !options.Quiet) Console.Error.WriteLine();
                 }
                 catch (DownloadTransferException ex)
                 {
-                    if (!options.Json) Console.Error.WriteLine();
+                    if (!options.Json && !options.Quiet) Console.Error.WriteLine();
                     var browserOpened = false;
-                    if (!options.Json && !Console.IsInputRedirected && !Console.IsOutputRedirected)
+                    if (!options.Json && !options.Quiet && !Console.IsInputRedirected && !Console.IsOutputRedirected)
                     {
                         try
                         {
@@ -236,12 +241,14 @@ internal static class CliRunner
             Write(new { valid = true, isoPath = exactIsoPath, mountedRoot = source.Root, setupPath = source.SetupPath,
                     imagePath = source.ImagePath, images = source.Images, compatibleImageIndexes = matchingImages.Select(image => image.Index),
                     selectedImageIndex = previewImage?.Index, setupProfile = previewProfile?.ToString(),
+                    quiet = options.Quiet, dryRun = options.DryRun,
                     buildOrderChecked = previewProfile is null ? (bool?)null : previewProfile != WindowsSetupProfile.Windows10,
                     policyNotice = previewProfile == WindowsSetupProfile.Windows10 ? InstallationImages.Windows10Notice : null },
                 options.Json, $"Validation passed.\nSource: {source.Root}\nImage file: {source.ImagePath}\n" +
                 string.Join("\n", (source.Images ?? []).Select(image => image.ToString())) +
                 $"\nCompatible indexes: {string.Join(", ", matchingImages.Select(image => image.Index))}" +
-                (previewProfile == WindowsSetupProfile.Windows10 ? $"\n{InstallationImages.Windows10Notice}" : ""));
+                (previewProfile == WindowsSetupProfile.Windows10 ? $"\n{InstallationImages.Windows10Notice}" : ""),
+                startSetup ? "DRY_RUN_COMPLETED" : "VALIDATION_PASSED");
             return Success;
         }
 
@@ -264,15 +271,22 @@ internal static class CliRunner
         token.ThrowIfCancellationRequested();
         UpgradeResult result;
         try { result = await engine.StartUpgradeAsync(source, selectedImage!.Index, !options.NoRestart, token,
-            () => _setupRunning = true); }
+            () => _setupRunning = true, quiet: options.Quiet); }
         catch (OperationCanceledException) { throw; }
         catch (InvalidOperationException ex) { return Fail(ValidationFailed, ex.Message, options.Json); }
+        return ReportSetupResult(result, options, source, selectedImage!, exactIsoPath);
+    }
+
+    private static int ReportSetupResult(UpgradeResult result, CliOptions options, MountedSource source,
+        InstallationImage selectedImage, string? exactIsoPath)
+    {
         if (result.ExitCode == 0x40010004)
-            return Fail(OutcomeUnconfirmed, "Setup exited during the transition. The upgrade outcome is not confirmed. After restarting, run status --json and verify your files/apps.", options.Json);
+            return Fail(OutcomeUnconfirmed, "Setup exited during the transition. The upgrade outcome is not confirmed. After restarting, run status --json and verify your files/apps.", options.Json, result.ExitCode);
         if (result.ExitCode != 0)
             return Fail(SetupFailed,
-                $"Windows Setup stopped with exit code {result.ExitCode}. No forced restart was issued.", options.Json);
+                $"Windows Setup stopped with exit code {result.ExitCode}. No forced restart was issued.", options.Json, result.ExitCode);
         Write(new { started = true, setupExitCode = result.ExitCode, automaticRestart = !options.NoRestart,
+                setupExitCodeHex = $"0x{unchecked((uint)result.ExitCode):X8}", quiet = options.Quiet,
                 manualRestartRequired = result.NeedsManualRestartNotice(!options.NoRestart),
                 setupProfile = InstallationImages.GetSetupProfile(selectedImage)?.ToString(),
                 buildOrderChecked = InstallationImages.GetSetupProfile(selectedImage) != WindowsSetupProfile.Windows10,
@@ -280,7 +294,9 @@ internal static class CliRunner
                 outcome = "PreparationCompleted" },
             options.Json, result.NeedsManualRestartNotice(!options.NoRestart)
                 ? UpgradeResult.ManualRestartMessage
-                : "Windows Setup completed its current stage. Verify the final outcome after restarting.");
+                : "Windows Setup completed its current stage. Verify the final outcome after restarting.",
+            options.NoRestart ? "UPGRADE_PREPARED_RESTART_REQUIRED" : "UPGRADE_PREPARED_AUTOMATIC_RESTART",
+            result.NeedsManualRestartNotice(!options.NoRestart));
         return Success;
     }
 
@@ -291,16 +307,31 @@ internal static class CliRunner
         return Path.Combine(location.RootPath, "PcNinja Downloads");
     }
 
-    private static int Fail(int code, string message, bool json)
+    private static int Fail(int code, string message, bool json, int? setupExitCode = null)
     {
-        if (json) Console.WriteLine(JsonSerializer.Serialize(new { success = false, exitCode = code, error = message }));
-        else Console.Error.WriteLine($"ERROR: {message}");
+        var resultCode = code switch
+        {
+            InvalidArguments => "INVALID_ARGUMENTS", ValidationFailed => "VALIDATION_FAILED",
+            DownloadFailed => "DOWNLOAD_FAILED", AdministratorRequired => "ADMINISTRATOR_REQUIRED",
+            Cancelled => "CANCELLED", SetupFailed => "SETUP_FAILED", OutcomeUnconfirmed => "SETUP_OUTCOME_UNCONFIRMED",
+            _ => "UNEXPECTED_ERROR"
+        };
+        var setupExitCodeHex = setupExitCode.HasValue ? $"0x{unchecked((uint)setupExitCode.Value):X8}" : null;
+        var payload = CliAutomationResult.Create(new { error = message, setupExitCode, setupExitCodeHex },
+            resultCode, code, message, readyForRestart: false);
+        AppLog.Info($"CLI result: {resultCode}; exit: {code}; Setup: {setupExitCodeHex ?? "not reported"}; {message}");
+        if (json) Console.WriteLine(JsonSerializer.Serialize(payload));
+        else Console.Error.WriteLine($"ERROR: {message}\nRESULT_CODE={resultCode}; EXIT_CODE={code}" +
+            (setupExitCodeHex is null ? "" : $"; SETUP_EXIT_CODE={setupExitCodeHex}"));
         return code;
     }
 
-    private static void Write(object value, bool json, string text)
+    private static void Write(object value, bool json, string text, string resultCode, bool readyForRestart = false)
     {
-        Console.WriteLine(json ? JsonSerializer.Serialize(value, new JsonSerializerOptions { WriteIndented = true }) : text);
+        var payload = CliAutomationResult.Create(value, resultCode, Success, text, readyForRestart);
+        AppLog.Info($"CLI result: {resultCode}; exit: 0; readyForRestart: {readyForRestart}.");
+        Console.WriteLine(json ? JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true })
+            : $"{text}\nRESULT_CODE={resultCode}; EXIT_CODE=0; READY_FOR_RESTART={readyForRestart.ToString().ToLowerInvariant()}");
     }
 
     private static void WriteList(IEnumerable<string> items)
@@ -323,7 +354,8 @@ internal sealed record CliOptions(
     bool DryRun,
     bool Json,
     string? Sha256 = null,
-    int? ImageIndex = null)
+    int? ImageIndex = null,
+    bool Quiet = false)
 {
     public static CliOptions Parse(string[] args)
     {
@@ -346,6 +378,7 @@ internal sealed record CliOptions(
         var yes = false;
         var dryRun = false;
         var json = false;
+        var quiet = false;
 
         for (var index = 1; index < args.Length; index++)
         {
@@ -357,6 +390,7 @@ internal sealed record CliOptions(
                 case "--download": download = true; break;
                 case "--destination": destination = RequireValue(args, ref index, "--destination"); break;
                 case "--no-restart": noRestart = true; break;
+                case "--quiet": quiet = true; break;
                 case "--yes": yes = true; break;
                 case "--dry-run": dryRun = true; break;
                 case "--json": json = true; break;
@@ -378,7 +412,7 @@ internal sealed record CliOptions(
         {
             "status" or "scan" or "refresh" or "rescan" => new[] { "--json" },
             "validate" => new[] { "--iso", "--mounted", "--sha256", "--image-index", "--json" },
-            "upgrade" => new[] { "--iso", "--mounted", "--download", "--destination", "--sha256", "--image-index", "--no-restart", "--yes", "--dry-run", "--json" },
+            "upgrade" => new[] { "--iso", "--mounted", "--download", "--destination", "--sha256", "--image-index", "--no-restart", "--quiet", "--yes", "--dry-run", "--json" },
             _ => Array.Empty<string>()
         };
         foreach (var option in seen)
@@ -386,7 +420,7 @@ internal sealed record CliOptions(
                 throw new CliArgumentException($"{option} is not valid for {command}. See '{command} --help'.");
         if (destination is not null && !download) throw new CliArgumentException("--destination requires --download.");
         if (sha256 is not null && mounted is not null) throw new CliArgumentException("--sha256 requires --iso or --download.");
-        return new CliOptions(command, iso, mounted, download, destination, noRestart, yes, dryRun, json, sha256, imageIndex);
+        return new CliOptions(command, iso, mounted, download, destination, noRestart, yes, dryRun, json, sha256, imageIndex, quiet);
     }
 
     private static string RequireValue(string[] args, ref int index, string option)

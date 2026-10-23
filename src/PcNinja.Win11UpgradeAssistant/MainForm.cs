@@ -43,6 +43,9 @@ internal sealed class MainForm : Form
     private readonly Button _microsoft = new();
     private readonly Button _start = new();
     private readonly CheckBox _autoRestart = new();
+    private readonly CheckBox _quietSetup = new();
+    private bool _restartBeforeQuiet = true;
+    private Label _restartHelp = null!;
     private readonly ProgressBar _progress = new();
     private readonly Label _status = new();
     private readonly Label _operationNotice = new();
@@ -57,6 +60,7 @@ internal sealed class MainForm : Form
     private bool _changingSourceSelection;
     private bool _refreshingSources;
     private readonly ComboBox _installationImages = new();
+    private string _installationImagePrompt = "Validate a source first";
     private readonly Button _inspectSource = new();
     private readonly Label _imageInfo = new();
     private MountedSource? _preparedSource;
@@ -140,6 +144,7 @@ internal sealed class MainForm : Form
         _autoDownload.CheckedChanged += (_, _) => SourceSelectionChanged(_autoDownload);
         _existingMedia.CheckedChanged += (_, _) => SourceSelectionChanged(_existingMedia);
         _autoRestart.CheckedChanged += (_, _) => UpdateReadinessSummary();
+        _quietSetup.CheckedChanged += (_, _) => QuietModeChanged();
         _sources.SelectedIndexChanged += (_, _) => ExistingPathChanged();
         _sources.TextChanged += (_, _) => ExistingPathChanged();
         _installationImages.SelectedIndexChanged += (_, _) => UpdateImageInfo();
@@ -148,6 +153,7 @@ internal sealed class MainForm : Form
         ApplyDownloadLanguagePolicy(CurrentWindows.Read().Language);
         UpdateSourceControls();
         UpdateReadinessSummary();
+        UpdateImageInfo();
         ResumeLayout(true);
     }
 
@@ -293,7 +299,8 @@ internal sealed class MainForm : Form
         content.Controls.Add(Kicker("Windows installation image"));
         var imageRow = BuildTwoColumnRow();
         _installationImages.DropDownStyle = ComboBoxStyle.DropDownList;
-        StyleCombo(_installationImages);
+        _installationImages.AccessibleName = "Windows installation image";
+        StyleCombo(_installationImages, () => _installationImagePrompt);
         _installationImages.DropDownWidth = 700;
         imageRow.Controls.Add(_installationImages, 0, 0);
         StyleSecondaryButton(_inspectSource, "Validate");
@@ -407,6 +414,16 @@ internal sealed class MainForm : Form
         content.Controls.Add(ReadinessRow("Restart", _restartSummary));
         content.Controls.Add(DividerLine());
 
+        _quietSetup.Text = "Run Windows Setup silently";
+        _quietSetup.AutoSize = true;
+        _quietSetup.ForeColor = Foreground;
+        _quietSetup.BackColor = Color.Transparent;
+        _quietSetup.Margin = new Padding(0, 2, 0, 2);
+        content.Controls.Add(_quietSetup);
+        content.Controls.Add(BodyText(
+            "Hide Windows Setup windows and allow automatic restart. Errors still appear in this assistant.",
+            22, 280));
+
         _autoRestart.Text = "Restart automatically when needed";
         _autoRestart.Checked = true;
         _autoRestart.AutoSize = true;
@@ -414,9 +431,10 @@ internal sealed class MainForm : Form
         _autoRestart.BackColor = Color.Transparent;
         _autoRestart.Margin = new Padding(0, 2, 0, 2);
         content.Controls.Add(_autoRestart);
-        content.Controls.Add(BodyText(
+        _restartHelp = BodyText(
             "Turn off to restart manually after upgrade preparation.",
-            22, 280));
+            22, 280);
+        content.Controls.Add(_restartHelp);
 
         var warning = new Label
         {
@@ -654,6 +672,7 @@ internal sealed class MainForm : Form
             MountedSource source;
             MountedSource? automaticSource = null;
             var consentedRestart = _autoRestart.Checked;
+            var consentedQuiet = _quietSetup.Checked;
             if (_autoDownload.Checked)
             {
                 if (!startSetup) throw new InvalidOperationException("Choose existing media to inspect its images.");
@@ -661,7 +680,7 @@ internal sealed class MainForm : Form
                     throw new InvalidOperationException("Choose a download destination. Connect a drive and Refresh if necessary.");
                 var destination = location.VolumeLabel == "Selected folder" ? location.RootPath
                     : Path.Combine(location.RootPath, "PcNinja Downloads");
-                if (!ConfirmAutomaticUpgrade(destination, consentedRestart))
+                if (!ConfirmAutomaticUpgrade(destination, consentedRestart, consentedQuiet))
                 {
                     _status.Text = "Upgrade cancelled. No download or Windows Setup was started.";
                     return;
@@ -730,7 +749,7 @@ internal sealed class MainForm : Form
             _progress.Visible = false;
             if (!startSetup)
             {
-                _status.Text = $"Read {source.Images?.Count} image(s). Select a matching image, then Start.";
+                PresentImageInspection();
                 return;
             }
             if (_installationImages.SelectedItem is not InstallationImage selection)
@@ -738,11 +757,11 @@ internal sealed class MainForm : Form
                 _status.Text = compatible.Count == 0
                     ? $"No matching image for {current.Edition}, {current.Language}. Choose matching Windows media."
                     : "Choose an installation image above, then click START UPGRADE again.";
-                ShowOperationNotice(_status.Text);
+                ShowOperationNotice(compatible.Count == 0 ? _imageInfo.Text : _status.Text);
                 return;
             }
             selection = InstallationImages.Select(source, selection.Index, current);
-            if (!ConfirmPreparedUpgrade(source, selection, compatible.Count, automaticSource, consentedRestart))
+            if (!ConfirmPreparedUpgrade(source, selection, compatible.Count, automaticSource, consentedRestart, consentedQuiet))
             {
                 _status.Text = "Upgrade cancelled. Windows Setup was not started.";
                 return;
@@ -751,7 +770,7 @@ internal sealed class MainForm : Form
             _status.Text = "Rechecking safety and starting Windows Setup...";
             var automaticRestart = _autoRestart.Checked;
             var result = await _engine.StartUpgradeAsync(source, selection.Index, automaticRestart, _operation.Token,
-                () => { _setupHasStarted = true; SetBusy(true); });
+                () => { _setupHasStarted = true; SetBusy(true); }, quiet: _quietSetup.Checked);
             PresentSetupResult(result, automaticRestart);
         }
         catch (OperationCanceledException) { _status.Text = "Operation cancelled."; }
@@ -787,25 +806,28 @@ internal sealed class MainForm : Form
             $"Setup returned 0x{unchecked((uint)result.ExitCode):X8}. See View details/log. No forced restart was issued.");
     }
 
-    private bool ConfirmAutomaticUpgrade(string destination, bool restart) => _confirmUpgrade(
+    private bool ConfirmAutomaticUpgrade(string destination, bool restart, bool quiet) => _confirmUpgrade(
         $"Download or reuse the Windows ISO in:\n{destination}\n\n" +
         "Then validate it and start the compatible in-place upgrade automatically, keeping apps and personal files.\n" +
         (restart ? "Windows may restart automatically." : "Restart manually when Setup is ready.") +
+        (quiet ? "\nWindows Setup will run silently." : "") +
         "\n\nExperimental compatibility method. Back up important files and save your work. Continue?",
         "Download and upgrade");
 
     private bool ConfirmPreparedUpgrade(MountedSource source, InstallationImage selection, int compatibleCount,
-        MountedSource? automaticSource, bool consentedRestart)
+        MountedSource? automaticSource, bool consentedRestart, bool consentedQuiet)
     {
         // Consent applies only to the result returned during this automatic attempt.
         // A later manual Start, ambiguous image or changed restart policy must confirm again.
         if (ReferenceEquals(source, automaticSource) && compatibleCount == 1 &&
             InstallationImages.GetSetupProfile(selection) == WindowsSetupProfile.Windows11 &&
-            (source.Images ?? []).Contains(selection) && _autoRestart.Checked == consentedRestart) return true;
+            (source.Images ?? []).Contains(selection) && _autoRestart.Checked == consentedRestart &&
+            _quietSetup.Checked == consentedQuiet) return true;
         var restart = _autoRestart.Checked ? "Windows may restart automatically." : "Restart manually when Setup is ready.";
         var targetNotice = InstallationImages.GetSetupProfile(selection) == WindowsSetupProfile.Windows10
             ? $"\n\n{InstallationImages.Windows10Notice}" : "";
-        return _confirmUpgrade($"{selection.Name} (image {selection.Index})\n{restart}{targetNotice}\n\nSave your work. Start the upgrade?",
+        var quietNotice = _quietSetup.Checked ? "\nWindows Setup will run silently." : "";
+        return _confirmUpgrade($"{selection.Name} (image {selection.Index})\n{restart}{quietNotice}{targetNotice}\n\nSave your work. Start the upgrade?",
             "Start upgrade");
     }
 
@@ -827,6 +849,7 @@ internal sealed class MainForm : Form
             _preparedSource = null;
             _preparedKey = null;
             _installationImages.Items.Clear();
+            UpdateImageInfo();
             _imageInfo.Text = "Source changed. Click Validate or START UPGRADE to check this media.";
         }
         UpdateReadinessSummary();
@@ -835,9 +858,13 @@ internal sealed class MainForm : Form
     private void UpdateImageInfo()
     {
         var current = CurrentWindows.Read();
+        var noCompatibleImage = _preparedSource is not null && InstallationImages.Compatible(_preparedSource, current).Count == 0;
+        _installationImagePrompt = _preparedSource is null ? "Validate a source first"
+            : noCompatibleImage ? "No compatible Windows image" : "Choose a Windows image…";
+        _installationImages.Invalidate();
         var incompatibility = _installationImages.SelectedItem is InstallationImage selected
             ? InstallationImages.GetIncompatibility(selected, current) : null;
-        _imageInfo.ForeColor = incompatibility is not null ||
+        _imageInfo.ForeColor = noCompatibleImage || incompatibility is not null ||
             _installationImages.SelectedItem is InstallationImage selectedImage &&
             InstallationImages.GetSetupProfile(selectedImage) == WindowsSetupProfile.Windows10 ? Warning : Muted;
         _imageInfo.Text = _installationImages.SelectedItem is InstallationImage image
@@ -845,7 +872,39 @@ internal sealed class MainForm : Form
                 (incompatibility ?? $"Selected image {image.Index}: {image.Language}, {image.Architecture}, image version {image.Version}." +
                     (InstallationImages.GetSetupProfile(image) == WindowsSetupProfile.Windows10
                         ? $" {InstallationImages.Windows10Notice}" : ""))
-            : $"This PC: {current.Edition}, {current.Language}. A matching image is selected automatically when possible.";
+            : $"This PC: {current.Edition}, {current.Language}. " +
+                (_preparedSource is null ? "Validate a source to read its Windows images."
+                : noCompatibleImage ? "No compatible Windows image. Choose matching Windows media."
+                : "Choose a Windows image from the list, then click START UPGRADE.");
+        if (noCompatibleImage && _installationImages.SelectedItem is not InstallationImage)
+        {
+            // Reuse Core's existing reasons; readable media is not necessarily compatible.
+            var reasons = (_preparedSource!.Images ?? [])
+                .Select(image => InstallationImages.GetIncompatibility(image, current))
+                .Where(reason => reason is not null).Distinct(StringComparer.Ordinal);
+            _imageInfo.Text += Environment.NewLine + string.Join(Environment.NewLine, reasons);
+        }
+        _installationImages.AccessibleDescription = _installationImages.SelectedItem is InstallationImage
+            ? _imageInfo.Text : _installationImagePrompt;
+    }
+
+    private void PresentImageInspection()
+    {
+        if (_preparedSource is null) return;
+        var current = CurrentWindows.Read();
+        var compatible = InstallationImages.Compatible(_preparedSource, current);
+        var selected = _installationImages.SelectedItem as InstallationImage;
+        if (compatible.Count == 0 || selected is not null && InstallationImages.GetIncompatibility(selected, current) is not null)
+        {
+            _status.Text = compatible.Count == 0
+                ? $"No matching image for {current.Edition}, {current.Language}. Choose matching Windows media."
+                : "The selected image is not compatible. Choose a matching Windows image.";
+            ShowOperationNotice(_imageInfo.Text);
+            return;
+        }
+        _status.Text = selected is not null
+            ? $"Image {selected.Index} selected. Click START UPGRADE when ready."
+            : $"Read {_preparedSource.Images?.Count} image(s). Choose a Windows image, then click START UPGRADE.";
     }
 
     private void ShowIssue(Exception error)
@@ -882,7 +941,8 @@ internal sealed class MainForm : Form
         _microsoft.Enabled = !busy;
         _autoDownload.Enabled = !busy;
         _existingMedia.Enabled = !busy;
-        _autoRestart.Enabled = !busy;
+        _quietSetup.Enabled = !busy;
+        _autoRestart.Enabled = !busy && !_quietSetup.Checked;
         UpdateSourceControls();
     }
 
@@ -939,6 +999,21 @@ internal sealed class MainForm : Form
             : _downloadLocations.SelectedItem is StorageLocation location ? $"Automatic · {location.RootPath}" : "Automatic download";
         _restartSummary.Text = _autoRestart.Checked ? "Automatic" : "Manual restart";
         _restartSummary.ForeColor = _autoRestart.Checked ? AccentLight : Warning;
+    }
+
+    private void QuietModeChanged()
+    {
+        if (_quietSetup.Checked)
+        {
+            _restartBeforeQuiet = _autoRestart.Checked;
+            _autoRestart.Checked = true;
+        }
+        else _autoRestart.Checked = _restartBeforeQuiet;
+        _autoRestart.Enabled = _operation is null && !_quietSetup.Checked;
+        _restartHelp.Text = _quietSetup.Checked
+            ? "Controlled by silent mode. Turn off silent mode to change."
+            : "Turn off to restart manually after upgrade preparation.";
+        UpdateReadinessSummary();
     }
 
     private static Panel CreateCard()
@@ -1203,7 +1278,7 @@ internal sealed class MainForm : Form
         radio.Margin = new Padding(0, 0, 0, 3);
     }
 
-    private static void StyleCombo(ComboBox combo)
+    private static void StyleCombo(ComboBox combo, Func<string>? emptyText = null)
     {
         combo.Dock = DockStyle.Fill;
         combo.BackColor = Background;
@@ -1215,12 +1290,13 @@ internal sealed class MainForm : Form
         combo.MaxDropDownItems = 8;
         combo.DrawItem += (_, e) =>
         {
-            if (e.Index < 0) return;
+            var isPrompt = e.Index < 0;
+            if (isPrompt && emptyText is null) return;
             using var background = new SolidBrush((e.State & DrawItemState.Selected) != 0 ? AccentTint : Background);
             e.Graphics.FillRectangle(background, e.Bounds);
             var textBounds = new Rectangle(e.Bounds.X + 7, e.Bounds.Y, Math.Max(0, e.Bounds.Width - 7), e.Bounds.Height);
-            TextRenderer.DrawText(e.Graphics, combo.Items[e.Index]?.ToString() ?? "", combo.Font,
-                textBounds, Foreground, TextFormatFlags.VerticalCenter | TextFormatFlags.Left | TextFormatFlags.EndEllipsis);
+            TextRenderer.DrawText(e.Graphics, isPrompt ? emptyText!() : combo.Items[e.Index]?.ToString() ?? "", combo.Font,
+                textBounds, isPrompt ? Muted : Foreground, TextFormatFlags.VerticalCenter | TextFormatFlags.Left | TextFormatFlags.EndEllipsis);
             e.DrawFocusRectangle();
         };
     }

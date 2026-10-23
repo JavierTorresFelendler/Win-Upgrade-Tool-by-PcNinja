@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased - quiet Setup, automation and image guidance (feature PR)
+
+- Replace the blank image-selector row with state-aware guidance, without adding
+  a fake selectable image/index. Inspect now explains no compatible media using
+  the existing Core reasons; preserve selected-image warnings and error details.
+  Image matching, automatic selection, upgrade commands and CLI remain unchanged
+  by this presentation-only follow-up.
+
+- Add opt-in silent Windows Setup in GUI/CLI using /quiet. CLI restart policy
+  remains independent; GUI silent mode selects/locks automatic restart and
+  restores the previous preference when disabled. Preserve all safety gates.
+- Add machine-readable result identifiers, explicit restart readiness and native
+  Setup integer/hex to CLI JSON without changing process exit groups 0-8. Quiet
+  CLI requires explicit --yes, never opens a fallback browser or GUI error popup.
+- Add headless result-contract fixtures, command-matrix/client GUI checks and
+  offline help/completion. No change to published RC7 or new release approval.
+
 ## 1.1.0-rc.7 - 2026-10-21
 
 - Simplify approved main-window headings, source descriptions and control labels

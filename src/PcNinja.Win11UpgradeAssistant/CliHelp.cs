@@ -116,6 +116,9 @@ Exit codes:
 
 Mounting, validation, and upgrade commands must be run as Administrator.
 The assistant never calls shutdown.exe and never forces a restart after failure.
+JSON results include schemaVersion, resultCode, exitCode, message and readyForRestart.
+Exit 0 alone is NOT permission to restart: status, validate and dry-run also return 0.
+See help upgrade for the remote-script/management-agent result contract.
 """;
 
     private const string Status = """
@@ -209,6 +212,7 @@ Additional options:
   --sha256 <hash>          Compare an ISO with a trusted 64-character SHA-256.
   --image-index <index>    Select an image in the validated source; positive integer.
   --no-restart             Add /noreboot; restart manually when ready.
+  --quiet                  Add /quiet; requires --yes unless --dry-run. No browser fallback.
   --dry-run                Perform full validation but do not start Setup.
   --yes                    Explicitly skip the interactive YES confirmation.
   --json                   Emit a machine-readable final result.
@@ -221,6 +225,7 @@ Examples:
   Windows-Upgrade-Assistant-By-PcNinja.exe upgrade --iso "D:\ISO\Windows11.iso" --no-restart
   Windows-Upgrade-Assistant-By-PcNinja.exe upgrade --download --destination "F:\PcNinja Downloads"
   Windows-Upgrade-Assistant-By-PcNinja.exe upgrade --mounted E:\ --no-restart --yes --json
+  Windows-Upgrade-Assistant-By-PcNinja.exe upgrade --mounted E:\ --quiet --no-restart --yes --json
 
 The same-edition, x64, system-UI-language image is selected automatically only
 when exactly one match exists. Windows 11 targets must be equal-or-newer builds.
@@ -244,14 +249,37 @@ Windows 11 target arguments (existing experimental profile):
 Windows 10 target arguments:
   /auto upgrade /dynamicupdate disable /compat ignorewarning
   /imageindex <selected-index> /installfrom "<image-file>"
-No /product server or /eula accept for Windows 10. No /quiet, clean or data-only
-fallback is added. A refused migration must stop, not switch installation type.
+No /product server or /eula accept for Windows 10. /quiet is added only with
+explicit --quiet. No clean or data-only fallback is added. A refused migration
+must stop, not switch installation type.
 
 --no-restart additionally supplies /noreboot. PcNinja never calls shutdown.exe.
 After Setup exit 0 with --no-restart, restart manually to continue the upgrade.
 Successful upgrade JSON includes manualRestartRequired. /noreboot suppresses
 the first post-preparation reboot, not later Setup reboots after manual restart.
 PreparationCompleted does not confirm a finished OS migration.
+
+--quiet hides Windows Setup UI, not diagnostic results or safety checks. It does
+not imply --yes and does not change restart policy in CLI: add --no-restart for
+external orchestration. No CLI error popups are shown, including remote/SYSTEM use.
+Quiet mode suppresses progress and never opens a fallback browser.
+
+Remote scripts/management agents (including BigFix): use --quiet --no-restart
+--yes --json, wait for this process to exit, and capture stdout and exit code.
+JSON schemaVersion 1 preserves prior fields and adds stable resultCode/message,
+readyForRestart, exitCode, logPath and build. Setup results include the original
+signed setupExitCode and setupExitCodeHex. Result identifiers:
+  UPGRADE_PREPARED_RESTART_REQUIRED   Exit 0; preparation complete, restart needed.
+  UPGRADE_PREPARED_AUTOMATIC_RESTART  Exit 0; Windows handles restart; do not force one.
+  SETUP_FAILED                      Exit 7; native Setup error; do not restart.
+  SETUP_OUTCOME_UNCONFIRMED          Exit 8; uncertain transition; do not auto-restart.
+  VALIDATION_PASSED / DRY_RUN_COMPLETED / STATUS_REPORTED / SOURCES_SCANNED
+                                    Exit 0, but readyForRestart=false.
+Other failures retain exit codes 1-6 and return readyForRestart=false.
+Only authorize a controller-managed restart after the actual upgrade returns
+exit 0, resultCode UPGRADE_PREPARED_RESTART_REQUIRED, outcome PreparationCompleted,
+setupExitCode 0 and readyForRestart=true. JSON/transport/timeout failure is NOT success.
+Text results include RESULT_CODE markers; diagnostics also go to the app log.
 
 Ctrl+C cancels download, checksum and preparation work (exit code 6). It does
 not interrupt Windows Setup after launch. Network failures may open the normal
@@ -350,7 +378,7 @@ Register-ArgumentCompleter -Native -CommandName '__EXE_NAME__', 'Windows-Upgrade
         'refresh'    { @('--json', '--help') }
         'rescan'     { @('--json', '--help') }
         'validate'   { @('--iso', '--mounted', '--sha256', '--image-index', '--json', '--help') }
-        'upgrade'    { @('--iso', '--mounted', '--download', '--destination', '--sha256', '--image-index', '--no-restart', '--dry-run', '--yes', '--json', '--help') }
+        'upgrade'    { @('--iso', '--mounted', '--download', '--destination', '--sha256', '--image-index', '--no-restart', '--quiet', '--dry-run', '--yes', '--json', '--help') }
         'completion' { @('powershell', '--help') }
         'help'       { @('status', 'scan', 'validate', 'upgrade', 'log-path', 'completion', 'all') }
         default      { $commands }

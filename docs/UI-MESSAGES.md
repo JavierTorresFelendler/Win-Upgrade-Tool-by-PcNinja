@@ -1,5 +1,37 @@
 # User-message catalog
 
+## Post-RC7 follow-up: installation-image guidance
+
+| Image-selector state | Empty-row cue |
+| --- | --- |
+| Source has not been validated / source changed | Validate a source first |
+| Successfully read media has matching images but none is selected | Choose a Windows image… |
+| Successfully read media has no matching image | No compatible Windows image |
+| An actual image is selected | Original image name/index/language/architecture/version |
+
+These are visual cues, not extra dropdown items. Existing unique-match automatic
+selection and same-source selection retention remain unchanged. Inspect reports
+the selected image when valid, asks for a choice when needed, or shows the actual
+Core incompatibility reasons in the existing warning area. Keep both languages in
+language-mismatch warnings and retain the experimental Windows 10 notice.
+Image cues do not change independent error/details messages. A failed read/mount
+is not evidence that enumerated images are incompatible. No new popup is added.
+This is development PR #18 scope, not a change to the published RC7 binary.
+
+## Post-RC7 feature PR: quiet Setup
+
+- Add **Run Windows Setup silently** above automatic restart. Description:
+  "Hide Windows Setup windows and allow automatic restart. Errors still appear
+  in this assistant."
+- When checked, select/disable automatic restart; when unchecked, restore the
+  previous restart preference. Disable both choices during an operation.
+- Initial automatic/manual consent adds "Windows Setup will run silently."
+  Changed quiet intent invalidates the automatic-consent shortcut.
+- Keep current GUI success/failure notices, source/image/storage/unsafe-media
+  gates, branding and links. CLI never shows these GUI dialogs; see
+  `CLI-AUTOMATION.md` for result identifiers and raw Setup error evidence.
+- Published RC7 is unchanged. This is a separately identified PR test build.
+
 ## RC7: approved main-window copy
 
 The owner approved the simplified main-window preview and its inclusion in RC7.

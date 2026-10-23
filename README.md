@@ -162,6 +162,9 @@ used in RC6 and the [RC7 test notes](docs/RC7-TESTING.md) for current coverage a
 
 ## CLI
 
+Development feature (not in published RC7): [quiet Setup and automation results](docs/CLI-AUTOMATION.md)
+for remote scripts/management agents, including explicit restart readiness.
+
 The same EXE contains global help, per-command help, and a complete offline
 manual. It can also generate PowerShell Tab completion. Read-only commands do
 not require elevation:

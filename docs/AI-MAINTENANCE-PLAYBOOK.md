@@ -128,6 +128,11 @@ All paths below are relative to the repository root.
 - Refresh must preserve the exact source, index and restart policy when valid.
   Changing source invalidates the old index. Failure/cancel messages must survive
   the final refresh and explain what to do, not disappear as a brief flash.
+- An empty image-selector cue is presentation, not an InstallationImage or index.
+  Distinguish not validated, awaiting a choice and no compatible image. Reuse Core
+  rejection reasons after successful enumeration; do not mislabel mount/read
+  failures as incompatibility or overwrite the independent error/details notice.
+  Keep real image items and existing automatic/same-source selection rules.
 - Cancellation is for download/preparation. After Setup actually launches, do not
   pretend the assistant can safely cancel it. Do not force a reboot after failure.
 - Root Setup process exit 0 means its current stage completed, not that all files
@@ -175,6 +180,23 @@ All paths below are relative to the repository root.
   original defect, so a clean static screenshot is not proof of a resize fix.
 - Local client fixtures do not cover every DPI/graphics/remote-session case;
   repeat the original owner scenario on the affected machine after release.
+
+### 7. Keep silent Setup separate from orchestration and restart authorization
+
+- `/quiet` hides Setup UX; it must not remove source/image/storage/answer-file
+  checks or imply consent. CLI requires explicit --yes for real quiet upgrades;
+  no browser/popup/hidden input prompt is appropriate for remote/SYSTEM callers.
+- CLI quiet and /noreboot are independent, even if the standalone GUI deliberately
+  locks automatic restart when silent mode is selected. Never enforce GUI policy
+  in Core so that it overrides a remote caller's --no-restart.
+- Exit 0 is not a restart permission: status/validation/dry runs also return 0.
+  Report stable command result identifiers and native Setup integer/hex separately
+  from assistant exit groups. All failure/uncertain/non-upgrade results must have
+  readyForRestart=false. PreparationCompleted is pre-reboot, not final OS success.
+- Test the real result presenter with synthetic Setup exit codes without invoking
+  Setup, including uncertain transition, native failures and every restart/quiet
+  combination. Also test the compiled portable CLI and client UI independently;
+  successful fixtures are not proof of BigFix agent wiring or live quiet upgrades.
 
 ## Safe verification recipe
 

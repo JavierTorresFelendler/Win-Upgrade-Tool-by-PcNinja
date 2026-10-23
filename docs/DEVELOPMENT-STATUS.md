@@ -1,10 +1,61 @@
 # Development handoff
 
-Updated: 2026-10-21. This is sanitized project context, not a backup of Codex chats.
+Updated: 2026-10-23. This is sanitized project context, not a backup of Codex chats.
 
 Reusable architecture, diagnosis and verification know-how lives in
 [AI maintenance playbook](AI-MAINTENANCE-PLAYBOOK.md), independently of any
 assistant's personal memory or skills installation.
+
+## Current follow-up: state-aware installation-image guidance
+
+- Owner approved replacing an empty image-selector display with a cue that
+  complements, rather than overwrites, existing incompatibility/error messages.
+  Continue on the existing development branch/Draft PR #18; RC7 is unchanged.
+- Distinguish unvalidated media, compatible images awaiting selection, no
+  compatible image and an actual selected image. Cues are owner-drawn display
+  text only, never an item/index or consent to continue. Preserve the existing
+  unique-match and same-source selection policy and all Core/CLI behavior.
+- Inspect previously returned generic selection instructions before checking for
+  zero compatible images. Report existing Core rejection reasons immediately,
+  including selected-image warnings, in the existing persistent notice area.
+  A mount/read/validation failure remains its original error, not a no-match.
+- Verification: add client GUI fixtures for actual empty-row drawing, real-item
+  identity, incompatibility reasons, Inspect results, Refresh/source change and
+  independent error/details preservation. No Setup, mount or download is needed.
+  The new cue fixture first failed on the old implementation, then passed with
+  the fix. Local warnings-as-errors Release builds, full Core/headless CLI/client
+  GUI suites and actual EXE read-only CLI checks passed. The rendered normal
+  preview was inspected; original logo/links and quiet/restart behavior remain.
+  CI and downloaded portable-artifact checks remain separate delivery gates.
+- No merge, new release/tag or replacement of published/tested EXEs is approved.
+
+## Current feature: quiet Setup and remote result contract
+
+- Owner requested optional quiet Windows Setup and clarified that CLI failures
+  need machine-readable identifiers for remote/scripts/BigFix, not error popups.
+  Branch `feature/quiet-setup-automation`, based on published RC7 main `d502b60`.
+  No new release, tag, merge or changes to RC7 assets are authorized.
+- Reuse existing preparation-result handling. Add opt-in /quiet to shared command
+  construction; CLI --quiet and --no-restart remain independent. Real quiet CLI
+  needs explicit --yes, never opens browser fallback and emits no GUI dialogs.
+- GUI quiet checkbox selects/locks automatic restart and restores its prior state
+  when unchecked. Consent includes silent Setup and its per-attempt snapshot.
+- Preserve existing process exit codes 0-8 and JSON fields. Add schemaVersion 1,
+  stable resultCode, readyForRestart, message/build/log identity and native Setup
+  integer/hex. Status/validation/dry-run/failures never authorize reboot. Only
+  actual preparation exit 0 with --no-restart yields the ready state.
+- Test plan: command matrix, headless result-presenter fixtures in CI, read-only
+  portable CLI checks, client GUI checkbox/consent/state and existing safety suites.
+  No developer Setup launch/reboot. Owner VM/remote-agent acceptance remains open.
+- Local Release warnings-as-errors builds and Core/headless CLI/client GUI suites
+  passed, including quiet/restart combinations, native failure/uncertain outcomes,
+  every assistant failure group and GUI preference restoration/consent invalidation.
+  Local portable EXE CLI checks also passed (help/JSON/quiet consent/Tab completion/
+  invalid options/subsystem/size). CI and downloaded-artifact verification remain
+  separate gates before handoff. The PowerShell wrapper example explicitly
+  propagates the captured EXE exit code for management-agent use.
+- See `CLI-AUTOMATION.md`, updated offline help/completion and `UI-MESSAGES.md`.
+  Existing app self-update/ISO-copy designs remain outside this feature.
 
 ## RC7 authorization and scope
 
