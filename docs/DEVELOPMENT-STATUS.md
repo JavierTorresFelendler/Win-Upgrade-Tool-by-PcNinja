@@ -6,6 +6,29 @@ Reusable architecture, diagnosis and verification know-how lives in
 [AI maintenance playbook](AI-MAINTENANCE-PLAYBOOK.md), independently of any
 assistant's personal memory or skills installation.
 
+## Current follow-up: state-aware installation-image guidance
+
+- Owner approved replacing an empty image-selector display with a cue that
+  complements, rather than overwrites, existing incompatibility/error messages.
+  Continue on the existing development branch/Draft PR #18; RC7 is unchanged.
+- Distinguish unvalidated media, compatible images awaiting selection, no
+  compatible image and an actual selected image. Cues are owner-drawn display
+  text only, never an item/index or consent to continue. Preserve the existing
+  unique-match and same-source selection policy and all Core/CLI behavior.
+- Inspect previously returned generic selection instructions before checking for
+  zero compatible images. Report existing Core rejection reasons immediately,
+  including selected-image warnings, in the existing persistent notice area.
+  A mount/read/validation failure remains its original error, not a no-match.
+- Verification: add client GUI fixtures for actual empty-row drawing, real-item
+  identity, incompatibility reasons, Inspect results, Refresh/source change and
+  independent error/details preservation. No Setup, mount or download is needed.
+  The new cue fixture first failed on the old implementation, then passed with
+  the fix. Local warnings-as-errors Release builds, full Core/headless CLI/client
+  GUI suites and actual EXE read-only CLI checks passed. The rendered normal
+  preview was inspected; original logo/links and quiet/restart behavior remain.
+  CI and downloaded portable-artifact checks remain separate delivery gates.
+- No merge, new release/tag or replacement of published/tested EXEs is approved.
+
 ## Current feature: quiet Setup and remote result contract
 
 - Owner requested optional quiet Windows Setup and clarified that CLI failures

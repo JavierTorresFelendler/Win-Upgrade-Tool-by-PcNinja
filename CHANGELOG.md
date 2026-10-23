@@ -1,6 +1,12 @@
 # Changelog
 
-## Unreleased - quiet Setup and automation (feature PR)
+## Unreleased - quiet Setup, automation and image guidance (feature PR)
+
+- Replace the blank image-selector row with state-aware guidance, without adding
+  a fake selectable image/index. Inspect now explains no compatible media using
+  the existing Core reasons; preserve selected-image warnings and error details.
+  Image matching, automatic selection, upgrade commands and CLI remain unchanged
+  by this presentation-only follow-up.
 
 - Add opt-in silent Windows Setup in GUI/CLI using /quiet. CLI restart policy
   remains independent; GUI silent mode selects/locks automatic restart and

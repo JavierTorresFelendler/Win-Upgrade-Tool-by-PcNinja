@@ -60,6 +60,7 @@ internal sealed class MainForm : Form
     private bool _changingSourceSelection;
     private bool _refreshingSources;
     private readonly ComboBox _installationImages = new();
+    private string _installationImagePrompt = "Validate a source first";
     private readonly Button _inspectSource = new();
     private readonly Label _imageInfo = new();
     private MountedSource? _preparedSource;
@@ -152,6 +153,7 @@ internal sealed class MainForm : Form
         ApplyDownloadLanguagePolicy(CurrentWindows.Read().Language);
         UpdateSourceControls();
         UpdateReadinessSummary();
+        UpdateImageInfo();
         ResumeLayout(true);
     }
 
@@ -297,7 +299,8 @@ internal sealed class MainForm : Form
         content.Controls.Add(Kicker("Windows installation image"));
         var imageRow = BuildTwoColumnRow();
         _installationImages.DropDownStyle = ComboBoxStyle.DropDownList;
-        StyleCombo(_installationImages);
+        _installationImages.AccessibleName = "Windows installation image";
+        StyleCombo(_installationImages, () => _installationImagePrompt);
         _installationImages.DropDownWidth = 700;
         imageRow.Controls.Add(_installationImages, 0, 0);
         StyleSecondaryButton(_inspectSource, "Validate");
@@ -746,7 +749,7 @@ internal sealed class MainForm : Form
             _progress.Visible = false;
             if (!startSetup)
             {
-                _status.Text = $"Read {source.Images?.Count} image(s). Select a matching image, then Start.";
+                PresentImageInspection();
                 return;
             }
             if (_installationImages.SelectedItem is not InstallationImage selection)
@@ -754,7 +757,7 @@ internal sealed class MainForm : Form
                 _status.Text = compatible.Count == 0
                     ? $"No matching image for {current.Edition}, {current.Language}. Choose matching Windows media."
                     : "Choose an installation image above, then click START UPGRADE again.";
-                ShowOperationNotice(_status.Text);
+                ShowOperationNotice(compatible.Count == 0 ? _imageInfo.Text : _status.Text);
                 return;
             }
             selection = InstallationImages.Select(source, selection.Index, current);
@@ -846,6 +849,7 @@ internal sealed class MainForm : Form
             _preparedSource = null;
             _preparedKey = null;
             _installationImages.Items.Clear();
+            UpdateImageInfo();
             _imageInfo.Text = "Source changed. Click Validate or START UPGRADE to check this media.";
         }
         UpdateReadinessSummary();
@@ -854,9 +858,13 @@ internal sealed class MainForm : Form
     private void UpdateImageInfo()
     {
         var current = CurrentWindows.Read();
+        var noCompatibleImage = _preparedSource is not null && InstallationImages.Compatible(_preparedSource, current).Count == 0;
+        _installationImagePrompt = _preparedSource is null ? "Validate a source first"
+            : noCompatibleImage ? "No compatible Windows image" : "Choose a Windows image…";
+        _installationImages.Invalidate();
         var incompatibility = _installationImages.SelectedItem is InstallationImage selected
             ? InstallationImages.GetIncompatibility(selected, current) : null;
-        _imageInfo.ForeColor = incompatibility is not null ||
+        _imageInfo.ForeColor = noCompatibleImage || incompatibility is not null ||
             _installationImages.SelectedItem is InstallationImage selectedImage &&
             InstallationImages.GetSetupProfile(selectedImage) == WindowsSetupProfile.Windows10 ? Warning : Muted;
         _imageInfo.Text = _installationImages.SelectedItem is InstallationImage image
@@ -864,7 +872,39 @@ internal sealed class MainForm : Form
                 (incompatibility ?? $"Selected image {image.Index}: {image.Language}, {image.Architecture}, image version {image.Version}." +
                     (InstallationImages.GetSetupProfile(image) == WindowsSetupProfile.Windows10
                         ? $" {InstallationImages.Windows10Notice}" : ""))
-            : $"This PC: {current.Edition}, {current.Language}. A matching image is selected automatically when possible.";
+            : $"This PC: {current.Edition}, {current.Language}. " +
+                (_preparedSource is null ? "Validate a source to read its Windows images."
+                : noCompatibleImage ? "No compatible Windows image. Choose matching Windows media."
+                : "Choose a Windows image from the list, then click START UPGRADE.");
+        if (noCompatibleImage && _installationImages.SelectedItem is not InstallationImage)
+        {
+            // Reuse Core's existing reasons; readable media is not necessarily compatible.
+            var reasons = (_preparedSource!.Images ?? [])
+                .Select(image => InstallationImages.GetIncompatibility(image, current))
+                .Where(reason => reason is not null).Distinct(StringComparer.Ordinal);
+            _imageInfo.Text += Environment.NewLine + string.Join(Environment.NewLine, reasons);
+        }
+        _installationImages.AccessibleDescription = _installationImages.SelectedItem is InstallationImage
+            ? _imageInfo.Text : _installationImagePrompt;
+    }
+
+    private void PresentImageInspection()
+    {
+        if (_preparedSource is null) return;
+        var current = CurrentWindows.Read();
+        var compatible = InstallationImages.Compatible(_preparedSource, current);
+        var selected = _installationImages.SelectedItem as InstallationImage;
+        if (compatible.Count == 0 || selected is not null && InstallationImages.GetIncompatibility(selected, current) is not null)
+        {
+            _status.Text = compatible.Count == 0
+                ? $"No matching image for {current.Edition}, {current.Language}. Choose matching Windows media."
+                : "The selected image is not compatible. Choose a matching Windows image.";
+            ShowOperationNotice(_imageInfo.Text);
+            return;
+        }
+        _status.Text = selected is not null
+            ? $"Image {selected.Index} selected. Click START UPGRADE when ready."
+            : $"Read {_preparedSource.Images?.Count} image(s). Choose a Windows image, then click START UPGRADE.";
     }
 
     private void ShowIssue(Exception error)
@@ -1238,7 +1278,7 @@ internal sealed class MainForm : Form
         radio.Margin = new Padding(0, 0, 0, 3);
     }
 
-    private static void StyleCombo(ComboBox combo)
+    private static void StyleCombo(ComboBox combo, Func<string>? emptyText = null)
     {
         combo.Dock = DockStyle.Fill;
         combo.BackColor = Background;
@@ -1250,12 +1290,13 @@ internal sealed class MainForm : Form
         combo.MaxDropDownItems = 8;
         combo.DrawItem += (_, e) =>
         {
-            if (e.Index < 0) return;
+            var isPrompt = e.Index < 0;
+            if (isPrompt && emptyText is null) return;
             using var background = new SolidBrush((e.State & DrawItemState.Selected) != 0 ? AccentTint : Background);
             e.Graphics.FillRectangle(background, e.Bounds);
             var textBounds = new Rectangle(e.Bounds.X + 7, e.Bounds.Y, Math.Max(0, e.Bounds.Width - 7), e.Bounds.Height);
-            TextRenderer.DrawText(e.Graphics, combo.Items[e.Index]?.ToString() ?? "", combo.Font,
-                textBounds, Foreground, TextFormatFlags.VerticalCenter | TextFormatFlags.Left | TextFormatFlags.EndEllipsis);
+            TextRenderer.DrawText(e.Graphics, isPrompt ? emptyText!() : combo.Items[e.Index]?.ToString() ?? "", combo.Font,
+                textBounds, isPrompt ? Muted : Foreground, TextFormatFlags.VerticalCenter | TextFormatFlags.Left | TextFormatFlags.EndEllipsis);
             e.DrawFocusRectangle();
         };
     }

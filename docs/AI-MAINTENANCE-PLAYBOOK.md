@@ -128,6 +128,11 @@ All paths below are relative to the repository root.
 - Refresh must preserve the exact source, index and restart policy when valid.
   Changing source invalidates the old index. Failure/cancel messages must survive
   the final refresh and explain what to do, not disappear as a brief flash.
+- An empty image-selector cue is presentation, not an InstallationImage or index.
+  Distinguish not validated, awaiting a choice and no compatible image. Reuse Core
+  rejection reasons after successful enumeration; do not mislabel mount/read
+  failures as incompatibility or overwrite the independent error/details notice.
+  Keep real image items and existing automatic/same-source selection rules.
 - Cancellation is for download/preparation. After Setup actually launches, do not
   pretend the assistant can safely cancel it. Do not force a reboot after failure.
 - Root Setup process exit 0 means its current stage completed, not that all files

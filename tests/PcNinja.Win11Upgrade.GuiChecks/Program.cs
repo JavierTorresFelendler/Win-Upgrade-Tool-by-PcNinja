@@ -253,6 +253,8 @@ internal static class Program
         }
         finally { Directory.Delete(folder); }
 
+        ImageSelectionChecks.Run(form);
+
         if (args.Length > 0)
         {
             Directory.CreateDirectory(args[0]);
@@ -262,6 +264,7 @@ internal static class Program
             SetField("_preparedSource", null);
             SetField("_preparedKey", null);
             ((ComboBox)Field("_installationImages")).Items.Clear();
+            Invoke("UpdateImageInfo");
             ((CheckBox)Field("_autoRestart")).Checked = true;
             Invoke("RefreshSources", false);
             ((Label)Field("_operationNotice")).Visible = false;
