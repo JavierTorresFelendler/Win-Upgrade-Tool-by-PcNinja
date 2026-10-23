@@ -10,8 +10,8 @@ namespace PcNinja.Win11Upgrade.Core;
 
 public sealed class UpgradeEngine
 {
-    public const string DownloadEndpoint = "https://11oem.pcninja.pro";
-    public const string PcNinjaBrowserFallbackPage = "https://iso.pcninja.pro";
+    public const string DownloadEndpoint = "https://11oem.pcninja.pro/";
+    public const string PcNinjaIsoCatalogPage = "https://iso.pcninja.pro";
     private const string AutomaticDownloadProviderPage =
         "https://technionmail-my.sharepoint.com/:u:/g/personal/techsup_technion_ac_il/IQB4hCE2DRrGRqQuQYDafLdfAYjrr8R8MAqD4efXPsI-epA?e=aqZwxY";
     public const string MicrosoftDownloadPage = "https://www.microsoft.com/software-download/windows11";
@@ -414,10 +414,14 @@ public sealed class UpgradeEngine
         UseShellExecute = true
     });
 
+    public static string GetPcNinjaDownloadPage() => PcNinjaDownloadPolicy.GetBrowserPage(
+        CurrentWindows.Read(), RuntimeInformation.OSArchitecture == Architecture.X64);
+
     public static void OpenPcNinjaDownloadPage() => Process.Start(new ProcessStartInfo
     {
-        // Manual language/version selection is separate from the internal automatic route.
-        FileName = PcNinjaBrowserFallbackPage,
+        // Eligible clients keep the same OEM source when falling back to a browser.
+        // Raw provider details remain internal; other systems need manual selection.
+        FileName = GetPcNinjaDownloadPage(),
         UseShellExecute = true
     });
 

@@ -103,6 +103,11 @@ All paths below are relative to the repository root.
   fallback. Never disable TLS validation to make a download work.
 - Public browser/manual selection and the internal automatic transport are separate.
   Do not replace the direct-provider transport with the manual catalog URL.
+- Match browser routing to the configured OEM ISO: use exact EditionID, system UI
+  language and x64, not the registry ProductName or Windows 10 versus 11 alone.
+  Eligible clients use the same OEM short link as automatic download; keep the
+  secure internal provider fallback, catalog/manual alternatives and final image
+  validation. A correct link does not guarantee remote service availability.
 - Wait for a mounted ISO's drive letter with a bounded timeout; mount success is
   not proof that the volume is ready for immediate validation.
 - PowerShell stderr can contain CLIXML combining progress records with genuine

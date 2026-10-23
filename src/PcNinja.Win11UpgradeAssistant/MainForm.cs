@@ -338,7 +338,7 @@ internal sealed class MainForm : Form
         };
         StyleSecondaryButton(_pcNinjaDownload, "PcNinja downloads");
         _pcNinjaDownload.Margin = new Padding(0, 0, 8, 0);
-        _pcNinjaDownload.Click += (_, _) => OpenPage(UpgradeEngine.PcNinjaBrowserFallbackPage);
+        _pcNinjaDownload.Click += (_, _) => OpenPage(UpgradeEngine.GetPcNinjaDownloadPage());
         StyleSecondaryButton(_microsoft, "Microsoft downloads");
         _microsoft.Margin = new Padding(0);
         _microsoft.Click += (_, _) => OpenPage(UpgradeEngine.MicrosoftDownloadPage);

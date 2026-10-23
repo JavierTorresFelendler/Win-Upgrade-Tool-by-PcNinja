@@ -100,6 +100,7 @@ internal static class CliRunner
             systemUiLanguage = language,
             automaticDownloadAvailable = AutomaticDownloadPolicy.IsAvailable(language),
             automaticDownloadUnavailableReason = AutomaticDownloadPolicy.GetUnavailableReason(language),
+            pcNinjaDownloadPage = UpgradeEngine.GetPcNinjaDownloadPage(),
             isAdministrator = Program.IsAdministrator(),
             systemDrive = storage.RootPath,
             systemDriveFreeBytes = storage.AvailableBytes,
@@ -112,6 +113,7 @@ internal static class CliRunner
             $"OS: {value.operatingSystem}\nUpgrade supported: {value.upgradeSupported}" +
             (supportError is null ? "" : $" ({supportError})") +
             $"\nSystem UI language: {language}\nAutomatic download available: {value.automaticDownloadAvailable}" +
+            $"\nPcNinja download: {value.pcNinjaDownloadPage}" +
             (value.automaticDownloadUnavailableReason is null ? "" : $"\n{value.automaticDownloadUnavailableReason}") +
             $"\nAdministrator: {value.isAdministrator}\n" +
             $"System storage: {storage.Message}\nLog: {AppLog.Path}" +
@@ -200,8 +202,9 @@ internal static class CliRunner
                     return Fail(DownloadFailed,
                         browserOpened
                             ? $"{ex.Message} The PcNinja browser fallback was opened. " +
-                              "After the ISO downloads, rerun with --iso <path>."
-                            : $"{ex.Message} Automatic download did not complete; provide the ISO with --iso <path>.",
+                              $"Download: {UpgradeEngine.GetPcNinjaDownloadPage()}. After the ISO downloads, rerun with --iso <path>."
+                            : $"{ex.Message} Automatic download did not complete; provide the ISO with --iso <path>. " +
+                              $"Download: {UpgradeEngine.GetPcNinjaDownloadPage()}.",
                         options.Json);
                 }
                 exactIsoPath = download.IsoPath;

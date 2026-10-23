@@ -45,8 +45,12 @@ access to prior chats, local Codex skills, personal memories, or machine paths.
 - GUI and CLI must use the same Core validation, download and upgrade operations.
 - Never replace an in-place upgrade with a clean/data-only installation fallback.
 - Do not launch Windows Setup or upgrade the development machine during tests.
-- Keep automatic-provider details internal to the application. Public manual ISO
-  selection uses `https://iso.pcninja.pro`; retain Microsoft's official alternative.
+- Keep raw automatic-provider details internal. The owner-approved public OEM
+  route is `https://11oem.pcninja.pro/` for matching x64/en-US Home/Pro/Education
+  editions on Windows 10/11, including their supported N/SL/Workstation variants.
+  Use shared Core routing for browser fallback and the PcNinja download button;
+  keep `https://iso.pcninja.pro` for other systems/languages and Microsoft's
+  official alternative. Do not disable language or actual image validation.
 - Keep versioned release artifacts unchanged while the owner tests them. CI test
   artifacts are not product releases or permission to upgrade a machine.
 

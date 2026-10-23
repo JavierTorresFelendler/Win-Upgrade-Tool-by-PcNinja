@@ -11,7 +11,7 @@ public static class AutomaticDownloadPolicy
     public static string? GetUnavailableReason(string? systemLanguage) => IsAvailable(systemLanguage) ? null :
         $"Automatic download is unavailable for system language {DisplayLanguage(systemLanguage)}. " +
         $"The automatic ISO is {ImageLanguage}. Download matching Windows 11 media from " +
-        $"{UpgradeEngine.PcNinjaBrowserFallbackPage} or {UpgradeEngine.MicrosoftDownloadPage}, " +
+        $"{UpgradeEngine.PcNinjaIsoCatalogPage} or {UpgradeEngine.MicrosoftDownloadPage}, " +
         "then select the exact ISO or setup folder. For standard Microsoft media, prefer Microsoft.";
 
     public static void EnsureAvailable(string? systemLanguage)

@@ -39,7 +39,9 @@ internal static class Program
             captions.Contains("Upgrade readiness") || ((Button)Field("_inspectSource")).Text != "Validate")
             throw new Exception("Duplicate headings or the old Inspect images caption remain.");
         if (!Descendants(form).OfType<LinkLabel>().Any(link => link.Text == "www.pcninja.pro" && link.Links.Count > 0) ||
-            UpgradeEngine.PcNinjaBrowserFallbackPage != "https://iso.pcninja.pro" ||
+            UpgradeEngine.PcNinjaIsoCatalogPage != "https://iso.pcninja.pro" ||
+            UpgradeEngine.GetPcNinjaDownloadPage() != PcNinjaDownloadPolicy.GetBrowserPage(CurrentWindows.Read(),
+                System.Runtime.InteropServices.RuntimeInformation.OSArchitecture == System.Runtime.InteropServices.Architecture.X64) ||
             UpgradeEngine.MicrosoftDownloadPage != "https://www.microsoft.com/software-download/windows11")
             throw new Exception("Branding or public download links changed during the copy review.");
         if (Descendants(form).OfType<PictureBox>().Count(picture => picture.Image is not null) != 1)

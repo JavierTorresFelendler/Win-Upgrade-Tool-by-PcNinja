@@ -1,6 +1,16 @@
 # Changelog
 
-## Unreleased - quiet Setup, automation and image guidance (feature PR)
+## Unreleased
+
+- Route the PcNinja download button and interactive browser fallback to the same
+  OEM short link as automatic download for matching Windows 10/11 x64/en-US
+  Home/Pro/Education editions and supported N/SL/Workstation variants. Keep the
+  catalog for other systems/languages, the Microsoft alternative and internal
+  Windows 10 TLS fallback. CLI status/failure guidance exposes the resolved public
+  page without opening a browser in quiet/JSON/redirected runs. No retry/timeout,
+  upgrade-command, language or image-matching policy change.
+
+Merged PR #18 (quiet Setup, automation and image guidance; not in published RC7):
 
 - Replace the blank image-selector row with state-aware guidance, without adding
   a fake selectable image/index. Inspect now explains no compatible media using

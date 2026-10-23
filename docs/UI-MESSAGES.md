@@ -1,5 +1,19 @@
 # User-message catalog
 
+## Current follow-up: OEM browser download routing
+
+- Existing PcNinja downloads caption, logo/site and Microsoft button remain.
+  Matching Windows 10/11 x64/en-US Home/Pro/Education EditionIDs (including N,
+  Single Language, Pro Education and Workstations) open https://11oem.pcninja.pro/.
+  The same resolver handles automatic-transfer browser fallback. Catalog/manual
+  alternatives remain for other systems/languages; no new popup is added.
+- Quiet/JSON/redirected CLI does not launch a browser. Failure text/JSON includes
+  the resolved public download page, also reported as pcNinjaDownloadPage in status.
+  Do not expose raw provider URLs. Existing browser-to-exact-local-ISO selection,
+  consent invalidation, error details, language/image checks and restart rules stay.
+- Older RC7/RC6 sections below describe the published baseline. PR #18 is merged
+  to main; this routing follow-up remains a separate test PR, not a Release.
+
 ## Post-RC7 follow-up: installation-image guidance
 
 | Image-selector state | Empty-row cue |

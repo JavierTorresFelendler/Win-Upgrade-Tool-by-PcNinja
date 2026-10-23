@@ -129,6 +129,7 @@ space on the Windows drive, administrator state, log path, and the previous
 upgrade attempt. TargetWindowsObserved confirms only the running build/edition,
 not preservation of personal files or applications.
 Also reports the system UI language and automatic-download availability/reason.
+pcNinjaDownloadPage reports the resolved OEM/catalog browser link for this PC.
 JSON includes the complete build identity. RollbackObserved and SetupFailure
 report a correlated completed Windows Setup rollback, including its result and
 extended codes. Missing, stale or incomplete logs do not prove success/failure.
@@ -296,7 +297,11 @@ provider blocks may still require the normal browser fallback.
 Automatic download currently provides en-US media and requires system UI
 language en-US. Other languages (including en-GB) must use matching manual
 media with --iso or --mounted; --download is rejected with exit code 3.
-Manual downloads: https://iso.pcninja.pro or
+Matching x64 en-US Home/Pro/Education (including N, Single Language,
+Pro Education and Workstations) on Windows 10/11 use https://11oem.pcninja.pro/
+for automatic download and interactive browser fallback. This supplies Windows 11,
+even when the source PC runs Windows 10; actual image compatibility is rechecked.
+Other systems/languages use the catalog: https://iso.pcninja.pro or
 https://www.microsoft.com/software-download/windows11
 For standard Microsoft Windows media, prefer Microsoft's download page.
 SHA-256 is calculated for ISO files. Supply --sha256 or PCNINJA_ISO_SHA256 to

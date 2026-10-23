@@ -28,6 +28,12 @@ Windows-Upgrade-Assistant-By-PcNinja.exe
 The portable x64 EXE contains both the graphical application and the CLI. No
 PowerShell or CMD files are required.
 
+Development main includes merged PR #18 (quiet Setup, CLI automation results and
+image-selection guidance), not yet a new published Release. The separate
+[OEM download-routing follow-up](docs/DOWNLOAD-ROUTING.md) uses the same OEM source
+for automatic download and browser fallback on compatible clients. The RC7
+behavior described below remains the published baseline.
+
 RC7 uses that fixed filename; previous release assets remain unchanged.
 Version/commit metadata remains
 in file properties, diagnostic logs, `version` and `status --json`, not the GUI

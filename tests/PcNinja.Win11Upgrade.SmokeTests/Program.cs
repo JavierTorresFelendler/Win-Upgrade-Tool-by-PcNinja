@@ -2,7 +2,7 @@ using PcNinja.Win11Upgrade.Core;
 
 var failures = new List<string>();
 var engine = new UpgradeEngine();
-if (!string.Equals(UpgradeEngine.PcNinjaBrowserFallbackPage, "https://iso.pcninja.pro", StringComparison.Ordinal))
+if (!string.Equals(UpgradeEngine.PcNinjaIsoCatalogPage, "https://iso.pcninja.pro", StringComparison.Ordinal))
     failures.Add("Manual PcNinja downloads must use the public ISO catalog.");
 await TransferChecks.RunAsync();
 SafetyImageChecks.Run();
@@ -10,15 +10,16 @@ DiagnosticsChecks.Run();
 SetupOutcomeChecks.Run();
 Windows10TargetChecks.Run();
 QuietSetupChecks.Run();
+DownloadRoutingChecks.Run();
 if (UpgradeEngine.RequiredDownloadBytes(7L * 1024 * 1024 * 1024, true) != 28L * 1024 * 1024 * 1024)
     failures.Add("Combined ISO and Windows workspace reservation failed.");
 if (UpgradeEngine.IsEligibleDownloadLocation("FAT32", long.MaxValue) ||
     UpgradeEngine.IsEligibleDownloadLocation("NTFS", 70L * 1024 * 1024) ||
     !UpgradeEngine.IsEligibleDownloadLocation("exFAT", 16L * 1024 * 1024 * 1024))
     failures.Add("Download drive filtering failed.");
-if (UpgradeEngine.PcNinjaBrowserFallbackPage.Contains("download=1", StringComparison.OrdinalIgnoreCase))
+if (UpgradeEngine.GetPcNinjaDownloadPage().Contains("download=1", StringComparison.OrdinalIgnoreCase))
     failures.Add("The browser fallback must not use direct-download mode.");
-if (!Uri.TryCreate(UpgradeEngine.PcNinjaBrowserFallbackPage, UriKind.Absolute, out var fallbackUri) ||
+if (!Uri.TryCreate(UpgradeEngine.GetPcNinjaDownloadPage(), UriKind.Absolute, out var fallbackUri) ||
     fallbackUri.Scheme != Uri.UriSchemeHttps)
     failures.Add("The PcNinja browser fallback is not a valid HTTPS URL.");
 var os = engine.GetOperatingSystemDescription();

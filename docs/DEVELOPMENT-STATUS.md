@@ -6,7 +6,45 @@ Reusable architecture, diagnosis and verification know-how lives in
 [AI maintenance playbook](AI-MAINTENANCE-PLAYBOOK.md), independently of any
 assistant's personal memory or skills installation.
 
-## Current follow-up: state-aware installation-image guidance
+## Current PR: OEM download and browser routing
+
+- Owner requested a separate new PR for the download-route change. Branch
+  `fix/oem-download-routing`, based on merged main `0e738b5`. No merge/release of
+  this follow-up is approved; published RC7 and earlier test EXEs remain frozen.
+- Shared Core routing sends matching x64/en-US Home/Pro/Education EditionIDs,
+  including N/SL/Pro Education/Workstation variants, to the same OEM short link
+  used by automatic download. Windows 10 source clients are included; the download
+  is still Windows 11 media, not an automatic Windows 10 target catalog.
+- The GUI manual PcNinja button and GUI/interactive CLI browser fallback use the
+  same resolver. Other languages/architectures/editions keep the manual catalog
+  and Microsoft alternative. Automatic language availability, real WIM/ESD image
+  selection, signatures, storage and answer-file safety remain unchanged.
+- Keep the existing secure internal provider transport fallback for Windows 10.
+  Quiet/JSON/redirected CLI still never opens a browser; status reports the public
+  `pcNinjaDownloadPage`, and download-failure guidance includes the resolved link.
+- The supplied prior-build evidence supports partial-file resume and native exit
+  0 after /quiet preparation; the browser opened after a response timeout. It does
+  not establish a deadlock or a final completed OS migration. URL routing is not
+  a fix for timeout/cancellation responsiveness; that investigation remains open.
+- Verification: all 11 edition IDs across Windows 10/11 builds, language/x64 and
+  unknown/unsupported cases; existing transfer/TLS, Core/CLI and client GUI checks.
+  Local warnings-as-errors Release builds, full Core/headless CLI/client GUI and
+  actual compiled-EXE read-only CLI checks passed. CI and downloaded portable
+  artifact verification remain separate gates; no real ISO/Setup execution.
+
+## Merged PR #18 checkpoint
+
+- Owner explicitly approved merging after final review. PR #18 squash-merged on
+  2026-10-23 as `0e738b5c1a6aa5a6b90a88c0c2d77203a136dfaf`, reviewed source
+  `4a35f5f9073ac2e9d7a4edd23922cc6aef896104`, green CI `39995818534` and verified
+  downloaded test EXE. No critical merge blocker was found; no tag/Release changed.
+- Quiet Setup, machine-readable CLI results and image cues are now on main, not
+  in the published RC7 EXE. BigFix/SYSTEM/live migration coverage remains distinct
+  from local fixtures. Design-only PRs #9/#13 were not merged.
+- Older no-merge holds in the PR #18 sections below are historical. The new OEM
+  routing PR still needs owner testing and explicit merge approval.
+
+## PR #18: state-aware installation-image guidance (merged)
 
 - Owner approved replacing an empty image-selector display with a cue that
   complements, rather than overwrites, existing incompatibility/error messages.
@@ -29,7 +67,7 @@ assistant's personal memory or skills installation.
   CI and downloaded portable-artifact checks remain separate delivery gates.
 - No merge, new release/tag or replacement of published/tested EXEs is approved.
 
-## Current feature: quiet Setup and remote result contract
+## PR #18: quiet Setup and remote result contract (merged)
 
 - Owner requested optional quiet Windows Setup and clarified that CLI failures
   need machine-readable identifiers for remote/scripts/BigFix, not error popups.

@@ -33,6 +33,9 @@ if ((Get-Item -LiteralPath $exe).VersionInfo.ProductName -ne 'Windows Upgrade As
     throw 'Product metadata branding mismatch.'
 }
 if (-not $status.systemUiLanguage -or $null -eq $status.automaticDownloadAvailable) { throw 'Language availability missing from status.' }
+if ($status.pcNinjaDownloadPage -notin @('https://11oem.pcninja.pro/', 'https://iso.pcninja.pro')) {
+    throw 'Status omitted the resolved PcNinja browser download page.'
+}
 $automaticExpected = $status.systemUiLanguage -ieq 'en-US'
 if ($status.automaticDownloadAvailable -ne $automaticExpected) { throw 'Incorrect automatic download language policy in status.' }
 if (-not $automaticExpected -and (-not $status.automaticDownloadUnavailableReason -or
@@ -40,6 +43,9 @@ if (-not $automaticExpected -and (-not $status.automaticDownloadUnavailableReaso
     throw 'Unavailable automatic download omitted its reason/manual alternative.'
 }
 if (-not $help.Contains('en-US') -or -not $help.Contains('https://iso.pcninja.pro')) { throw 'Offline help omitted the language policy/manual catalog.' }
+if (-not $help.Contains('https://11oem.pcninja.pro/') -or -not $help.Contains('pcNinjaDownloadPage')) {
+    throw 'Offline help omitted OEM browser routing or the status route field.'
+}
 $scan = (Invoke-Assistant @('scan', '--json')) | ConvertFrom-Json
 if ($LastCode -ne 0 -or $null -eq $scan.localIsos -or $null -eq $scan.mountedSources) { throw 'Scan JSON failed.' }
 if ($scan.resultCode -ne 'SOURCES_SCANNED' -or $scan.readyForRestart -ne $false) { throw 'Scan result could authorize a restart.' }

@@ -2,6 +2,9 @@
 
 Development follow-up: [quiet Setup and remote automation results](CLI-AUTOMATION.md)
 documents the feature-PR contract. It is not in the published RC7 EXE yet.
+PR #18 is now merged to main. The separate [download-routing follow-up](DOWNLOAD-ROUTING.md)
+adds pcNinjaDownloadPage to status and uses the OEM short link for compatible
+clients' browser fallback, without opening browsers for quiet/JSON/redirected runs.
 
 The graphical interface opens when the EXE is started without arguments. The
 same standalone EXE becomes a command-line tool when a command is supplied.
