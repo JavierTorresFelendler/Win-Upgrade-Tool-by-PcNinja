@@ -20,11 +20,13 @@ if (-not $help.Contains('Windows 10 -> Windows 10') -or -not $help.Contains('doe
     -not $help.Contains('Windows 10 target arguments:') -or -not $help.Contains('buildOrderChecked')) {
     throw 'Offline help omitted the Windows 10 POC profile/policy.'
 }
-foreach ($option in @('--mounted', '--iso', '--download', '--image-index', '--sha256', '--no-restart', '--dry-run', '--yes', '--json')) {
+foreach ($option in @('--mounted', '--iso', '--download', '--image-index', '--sha256', '--no-restart', '--quiet', '--dry-run', '--yes', '--json')) {
     if (-not $help.Contains($option)) { throw "Offline help missing $option" }
 }
 $status = (Invoke-Assistant @('status', '--json')) | ConvertFrom-Json
 if ($LastCode -ne 0 -or -not $status.operatingSystem -or -not $status.version) { throw 'Status JSON failed.' }
+if ($status.schemaVersion -ne 1 -or $status.resultCode -ne 'STATUS_REPORTED' -or
+    $status.readyForRestart -ne $false -or $status.exitCode -ne 0) { throw 'Status result could authorize a restart or lacks the automation contract.' }
 if (-not $status.build -or -not $status.build.StartsWith($ExpectedVersion)) { throw 'Build provenance missing.' }
 if (-not $help.Contains('RollbackObserved') -or -not $help.Contains('SetupFailure')) { throw 'Rollback help missing.' }
 if ((Get-Item -LiteralPath $exe).VersionInfo.ProductName -ne 'Windows Upgrade Assistant By PcNinja') {
@@ -40,8 +42,12 @@ if (-not $automaticExpected -and (-not $status.automaticDownloadUnavailableReaso
 if (-not $help.Contains('en-US') -or -not $help.Contains('https://iso.pcninja.pro')) { throw 'Offline help omitted the language policy/manual catalog.' }
 $scan = (Invoke-Assistant @('scan', '--json')) | ConvertFrom-Json
 if ($LastCode -ne 0 -or $null -eq $scan.localIsos -or $null -eq $scan.mountedSources) { throw 'Scan JSON failed.' }
+if ($scan.resultCode -ne 'SOURCES_SCANNED' -or $scan.readyForRestart -ne $false) { throw 'Scan result could authorize a restart.' }
 foreach ($case in @(
     @('status', '--no-restart', '--json'),
+    @('status', '--quiet', '--json'),
+    @('validate', '--mounted', 'Z:\not-used', '--quiet', '--json'),
+    @('upgrade', '--quiet', '--quiet', '--yes', '--json'),
     @('status', '--image-index', '1', '--json'),
     @('upgrade', '--iso', 'first.iso', '--iso', 'second.iso', '--json'),
     @('upgrade', '--iso', 'not-used.iso', '--image-index', '0', '--json'),
@@ -51,6 +57,13 @@ foreach ($case in @(
 )) {
     $errorResult = (Invoke-Assistant $case) | ConvertFrom-Json
     if ($LastCode -ne 2 -or $errorResult.exitCode -ne 2) { throw "Invalid arguments accepted: $case" }
+    if ($errorResult.resultCode -ne 'INVALID_ARGUMENTS' -or $errorResult.readyForRestart -ne $false) {
+        throw 'Invalid argument result lost its machine-readable identifier.'
+    }
+}
+$quietDeclined = (Invoke-Assistant @('upgrade', '--mounted', 'Z:\not-used', '--quiet', '--json')) | ConvertFrom-Json
+if ($LastCode -ne 6 -or $quietDeclined.resultCode -ne 'CANCELLED' -or $quietDeclined.readyForRestart -ne $false) {
+    throw 'Quiet without explicit consent did not stop before transfer/Setup.'
 }
 $completion = Invoke-Assistant @('completion', 'powershell')
 if ($LastCode -ne 0 -or -not $completion.Contains('--image-index')) { throw 'Completion options missing.' }
@@ -59,6 +72,9 @@ Invoke-Expression $completion
 $inputLine = "& '$($exe.Replace("'", "''"))' upgrade --image-"
 $matches = [System.Management.Automation.CommandCompletion]::CompleteInput($inputLine, $inputLine.Length, $null)
 if ('--image-index' -notin $matches.CompletionMatches.CompletionText) { throw 'Native Tab completion failed.' }
+$quietLine = "& '$($exe.Replace("'", "''"))' upgrade --qui"
+$quietMatches = [System.Management.Automation.CommandCompletion]::CompleteInput($quietLine, $quietLine.Length, $null)
+if ('--quiet' -notin $quietMatches.CompletionMatches.CompletionText) { throw 'Quiet Tab completion failed.' }
 $bytes = [IO.File]::ReadAllBytes($exe)
 $peOffset = [BitConverter]::ToInt32($bytes, 0x3c)
 if ([BitConverter]::ToUInt16($bytes, $peOffset + 24 + 68) -ne 2) { throw 'The EXE has a Console subsystem.' }

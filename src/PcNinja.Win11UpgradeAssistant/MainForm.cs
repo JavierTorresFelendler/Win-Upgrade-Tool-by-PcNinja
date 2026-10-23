@@ -43,6 +43,9 @@ internal sealed class MainForm : Form
     private readonly Button _microsoft = new();
     private readonly Button _start = new();
     private readonly CheckBox _autoRestart = new();
+    private readonly CheckBox _quietSetup = new();
+    private bool _restartBeforeQuiet = true;
+    private Label _restartHelp = null!;
     private readonly ProgressBar _progress = new();
     private readonly Label _status = new();
     private readonly Label _operationNotice = new();
@@ -140,6 +143,7 @@ internal sealed class MainForm : Form
         _autoDownload.CheckedChanged += (_, _) => SourceSelectionChanged(_autoDownload);
         _existingMedia.CheckedChanged += (_, _) => SourceSelectionChanged(_existingMedia);
         _autoRestart.CheckedChanged += (_, _) => UpdateReadinessSummary();
+        _quietSetup.CheckedChanged += (_, _) => QuietModeChanged();
         _sources.SelectedIndexChanged += (_, _) => ExistingPathChanged();
         _sources.TextChanged += (_, _) => ExistingPathChanged();
         _installationImages.SelectedIndexChanged += (_, _) => UpdateImageInfo();
@@ -407,6 +411,16 @@ internal sealed class MainForm : Form
         content.Controls.Add(ReadinessRow("Restart", _restartSummary));
         content.Controls.Add(DividerLine());
 
+        _quietSetup.Text = "Run Windows Setup silently";
+        _quietSetup.AutoSize = true;
+        _quietSetup.ForeColor = Foreground;
+        _quietSetup.BackColor = Color.Transparent;
+        _quietSetup.Margin = new Padding(0, 2, 0, 2);
+        content.Controls.Add(_quietSetup);
+        content.Controls.Add(BodyText(
+            "Hide Windows Setup windows and allow automatic restart. Errors still appear in this assistant.",
+            22, 280));
+
         _autoRestart.Text = "Restart automatically when needed";
         _autoRestart.Checked = true;
         _autoRestart.AutoSize = true;
@@ -414,9 +428,10 @@ internal sealed class MainForm : Form
         _autoRestart.BackColor = Color.Transparent;
         _autoRestart.Margin = new Padding(0, 2, 0, 2);
         content.Controls.Add(_autoRestart);
-        content.Controls.Add(BodyText(
+        _restartHelp = BodyText(
             "Turn off to restart manually after upgrade preparation.",
-            22, 280));
+            22, 280);
+        content.Controls.Add(_restartHelp);
 
         var warning = new Label
         {
@@ -654,6 +669,7 @@ internal sealed class MainForm : Form
             MountedSource source;
             MountedSource? automaticSource = null;
             var consentedRestart = _autoRestart.Checked;
+            var consentedQuiet = _quietSetup.Checked;
             if (_autoDownload.Checked)
             {
                 if (!startSetup) throw new InvalidOperationException("Choose existing media to inspect its images.");
@@ -661,7 +677,7 @@ internal sealed class MainForm : Form
                     throw new InvalidOperationException("Choose a download destination. Connect a drive and Refresh if necessary.");
                 var destination = location.VolumeLabel == "Selected folder" ? location.RootPath
                     : Path.Combine(location.RootPath, "PcNinja Downloads");
-                if (!ConfirmAutomaticUpgrade(destination, consentedRestart))
+                if (!ConfirmAutomaticUpgrade(destination, consentedRestart, consentedQuiet))
                 {
                     _status.Text = "Upgrade cancelled. No download or Windows Setup was started.";
                     return;
@@ -742,7 +758,7 @@ internal sealed class MainForm : Form
                 return;
             }
             selection = InstallationImages.Select(source, selection.Index, current);
-            if (!ConfirmPreparedUpgrade(source, selection, compatible.Count, automaticSource, consentedRestart))
+            if (!ConfirmPreparedUpgrade(source, selection, compatible.Count, automaticSource, consentedRestart, consentedQuiet))
             {
                 _status.Text = "Upgrade cancelled. Windows Setup was not started.";
                 return;
@@ -751,7 +767,7 @@ internal sealed class MainForm : Form
             _status.Text = "Rechecking safety and starting Windows Setup...";
             var automaticRestart = _autoRestart.Checked;
             var result = await _engine.StartUpgradeAsync(source, selection.Index, automaticRestart, _operation.Token,
-                () => { _setupHasStarted = true; SetBusy(true); });
+                () => { _setupHasStarted = true; SetBusy(true); }, quiet: _quietSetup.Checked);
             PresentSetupResult(result, automaticRestart);
         }
         catch (OperationCanceledException) { _status.Text = "Operation cancelled."; }
@@ -787,25 +803,28 @@ internal sealed class MainForm : Form
             $"Setup returned 0x{unchecked((uint)result.ExitCode):X8}. See View details/log. No forced restart was issued.");
     }
 
-    private bool ConfirmAutomaticUpgrade(string destination, bool restart) => _confirmUpgrade(
+    private bool ConfirmAutomaticUpgrade(string destination, bool restart, bool quiet) => _confirmUpgrade(
         $"Download or reuse the Windows ISO in:\n{destination}\n\n" +
         "Then validate it and start the compatible in-place upgrade automatically, keeping apps and personal files.\n" +
         (restart ? "Windows may restart automatically." : "Restart manually when Setup is ready.") +
+        (quiet ? "\nWindows Setup will run silently." : "") +
         "\n\nExperimental compatibility method. Back up important files and save your work. Continue?",
         "Download and upgrade");
 
     private bool ConfirmPreparedUpgrade(MountedSource source, InstallationImage selection, int compatibleCount,
-        MountedSource? automaticSource, bool consentedRestart)
+        MountedSource? automaticSource, bool consentedRestart, bool consentedQuiet)
     {
         // Consent applies only to the result returned during this automatic attempt.
         // A later manual Start, ambiguous image or changed restart policy must confirm again.
         if (ReferenceEquals(source, automaticSource) && compatibleCount == 1 &&
             InstallationImages.GetSetupProfile(selection) == WindowsSetupProfile.Windows11 &&
-            (source.Images ?? []).Contains(selection) && _autoRestart.Checked == consentedRestart) return true;
+            (source.Images ?? []).Contains(selection) && _autoRestart.Checked == consentedRestart &&
+            _quietSetup.Checked == consentedQuiet) return true;
         var restart = _autoRestart.Checked ? "Windows may restart automatically." : "Restart manually when Setup is ready.";
         var targetNotice = InstallationImages.GetSetupProfile(selection) == WindowsSetupProfile.Windows10
             ? $"\n\n{InstallationImages.Windows10Notice}" : "";
-        return _confirmUpgrade($"{selection.Name} (image {selection.Index})\n{restart}{targetNotice}\n\nSave your work. Start the upgrade?",
+        var quietNotice = _quietSetup.Checked ? "\nWindows Setup will run silently." : "";
+        return _confirmUpgrade($"{selection.Name} (image {selection.Index})\n{restart}{quietNotice}{targetNotice}\n\nSave your work. Start the upgrade?",
             "Start upgrade");
     }
 
@@ -882,7 +901,8 @@ internal sealed class MainForm : Form
         _microsoft.Enabled = !busy;
         _autoDownload.Enabled = !busy;
         _existingMedia.Enabled = !busy;
-        _autoRestart.Enabled = !busy;
+        _quietSetup.Enabled = !busy;
+        _autoRestart.Enabled = !busy && !_quietSetup.Checked;
         UpdateSourceControls();
     }
 
@@ -939,6 +959,21 @@ internal sealed class MainForm : Form
             : _downloadLocations.SelectedItem is StorageLocation location ? $"Automatic · {location.RootPath}" : "Automatic download";
         _restartSummary.Text = _autoRestart.Checked ? "Automatic" : "Manual restart";
         _restartSummary.ForeColor = _autoRestart.Checked ? AccentLight : Warning;
+    }
+
+    private void QuietModeChanged()
+    {
+        if (_quietSetup.Checked)
+        {
+            _restartBeforeQuiet = _autoRestart.Checked;
+            _autoRestart.Checked = true;
+        }
+        else _autoRestart.Checked = _restartBeforeQuiet;
+        _autoRestart.Enabled = _operation is null && !_quietSetup.Checked;
+        _restartHelp.Text = _quietSetup.Checked
+            ? "Controlled by silent mode. Turn off silent mode to change."
+            : "Turn off to restart manually after upgrade preparation.";
+        UpdateReadinessSummary();
     }
 
     private static Panel CreateCard()

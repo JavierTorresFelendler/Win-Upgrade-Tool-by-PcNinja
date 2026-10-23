@@ -1,5 +1,19 @@
 # User-message catalog
 
+## Post-RC7 feature PR: quiet Setup
+
+- Add **Run Windows Setup silently** above automatic restart. Description:
+  "Hide Windows Setup windows and allow automatic restart. Errors still appear
+  in this assistant."
+- When checked, select/disable automatic restart; when unchecked, restore the
+  previous restart preference. Disable both choices during an operation.
+- Initial automatic/manual consent adds "Windows Setup will run silently."
+  Changed quiet intent invalidates the automatic-consent shortcut.
+- Keep current GUI success/failure notices, source/image/storage/unsafe-media
+  gates, branding and links. CLI never shows these GUI dialogs; see
+  `CLI-AUTOMATION.md` for result identifiers and raw Setup error evidence.
+- Published RC7 is unchanged. This is a separately identified PR test build.
+
 ## RC7: approved main-window copy
 
 The owner approved the simplified main-window preview and its inclusion in RC7.

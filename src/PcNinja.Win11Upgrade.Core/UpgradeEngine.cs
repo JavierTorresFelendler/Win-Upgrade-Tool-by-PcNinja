@@ -353,7 +353,7 @@ public sealed class UpgradeEngine
     }
 
     public async Task<UpgradeResult> StartUpgradeAsync(MountedSource selectedSource, int imageIndex,
-        bool allowAutomaticRestart, CancellationToken cancellationToken, Action? setupStarting = null)
+        bool allowAutomaticRestart, CancellationToken cancellationToken, Action? setupStarting = null, bool quiet = false)
     {
         cancellationToken.ThrowIfCancellationRequested();
         Directory.CreateDirectory(AppLog.Folder);
@@ -370,14 +370,14 @@ public sealed class UpgradeEngine
         var image = InstallationImages.Select(source, imageIndex, current);
         AppLog.Info($"Selected Setup profile: {InstallationImages.GetSetupProfile(image)}; " +
             $"image {image.Index}; image metadata version {image.Version}; current build {current.Build}.");
-        var arguments = BuildSetupArguments(source, image, allowAutomaticRestart);
+        var arguments = BuildSetupArguments(source, image, allowAutomaticRestart, quiet);
         var setupPath = source.SetupPath;
         InstallationSafety.EnsureSafe(source.Root, removeSelectedAnswerFiles: false);
         var attempt = UpgradeHistory.Begin(source, image);
         cancellationToken.ThrowIfCancellationRequested();
         setupStarting?.Invoke();
 
-        AppLog.Info($"Starting Windows Setup. Automatic restart: {allowAutomaticRestart}. Command: setup.exe {arguments}");
+        AppLog.Info($"Starting Windows Setup. Automatic restart: {allowAutomaticRestart}. Quiet: {quiet}. Command: setup.exe {arguments}");
         var startInfo = new ProcessStartInfo
         {
             FileName = setupPath,
@@ -393,7 +393,7 @@ public sealed class UpgradeEngine
         return new UpgradeResult(process.ExitCode, setupPath);
     }
 
-    internal static string BuildSetupArguments(MountedSource source, InstallationImage image, bool automaticRestart)
+    internal static string BuildSetupArguments(MountedSource source, InstallationImage image, bool automaticRestart, bool quiet = false)
     {
         if (source.ImagePath is null || !(source.Images ?? []).Contains(image))
             throw new InvalidOperationException("The selected image is not bound to the validated source.");
@@ -404,7 +404,8 @@ public sealed class UpgradeEngine
             _ => throw new InvalidOperationException("No supported Setup command profile was found for the selected image.")
         };
         return command +
-            $" /imageindex {image.Index} /installfrom \"{source.ImagePath}\"" + (automaticRestart ? "" : " /noreboot");
+            $" /imageindex {image.Index} /installfrom \"{source.ImagePath}\"" + (automaticRestart ? "" : " /noreboot") +
+            (quiet ? " /quiet" : "");
     }
 
     public static void OpenMicrosoftDownloadPage() => Process.Start(new ProcessStartInfo

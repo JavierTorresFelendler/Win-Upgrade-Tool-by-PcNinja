@@ -176,6 +176,23 @@ All paths below are relative to the repository root.
 - Local client fixtures do not cover every DPI/graphics/remote-session case;
   repeat the original owner scenario on the affected machine after release.
 
+### 7. Keep silent Setup separate from orchestration and restart authorization
+
+- `/quiet` hides Setup UX; it must not remove source/image/storage/answer-file
+  checks or imply consent. CLI requires explicit --yes for real quiet upgrades;
+  no browser/popup/hidden input prompt is appropriate for remote/SYSTEM callers.
+- CLI quiet and /noreboot are independent, even if the standalone GUI deliberately
+  locks automatic restart when silent mode is selected. Never enforce GUI policy
+  in Core so that it overrides a remote caller's --no-restart.
+- Exit 0 is not a restart permission: status/validation/dry runs also return 0.
+  Report stable command result identifiers and native Setup integer/hex separately
+  from assistant exit groups. All failure/uncertain/non-upgrade results must have
+  readyForRestart=false. PreparationCompleted is pre-reboot, not final OS success.
+- Test the real result presenter with synthetic Setup exit codes without invoking
+  Setup, including uncertain transition, native failures and every restart/quiet
+  combination. Also test the compiled portable CLI and client UI independently;
+  successful fixtures are not proof of BigFix agent wiring or live quiet upgrades.
+
 ## Safe verification recipe
 
 Run from the repository root on a Windows client with the .NET 8 SDK. Read the

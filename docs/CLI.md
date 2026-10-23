@@ -1,5 +1,8 @@
 # Command-line guide
 
+Development follow-up: [quiet Setup and remote automation results](CLI-AUTOMATION.md)
+documents the feature-PR contract. It is not in the published RC7 EXE yet.
+
 The graphical interface opens when the EXE is started without arguments. The
 same standalone EXE becomes a command-line tool when a command is supplied.
 

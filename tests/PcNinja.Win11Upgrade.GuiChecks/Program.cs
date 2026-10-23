@@ -124,27 +124,46 @@ internal static class Program
         {
             ((CheckBox)Field("_autoRestart")).Checked = restart;
             confirmations = 0;
-            if (!(bool)Call("ConfirmAutomaticUpgrade", "Z:\\Downloads", restart)! ||
-                !(bool)Call("ConfirmPreparedUpgrade", consentSource, consentImage, 1, consentSource, restart)! || confirmations != 1)
+            if (!(bool)Call("ConfirmAutomaticUpgrade", "Z:\\Downloads", restart, false)! ||
+                !(bool)Call("ConfirmPreparedUpgrade", consentSource, consentImage, 1, consentSource, restart, false)! || confirmations != 1)
                 throw new Exception("Automatic mode requires more than one consent or failed to retain restart intent.");
         }
         confirmations = 0;
-        Call("ConfirmPreparedUpgrade", consentSource, consentImage, 1, null, false);
-        Call("ConfirmPreparedUpgrade", consentSource with { Root = "Y:\\" }, consentImage, 1, consentSource, false);
-        Call("ConfirmPreparedUpgrade", consentSource, consentImage, 2, consentSource, false);
-        Call("ConfirmPreparedUpgrade", consentSource, consentImage, 1, consentSource, true);
+        Call("ConfirmPreparedUpgrade", consentSource, consentImage, 1, null, false, false);
+        Call("ConfirmPreparedUpgrade", consentSource with { Root = "Y:\\" }, consentImage, 1, consentSource, false, false);
+        Call("ConfirmPreparedUpgrade", consentSource, consentImage, 2, consentSource, false, false);
+        Call("ConfirmPreparedUpgrade", consentSource, consentImage, 1, consentSource, true, false);
         if (confirmations != 4) throw new Exception("Manual, changed, ambiguous or changed-restart consent was bypassed.");
         var windows10Image = consentImage with { Name = "Windows 10 Pro", Version = "10.0.19041" };
         var windows10Source = consentSource with { Images = [windows10Image] };
         confirmations = 0;
-        Call("ConfirmPreparedUpgrade", windows10Source, windows10Image, 1, null, false);
+        Call("ConfirmPreparedUpgrade", windows10Source, windows10Image, 1, null, false, false);
         if (confirmations != 1 || !lastConfirmation.Contains(InstallationImages.Windows10Notice))
             throw new Exception("Windows 10 manual confirmation omitted the POC build-order/migration warning.");
-        Call("ConfirmPreparedUpgrade", windows10Source, windows10Image, 1, windows10Source, false);
+        Call("ConfirmPreparedUpgrade", windows10Source, windows10Image, 1, windows10Source, false, false);
         if (confirmations != 2) throw new Exception("Windows 10 inherited unattended Windows 11 consent.");
+        var quiet = (CheckBox)Field("_quietSetup");
+        var autoRestart = (CheckBox)Field("_autoRestart");
+        foreach (var previousRestart in new[] { false, true })
+        {
+            autoRestart.Checked = previousRestart;
+            quiet.Checked = true;
+            Invoke("SetBusy", true);
+            Invoke("SetBusy", false);
+            Invoke("RefreshSources", false);
+            if (!autoRestart.Checked || autoRestart.Enabled || !quiet.Enabled)
+                throw new Exception("GUI quiet mode did not force/lock automatic restart through busy/refresh.");
+            confirmations = 0;
+            Call("ConfirmPreparedUpgrade", consentSource, consentImage, 1, consentSource, true, false);
+            if (confirmations != 1 || !lastConfirmation.Contains("silently"))
+                throw new Exception("Changed quiet intent bypassed consent or omitted silent Setup guidance.");
+            quiet.Checked = false;
+            if (autoRestart.Checked != previousRestart || !autoRestart.Enabled)
+                throw new Exception("Disabling quiet mode lost the previous restart preference.");
+        }
         accept = false;
-        if ((bool)Call("ConfirmAutomaticUpgrade", "Z:\\Downloads", true)! ||
-            (bool)Call("ConfirmPreparedUpgrade", consentSource, consentImage, 1, null, false)!)
+        if ((bool)Call("ConfirmAutomaticUpgrade", "Z:\\Downloads", true, false)! ||
+            (bool)Call("ConfirmPreparedUpgrade", consentSource, consentImage, 1, null, false, false)!)
             throw new Exception("Declining consent did not prevent continuation.");
         // Exercise cancellation through Start itself. A declined prompt returns before
         // DownloadIsoAsync, so this test cannot fetch/mount media or launch Setup.
@@ -249,6 +268,9 @@ internal static class Program
             ((LinkLabel)Field("_details")).Visible = false;
             choices[0].Checked = true;
             Save("Ready.png");
+            quiet.Checked = true;
+            Save("Quiet.png");
+            quiet.Checked = false;
             var normalSize = form.Size;
             form.Size = form.MinimumSize;
             Save("Minimum.png");

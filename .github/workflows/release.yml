@@ -70,6 +70,14 @@ jobs:
           dotnet publish src/PcNinja.Win11UpgradeAssistant/PcNinja.Win11UpgradeAssistant.csproj -c Release -r win-x64 --self-contained true -o artifacts
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Headless CLI automation result fixtures (no Setup)
+        shell: pwsh
+        run: |
+          dotnet build tests/PcNinja.Win11Upgrade.CliChecks/PcNinja.Win11Upgrade.CliChecks.csproj -c Release -warnaserror
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet run --project tests/PcNinja.Win11Upgrade.CliChecks/PcNinja.Win11Upgrade.CliChecks.csproj -c Release --no-build
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Prepare and verify release assets
         shell: pwsh
         run: |

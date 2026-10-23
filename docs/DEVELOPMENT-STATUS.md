@@ -1,10 +1,35 @@
 # Development handoff
 
-Updated: 2026-10-21. This is sanitized project context, not a backup of Codex chats.
+Updated: 2026-10-23. This is sanitized project context, not a backup of Codex chats.
 
 Reusable architecture, diagnosis and verification know-how lives in
 [AI maintenance playbook](AI-MAINTENANCE-PLAYBOOK.md), independently of any
 assistant's personal memory or skills installation.
+
+## Current feature: quiet Setup and remote result contract
+
+- Owner requested optional quiet Windows Setup and clarified that CLI failures
+  need machine-readable identifiers for remote/scripts/BigFix, not error popups.
+  Branch `feature/quiet-setup-automation`, based on published RC7 main `d502b60`.
+  No new release, tag, merge or changes to RC7 assets are authorized.
+- Reuse existing preparation-result handling. Add opt-in /quiet to shared command
+  construction; CLI --quiet and --no-restart remain independent. Real quiet CLI
+  needs explicit --yes, never opens browser fallback and emits no GUI dialogs.
+- GUI quiet checkbox selects/locks automatic restart and restores its prior state
+  when unchecked. Consent includes silent Setup and its per-attempt snapshot.
+- Preserve existing process exit codes 0-8 and JSON fields. Add schemaVersion 1,
+  stable resultCode, readyForRestart, message/build/log identity and native Setup
+  integer/hex. Status/validation/dry-run/failures never authorize reboot. Only
+  actual preparation exit 0 with --no-restart yields the ready state.
+- Test plan: command matrix, headless result-presenter fixtures in CI, read-only
+  portable CLI checks, client GUI checkbox/consent/state and existing safety suites.
+  No developer Setup launch/reboot. Owner VM/remote-agent acceptance remains open.
+- Local Release warnings-as-errors builds and Core/headless CLI/client GUI suites
+  passed, including quiet/restart combinations, native failure/uncertain outcomes,
+  every assistant failure group and GUI preference restoration/consent invalidation.
+  CI and portable-artifact verification are separate gates before handoff.
+- See `CLI-AUTOMATION.md`, updated offline help/completion and `UI-MESSAGES.md`.
+  Existing app self-update/ISO-copy designs remain outside this feature.
 
 ## RC7 authorization and scope
 
