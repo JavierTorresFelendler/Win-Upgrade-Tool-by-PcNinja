@@ -285,6 +285,7 @@ internal static class Program
         finally { Directory.Delete(folder); }
 
         ImageSelectionChecks.Run(form);
+        DownloadGuidanceChecks.Run();
 
         if (args.Length > 0)
         {

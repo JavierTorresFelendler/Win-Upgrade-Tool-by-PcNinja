@@ -45,8 +45,16 @@ access to prior chats, local Codex skills, personal memories, or machine paths.
 - GUI and CLI must use the same Core validation, download and upgrade operations.
 - Never replace an in-place upgrade with a clean/data-only installation fallback.
 - Do not launch Windows Setup or upgrade the development machine during tests.
-- Keep automatic-provider details internal to the application. Public manual ISO
-  selection uses `https://iso.pcninja.pro`; retain Microsoft's official alternative.
+- Keep automatic-provider transport/session details internal. Prefer the full-profile
+  matching owner source, including all eleven configured OEM editions. Its browser
+  fallback uses `https://11oem.pcninja.pro/`; unmatched users keep the broader
+  `https://iso.pcninja.pro` and Microsoft's official alternative.
+- External catalog guidance resolves public landing pages only, on explicit request.
+  Never substitute a language/edition/architecture or automate host challenges.
+  Actual media must still pass Core validation. See `docs/MATCHED-ISO-DOWNLOADS.md`.
+- Server is guidance/explicit manual-command-copy only. Never enable or execute
+  Setup on Server; preserve the Core guard. Do not confuse the Windows 11 client
+  `/product server` workaround with a generic required real-Server switch.
 - Keep versioned release artifacts unchanged while the owner tests them. CI test
   artifacts are not product releases or permission to upgrade a machine.
 

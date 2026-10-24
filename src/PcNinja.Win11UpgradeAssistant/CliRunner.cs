@@ -60,6 +60,7 @@ internal static class CliRunner
             return options.Command switch
             {
                 "status" => ShowStatus(engine, options.Json),
+                "downloads" => await ShowDownloadsAsync(engine, options.Json, cancellation.Token),
                 "scan" or "refresh" or "rescan" => ShowScan(engine, options.Json),
                 "validate" => await ValidateOrUpgradeAsync(engine, options, false, cancellation.Token),
                 "upgrade" => await ValidateOrUpgradeAsync(engine, options, true, cancellation.Token),
@@ -86,7 +87,8 @@ internal static class CliRunner
     private static int ShowStatus(UpgradeEngine engine, bool json)
     {
         var storage = engine.CheckSystemDriveSpace();
-        var language = CurrentWindows.Read().Language;
+        var profile = DownloadSystem.Read();
+        var automaticSource = DownloadSourcePolicy.GetAutomaticSource(profile);
         string? supportError = null;
         try { engine.ValidateSupportedComputer(); }
         catch (Exception ex) { supportError = ex.Message; }
@@ -97,9 +99,15 @@ internal static class CliRunner
             operatingSystem = engine.GetOperatingSystemDescription(),
             upgradeSupported = supportError is null,
             supportError,
-            systemUiLanguage = language,
-            automaticDownloadAvailable = AutomaticDownloadPolicy.IsAvailable(language),
-            automaticDownloadUnavailableReason = AutomaticDownloadPolicy.GetUnavailableReason(language),
+            systemUiLanguage = profile.Language,
+            automaticDownloadAvailable = AutomaticDownloadPolicy.IsAvailable(profile),
+            automaticDownloadUnavailableReason = AutomaticDownloadPolicy.GetUnavailableReason(profile),
+            downloadProfile = new { edition = profile.Edition, language = profile.Language, build = profile.Build,
+                revision = profile.Revision, architecture = profile.Architecture, installationType = profile.InstallationType,
+                isLtsc = profile.IsLtsc, isServer = profile.IsServer, isSupportedClient = profile.IsSupportedClient },
+            automaticDownloadSourceId = automaticSource?.Id,
+            automaticDownloadSourceName = automaticSource?.Name,
+            pcNinjaDownloadPage = DownloadSourcePolicy.GetPcNinjaBrowserPage(profile),
             isAdministrator = Program.IsAdministrator(),
             systemDrive = storage.RootPath,
             systemDriveFreeBytes = storage.AvailableBytes,
@@ -111,14 +119,45 @@ internal static class CliRunner
             $"{ProductIdentity.Name}\n" +
             $"OS: {value.operatingSystem}\nUpgrade supported: {value.upgradeSupported}" +
             (supportError is null ? "" : $" ({supportError})") +
-            $"\nSystem UI language: {language}\nAutomatic download available: {value.automaticDownloadAvailable}" +
+            $"\nSystem UI language: {profile.Language}\nAutomatic download available: {value.automaticDownloadAvailable}" +
             (value.automaticDownloadUnavailableReason is null ? "" : $"\n{value.automaticDownloadUnavailableReason}") +
+            $"\nDownload profile: {profile.Edition}, {profile.Architecture}, {profile.InstallationType}, " +
+            $"build {profile.Build}.{profile.Revision}\nPcNinja download page: {value.pcNinjaDownloadPage}" +
             $"\nAdministrator: {value.isAdministrator}\n" +
             $"System storage: {storage.Message}\nLog: {AppLog.Path}" +
             (value.previousUpgrade is null ? "" : $"\nPrevious upgrade: {value.previousUpgrade.State}. {value.previousUpgrade.Message}"),
             "STATUS_REPORTED");
         return Success;
     }
+
+    private static async Task<int> ShowDownloadsAsync(UpgradeEngine engine, bool json, CancellationToken token)
+    {
+        try { return ReportDownloadRecommendation(await engine.GetDownloadRecommendationAsync(token), json); }
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex)
+        {
+            AppLog.Error($"CLI download recommendation failed: {ex}");
+            return Fail(DownloadFailed, $"Could not retrieve a matching download recommendation. {ex.Message}", json);
+        }
+    }
+
+    private static int ReportDownloadRecommendation(DownloadRecommendation recommendation, bool json)
+    {
+        Write(new { recommendation, automaticTransferStarted = false, setupStarted = false }, json,
+            $"{recommendation.Message}\nSource: {recommendation.Source}\nDownload page: {recommendation.PageUrl}" +
+            (recommendation.FileName is null ? "" : $"\nFile: {recommendation.FileName}") +
+            (recommendation.TargetRelease is null ? "" : $"\nTarget release: {recommendation.TargetRelease}") +
+            (recommendation.TargetVersion is null ? "" : $"\nTarget version: {recommendation.TargetVersion}") +
+            "\nThis command does not download an ISO or open a browser. Download the matching ISO manually, " +
+            "then use validate --iso <path> or upgrade --iso <path>.", "DOWNLOAD_RECOMMENDATION");
+        return Success;
+    }
+
+    private static string? GetAutomaticDownloadBlock(DownloadSystem profile) =>
+        AutomaticDownloadPolicy.GetUnavailableReason(profile) is string reason
+            ? reason + " Run 'downloads' or 'downloads --json' for a matching manual-download recommendation; " +
+              "then supply the exact ISO with --iso <path>. No automatic transfer or Setup was started."
+            : null;
 
     private static int ShowScan(UpgradeEngine engine, bool json)
     {
@@ -157,7 +196,7 @@ internal static class CliRunner
             return Fail(InvalidArguments,
                 "Choose exactly one source: --iso <path>, --mounted <drive>, or --download.", options.Json);
 
-        if (options.Download && AutomaticDownloadPolicy.GetUnavailableReason(CurrentWindows.Read().Language) is string reason)
+        if (options.Download && GetAutomaticDownloadBlock(DownloadSystem.Read()) is string reason)
             return Fail(ValidationFailed, reason, options.Json);
 
         var storage = engine.CheckSystemDriveSpace();
@@ -409,7 +448,7 @@ internal sealed record CliOptions(
 
         var allowed = command switch
         {
-            "status" or "scan" or "refresh" or "rescan" => new[] { "--json" },
+            "status" or "downloads" or "scan" or "refresh" or "rescan" => new[] { "--json" },
             "validate" => new[] { "--iso", "--mounted", "--sha256", "--image-index", "--json" },
             "upgrade" => new[] { "--iso", "--mounted", "--download", "--destination", "--sha256", "--image-index", "--no-restart", "--quiet", "--yes", "--dry-run", "--json" },
             _ => Array.Empty<string>()

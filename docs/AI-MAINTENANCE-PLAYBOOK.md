@@ -236,6 +236,30 @@ app-downloaded ISO separately from a manually supplied known-good ISO. Record
 actual source/index, build/edition/language, failure stage and preservation of
 files/apps. Sanitize evidence; never commit raw customer logs or screenshots.
 
+## Source recommendation is not media or upgrade validation
+
+Keep an installed-system profile (edition, native architecture, system-default UI
+language, installation type and build/revision) separate from actual WIM metadata.
+Own-source eligibility and browser fallback must share the full profile across
+GUI/CLI, not just an en-US test. Keep general Consumer coverage independent of
+the ordered owner-source list, so adding a future source cannot change package
+classification. Do not order unrelated release families by numeric build alone.
+
+Treat an external HTML catalog as untrusted, changing input. Bound size/time,
+cross-check per-table heading/build and exact filename/culture/package, allowlist
+public landing URLs, and fail to manual guidance on ambiguity. Omitted HTML table
+closing tags occur in the current catalog; test them. Use a separate no-redirect,
+no-cookie client: checking only the final URL cannot prevent an earlier redirected
+request. Do not reuse the ISO transport's cookies or disable certificate validation.
+Never automate a host challenge or guess a downloaded file after browser fallback.
+
+Server guidance must not weaken client execution guards. Manual command copy is
+an explicit user effect, not an execution step: freshly revalidate exact selected
+source/index and answer-file safety, quote/reject unsafe CMD paths, label the shell,
+explain supported-path/licensing limits, and keep clipboard untouched on failure
+or cancellation. Use fake browser/clipboard/preparation callbacks in GUI fixtures.
+No recommendation or synthetic command proves a supported real Server upgrade.
+
 ## Maintain the knowledge, not just the patch
 
 For each meaningful change, record:

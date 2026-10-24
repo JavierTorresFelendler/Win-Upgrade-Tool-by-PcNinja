@@ -272,10 +272,38 @@ public sealed class UpgradeEngine
 
     public void InvalidateIsoValidation() => _isoValidation.Invalidate();
 
+    public async Task<DownloadRecommendation> GetDownloadRecommendationAsync(CancellationToken token)
+    {
+        // Catalog requests must not inherit the download provider's cookies or
+        // follow a changed catalog URL to another host before it is checked.
+        using var handler = new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false };
+        using var catalog = new HttpClient(handler) { Timeout = Timeout.InfiniteTimeSpan };
+        return await IsoDownloadCatalog.ResolveAsync(catalog, DownloadSystem.Read(), token);
+    }
+
+    public async Task<string> GetManualServerCommandAsync(MountedSource selectedSource, int imageIndex,
+        CancellationToken token)
+    {
+        var system = DownloadSystem.Read();
+        if (!system.IsServer) throw new InvalidOperationException("Manual Server guidance is only available on Windows Server.");
+        var source = await ValidateMountedSourceAsync(selectedSource.Root, token, removeSelectedAnswerFiles: false);
+        if (!string.Equals(source.ImagePath, selectedSource.ImagePath, StringComparison.OrdinalIgnoreCase) ||
+            !(source.Images ?? []).SequenceEqual(selectedSource.Images ?? []))
+            throw new InvalidOperationException("Installation media changed. Validate and select the image again.");
+        var image = (source.Images ?? []).SingleOrDefault(item => item.Index == imageIndex)
+            ?? throw new InvalidOperationException("Select a validated Windows Server image first.");
+        var command = ManualServerUpgrade.BuildCommand(source, image, system);
+        InstallationSafety.EnsureSafe(source.Root, removeSelectedAnswerFiles: false);
+        token.ThrowIfCancellationRequested();
+        return command;
+    }
+
     public async Task<DownloadResult> DownloadIsoAsync(string destinationDirectory,
         IProgress<DownloadProgress>? progress, CancellationToken cancellationToken, string? expectedSha256 = null)
     {
-        AutomaticDownloadPolicy.EnsureAvailable(CurrentWindows.Read().Language);
+        var system = DownloadSystem.Read();
+        AutomaticDownloadPolicy.EnsureAvailable(system);
+        var configuredSource = DownloadSourcePolicy.GetAutomaticSource(system)!;
         InstallationSafety.EnsureSafe(AppContext.BaseDirectory, removeSelectedAnswerFiles: false);
         MountedSource? validatedSource = null;
         var result = await DownloadWithTransportFallbackAsync(endpoint => IsoTransfer.DownloadAsync(_http, endpoint, Path.GetFullPath(destinationDirectory),
@@ -297,16 +325,19 @@ public sealed class UpgradeEngine
                 InstallationImages.EnsureAutomaticWindows11Source(prepared.Source);
                 validatedSource = prepared.Source;
                 return prepared.Sha256;
-            }));
+            }), new Uri(configuredSource.BrowserPage));
         // Reuse only this operation's exact completed validation, never a path/time-based cache.
         return result with { ValidatedSource = validatedSource
             ?? throw new InvalidOperationException("The downloaded ISO did not complete media validation.") };
     }
 
-    internal static async Task<DownloadResult> DownloadWithTransportFallbackAsync(Func<Uri, Task<DownloadResult>> transfer)
+    internal static async Task<DownloadResult> DownloadWithTransportFallbackAsync(Func<Uri, Task<DownloadResult>> transfer,
+        Uri? endpoint = null)
     {
-        try { return await transfer(new Uri(DownloadEndpoint)); }
-        catch (DownloadTransferException ex) when (ex.InnerException is HttpRequestException)
+        endpoint ??= new Uri(DownloadEndpoint);
+        try { return await transfer(endpoint); }
+        catch (DownloadTransferException ex) when (ex.InnerException is HttpRequestException &&
+            endpoint.Host.Equals(new Uri(DownloadEndpoint).Host, StringComparison.OrdinalIgnoreCase))
         {
             // The short-link host may require TLS 1.3. Windows 10 can securely use the
             // provider route directly with OS-default TLS and normal certificate checks.
@@ -491,7 +522,7 @@ public sealed class UpgradeEngine
     public static void OpenPcNinjaDownloadPage() => Process.Start(new ProcessStartInfo
     {
         // Manual language/version selection is separate from the internal automatic route.
-        FileName = PcNinjaBrowserFallbackPage,
+        FileName = DownloadSourcePolicy.GetPcNinjaBrowserPage(DownloadSystem.Read()),
         UseShellExecute = true
     });
 

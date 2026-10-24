@@ -1,12 +1,39 @@
 # Development handoff
 
-Updated: 2026-10-23. This is sanitized project context, not a backup of Codex chats.
+Updated: 2026-10-24. This is sanitized project context, not a backup of Codex chats.
 
 Reusable architecture, diagnosis and verification know-how lives in
 [AI maintenance playbook](AI-MAINTENANCE-PLAYBOOK.md), independently of any
 assistant's personal memory or skills installation.
 
-## Current development: session-scoped exact ISO validation reuse
+## Current development: matched ISO downloads and manual Server guidance
+
+- Approved separate Draft PR on `feature/matched-iso-downloads`, stacked on
+  `feature/iso-validation-reuse` (#20). It includes the eleven-edition OEM routing
+  policy requested in #19 without changing #19, #20 or main. CI includes the
+  stacked base branch; no merge, ready-for-review, RC/tag, Release or replacement
+  of published/tested assets is authorized.
+- Full-profile matching prefers configured PcNinja media; unmatched systems get
+  on-demand exact public landing guidance from Client/Server catalogs. Browser
+  download requires manual exact-ISO selection and validation; no host challenge
+  bypass or automatic continuation. `downloads [--json]` is read-only. `status`
+  stays offline; automatic transfer is full-profile gated in GUI and CLI.
+- Server has download/inspect guidance and explicit, freshly checked manual CMD
+  copy only. Start/quiet/restart remain disabled, Core execution guard unchanged.
+  No real Server command is run or implicitly authorized by a recommendation.
+- Implementation plan, release-family/26H1 handling, safe probe, fixture matrix,
+  extension rules and remaining owner VM gates: [matched ISO downloads](MATCHED-ISO-DOWNLOADS.md).
+- Local warnings-as-errors Release builds and Core/headless CLI/client GUI suites
+  passed, including the existing regression suites. The GUI suite passed twice
+  with fake external effects. The non-admin native journal proof still reports
+  SKIP; do not describe a synthetic ISO cache hit as a real media test.
+- A bounded live HTML-only probe matched es-ES Pro, es-MX Pro N and en-US Enterprise
+  to the expected Consumer/Business 26H2 catalogs, and es-ES Server Standard to
+  Server 2025. It did not follow landing links or download media. CI/artifact
+  evidence is recorded in the Draft PR; actual provider transfer, ISO attach/detach
+  and upgrade acceptance remain unproven by this development work.
+
+## Previous development: session-scoped exact ISO validation reuse
 
 - Owner approved a separate implementation/test-EXE PR on
   `feature/iso-validation-reuse`, based on main `0e738b5` (merged #18). #19's OEM

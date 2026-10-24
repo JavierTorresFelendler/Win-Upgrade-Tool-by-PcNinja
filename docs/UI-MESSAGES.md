@@ -1,5 +1,25 @@
 # User-message catalog
 
+## Development PR: matching ISO and Server guidance
+
+- Keep the same two source choices, logo and www.pcninja.pro branding. Add
+  **Find matching ISO** beside the existing manual download buttons.
+- Automatic availability explains the full-profile match, not just the language.
+  All eleven en-US/x64 OEM editions remain eligible on supported client families.
+- While searching: use the existing cancellable operation and status area.
+  On browser launch, clear old source/image/consent state and persist the chosen
+  filename plus instructions to finish downloading, select **ISO...**, then
+  **Validate**. Explicitly say the assistant will not continue automatically.
+- No exact match/timeout/changed HTML uses manual catalog guidance; do not claim
+  a specific ISO was found or substitute English. Existing errors/details remain.
+- Server shows **MANUAL GUIDANCE ONLY**, disables Start/quiet/restart and presents
+  the manual-only advisory. Inspection asks for an explicit matching image, then
+  enables **Copy upgrade command**. Copy rechecks media, previews the CMD command
+  and says it was copied, not executed. Cancellation says nothing was copied.
+- Same-feature media is called a repair candidate; older/equal revision is not a
+  newer OS. 26H1 is separately explained. Exact behavior/limits are documented in
+  [matched ISO downloads](MATCHED-ISO-DOWNLOADS.md). Published RC7 is unchanged.
+
 ## Development PR: ISO preparation progress
 
 - Checksum stage: `Checking the ISO checksum... N%`.

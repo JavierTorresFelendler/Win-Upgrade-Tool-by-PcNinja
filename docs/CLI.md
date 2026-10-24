@@ -22,7 +22,7 @@ See [outcome diagnostics](SETUP-OUTCOME-DIAGNOSTICS.md) for correlation limits.
 
 ## Permissions
 
-`status`, `scan`, `--help`, `--version`, and `log-path` can run normally.
+`status`, `downloads`, `scan`, `--help`, `--version`, and `log-path` can run normally.
 Commands that mount or validate installation media, download and mount an ISO,
 or start Windows Setup must run from an elevated Command Prompt or PowerShell.
 
@@ -59,6 +59,13 @@ path:
 .\Windows-Upgrade-Assistant-By-PcNinja.exe status --json
 ```
 
+`status` stays offline: it reports the detected download profile and configured
+PcNinja route without querying the external catalog. Existing language/status
+fields remain. JSON adds `downloadProfile` (edition, language, build, revision,
+architecture, installationType, isLtsc, isServer, isSupportedClient),
+`automaticDownloadSourceId`, `automaticDownloadSourceName` and
+`pcNinjaDownloadPage`. Reporting a Server/LTSC profile is not upgrade eligibility.
+
 Rescan ISO files found beside the application, mounted Windows media, and
 available download drives:
 
@@ -72,6 +79,43 @@ contain `setup.exe` at its root. If the ISO is mounted as `E:\`, verify it with:
 ```powershell
 Test-Path E:\setup.exe
 ```
+
+## Recommend a matching download page
+
+Request manual-download guidance for the detected system profile:
+
+```powershell
+.\Windows-Upgrade-Assistant-By-PcNinja.exe downloads
+.\Windows-Upgrade-Assistant-By-PcNinja.exe downloads --json
+```
+
+This command does not require Administrator permission. It never opens a
+browser, changes the clipboard, transfers an ISO, mounts media or starts Setup.
+A matching configured PcNinja source takes priority without an external catalog
+request. Other supported profiles can query the public catalog using a bounded
+HTML request; any landing-page human verification is left to the user.
+
+JSON contains `recommendation` with `Source`, `PageUrl`, `FileName`,
+`TargetRelease`, `TargetVersion`, `ExactMatch` and `Message`, plus
+`automaticTransferStarted=false` and `setupStarted=false`. A returned recommendation
+uses `resultCode=DOWNLOAD_RECOMMENDATION`, exit 0 and `readyForRestart=false`.
+No exact match, an unavailable catalog or changed catalog markup can return a
+manual catalog/Microsoft alternative with `ExactMatch=false`; that is guidance,
+not a validated ISO or permission to upgrade. Unexpected recommendation failures
+use `DOWNLOAD_FAILED` (exit 4); user cancellation uses `CANCELLED` (exit 6).
+
+Matching is exact for system UI language, architecture and known edition/media
+families; Spanish Spain and Spanish Mexico are not interchangeable. Unknown,
+LTSC or unsupported profiles do not silently receive English media. A numerically
+higher Windows 11 26H1 build is not treated as a general feature upgrade; current
+26H1 systems have a separate same-family repair recommendation. Same-feature
+media with an older revision is a repair candidate, not a newer feature release.
+The actual downloaded image still needs all normal validation and safety checks.
+
+Windows Server recommendations are download guidance only. They do not enable
+Server installation/upgrade execution in the CLI or broaden its existing
+host/target rules. After manually obtaining matching **supported client** media,
+use `validate --iso <path>` before considering `upgrade --iso <path>`.
 
 ## Use mounted media or an extracted Setup folder
 
@@ -119,12 +163,23 @@ Start an upgrade from that ISO:
 
 ## Download an ISO automatically
 
-**RC6:** Automatic download
-requires system-default UI language **en-US**, matching the configured ISO.
-Other languages, including en-GB, return validation exit code **3** before a
-transfer. `status --json` reports `systemUiLanguage`,
+Automatic download requires a match against the **full detected system profile**:
+edition, system-default UI language, architecture, client family, LTSC status and
+released feature build. Language alone is not sufficient. The current configured
+PcNinja OEM source is Windows 11 26H2, **en-US/x64**, for the approved Home,
+Pro and Education editions, including their N/Single Language/Pro Education/
+Workstation variants. Matching released Windows 10/11 clients retain this source's
+priority; Enterprise, Server, LTSC, unknown/preview and ordinary 26H1 profiles do
+not inherit it. An equal feature build may be a repair candidate; the configured
+media revision is not independently known to be newer.
+
+Nonmatching profiles, including en-GB, return validation exit code **3** before a
+transfer. Run `downloads` or `downloads --json` for matching manual guidance; the
+assistant does not switch to another automatic provider or Windows family.
+`status --json` reports `systemUiLanguage`,
 `automaticDownloadAvailable`, and `automaticDownloadUnavailableReason`.
-Matching manually supplied media remains available through `--iso`/`--mounted`.
+Matching manually supplied client media remains available through `--iso`/
+`--mounted`, subject to the existing host/target and safety rules.
 
 Use [PcNinja ISO downloads](https://iso.pcninja.pro) for PcNinja media, or prefer
 [Microsoft](https://www.microsoft.com/software-download/windows11) for standard

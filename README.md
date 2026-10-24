@@ -38,6 +38,10 @@ warning/details area and CLI status. See [outcome diagnostics](docs/SETUP-OUTCOM
 
 ## One-screen graphical workflow
 
+Development only: [matched ISO download guidance](docs/MATCHED-ISO-DOWNLOADS.md)
+adds full-profile own-source priority, public browser recommendations and manual
+Server guidance in a separate Draft PR test build. This is **not in published RC7**.
+
 > **New in RC7:** Simpler main-window wording and full dashboard-card redraw
 > during resize. Original branding, public links and upgrade behavior are preserved.
 > Includes RC6's language-aware download, upfront automatic consent, diagnostics
