@@ -6,6 +6,12 @@ internal static class AppUpdateCliChecks
 {
     internal static async Task RunAsync()
     {
+        foreach (var action in new[] { "check", "status", "install" })
+        {
+            var help = await CaptureAsync(() => CliRunner.RunAsync(["app-update", action, "--help"]));
+            if (help.Code != 0 || !help.Output.Contains("COMMAND: app-update"))
+                throw new Exception("Real CLI routing rejected updater subcommand help.");
+        }
         var release = new AppUpdateManifest(1, AppUpdateIdentity.Product, AppUpdateIdentity.Repository, "stable",
             "9.9.9", "v9.9.9", AppUpdateIdentity.AssetName,
             $"https://github.com/{AppUpdateIdentity.Repository}/releases/download/v9.9.9/{AppUpdateIdentity.AssetName}",

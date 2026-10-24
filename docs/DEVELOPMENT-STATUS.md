@@ -50,6 +50,10 @@ not the hold on merging, publishing or changing RC8. Refreshed the existing
   non-admin SKIPs above remain honest, separate from this hosted native evidence.
   A follow-up also proves read-only inspection accepts the actual built product
   host, preserves subcommand help, and distinguishes helper deadline from cancellation.
+- Follow-up CI `40110882263` caught an existing global two-argument help guard
+  rejecting the new three-argument updater help form. Correct only that recognized
+  help route, retain rejection of unrelated extra arguments, and add real
+  `CliRunner` regression coverage before rebuilding the final artifact.
 
 Next: provide the final separate CI test EXE. Do not merge, mark ready, publish a new
 release, replace RC8 or run an actual updater installation on the development PC.

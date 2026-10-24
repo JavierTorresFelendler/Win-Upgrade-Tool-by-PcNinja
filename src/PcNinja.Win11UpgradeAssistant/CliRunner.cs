@@ -31,7 +31,8 @@ internal static class CliRunner
         {
             if (CliHelp.TryGetRequestedTopic(args, out var helpTopic))
             {
-                if (args.Length > 2)
+                if (args.Length > 2 && !(args.Length == 3 && helpTopic == "app-update" &&
+                    args[0].Equals("app-update", StringComparison.OrdinalIgnoreCase)))
                     return Fail(InvalidArguments, "Help accepts one topic. Use 'help all' for the complete manual.", false);
                 if (!CliHelp.TryPrint(helpTopic))
                     return Fail(InvalidArguments,
