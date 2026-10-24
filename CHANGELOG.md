@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased - development after RC7
+## 1.1.0-rc.8 - 2026-10-24
 
 - Prefer the configured owner ISO for eleven matching en-US/x64 client editions;
   enforce full-profile preflight before automatic HTTP/file creation. Preserve
@@ -18,8 +18,8 @@
 - Default ISO browsing to registered Downloads and add exclusive visual next-step
   cues for manual source/Validate/image/Start. Preserve automatic Start, direct
   advanced Start, real Cancel, mismatch details, branding and two-source screen.
-- Media preparation/extraction and application self-update are not implemented
-  by these changes. Existing published RC assets remain unchanged.
+- Media preparation/extraction and application self-update are not included.
+  Previous published RC assets remain unchanged.
 
 - Replace the blank image-selector row with state-aware guidance, without adding
   a fake selectable image/index. Inspect now explains no compatible media using
@@ -34,7 +34,7 @@
   Setup integer/hex to CLI JSON without changing process exit groups 0-8. Quiet
   CLI requires explicit --yes, never opens a fallback browser or GUI error popup.
 - Add headless result-contract fixtures, command-matrix/client GUI checks and
-  offline help/completion. No change to published RC7 or new release approval.
+  offline help/completion. Preserve the fixed EXE filename and existing branding.
 
 ## 1.1.0-rc.7 - 2026-10-21
 

@@ -1,4 +1,4 @@
-# Session-scoped ISO validation reuse (development PR)
+# Session-scoped ISO validation reuse
 
 ## Scope and acceptance
 
@@ -9,8 +9,8 @@ The previous mount helper already checked attachment before mounting; its
 
 The shared Core preparation now retains **one successful source per engine
 session**, not across application restarts. GUI manual ISO preparation and
-Automatic's existing-file hook use it; CLI uses the same Core path. There are no
-new CLI switches, popups, source choices, dependencies or versioned release assets.
+Automatic's existing-file hook use it; CLI uses the same Core path. Included in
+RC8 without additional CLI switches, popups, source choices or dependencies.
 
 ## Safe fast path
 
@@ -92,6 +92,7 @@ not evidence of a real ISO mount, successful migration or arbitrary eject locks.
 - [Last file USN and invalid Reason fields](https://learn.microsoft.com/en-us/windows/win32/api/winioctl/ni-winioctl-fsctl_read_file_usn_data)
 - [Bounded journal reads](https://learn.microsoft.com/en-us/windows/win32/api/winioctl/ns-winioctl-read_usn_journal_data_v1)
 
-This PR is based on merged main after #18. The separate unmerged #19 download-link
-routing change is intentionally not bundled. RC7 and earlier EXEs remain frozen;
-the test artifact is not a new RC, merge approval or Release.
+The original #20 test artifact intentionally excluded the separate #19 routing
+work. RC8 consolidates merged #20 and #21; #21 supersedes #19's routing behavior.
+RC7 and all older test/release binaries remain unchanged. This session mechanism
+does not add automatic detach or weaken final source/answer-file checks.

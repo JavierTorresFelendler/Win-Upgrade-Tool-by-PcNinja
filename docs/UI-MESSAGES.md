@@ -1,6 +1,6 @@
 # User-message catalog
 
-## PR21 follow-up: visual next action and ISO browsing
+## RC8: visual next action and ISO browsing
 
 - ISO browsing defaults to the current user's registered Windows Downloads known
   folder (including redirected/localized paths), with profile fallback if the
@@ -22,7 +22,7 @@
   revalidation cannot advertise an old Ready image. Core reuse proof and final
   Setup revalidation remain mandatory and unchanged.
 
-## Development PR: matching ISO and Server guidance
+## RC8: matching ISO and Server guidance
 
 - LTSC correction: matching manually supplied x64 client LTSC media may proceed
   under the same Core host policy as the CLI; automatic consumer transfer remains
@@ -49,7 +49,7 @@
   newer OS. 26H1 is separately explained. Exact behavior/limits are documented in
   [matched ISO downloads](MATCHED-ISO-DOWNLOADS.md). Published RC7 is unchanged.
 
-## Development PR: ISO preparation progress
+## RC8: ISO preparation progress
 
 - Checksum stage: `Checking the ISO checksum... N%`.
 - Image metadata: `Reading Windows image X of Y...`.
@@ -60,7 +60,7 @@
 - Unsupported or missing unchanged-file proof silently uses full checks; this is
   not an incompatible-media or corrupt-download error. See `ISO-VALIDATION-REUSE.md`.
 
-## Post-RC7 follow-up: installation-image guidance
+## RC8: installation-image guidance
 
 | Image-selector state | Empty-row cue |
 | --- | --- |
@@ -76,9 +76,9 @@ Core incompatibility reasons in the existing warning area. Keep both languages i
 language-mismatch warnings and retain the experimental Windows 10 notice.
 Image cues do not change independent error/details messages. A failed read/mount
 is not evidence that enumerated images are incompatible. No new popup is added.
-This is development PR #18 scope, not a change to the published RC7 binary.
+Included from merged PR #18 in RC8; published RC7 remains unchanged.
 
-## Post-RC7 feature PR: quiet Setup
+## RC8: quiet Setup
 
 - Add **Run Windows Setup silently** above automatic restart. Description:
   "Hide Windows Setup windows and allow automatic restart. Errors still appear
@@ -90,7 +90,7 @@ This is development PR #18 scope, not a change to the published RC7 binary.
 - Keep current GUI success/failure notices, source/image/storage/unsafe-media
   gates, branding and links. CLI never shows these GUI dialogs; see
   `CLI-AUTOMATION.md` for result identifiers and raw Setup error evidence.
-- Published RC7 is unchanged. This is a separately identified PR test build.
+- Included in RC8; published RC7 remains unchanged.
 
 ## RC7: approved main-window copy
 

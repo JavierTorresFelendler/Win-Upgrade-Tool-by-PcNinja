@@ -1,8 +1,8 @@
-# Matched ISO download guidance (development PR)
+# Matched ISO download guidance
 
-This is a separate test build, not a new release. It is stacked on the exact-ISO
-session-reuse PR so the test EXE includes that work. Existing main, PRs and
-published binaries are not replaced. Do not merge or publish without approval.
+Included in RC8 after merging the exact-ISO session-reuse and matched-download
+PRs. Previous test/release binaries remain unchanged. Matching recommendations
+are separate from actual-media validation and permission to run Windows Setup.
 
 ## Approved scope and flow
 

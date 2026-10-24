@@ -6,7 +6,39 @@ Reusable architecture, diagnosis and verification know-how lives in
 [AI maintenance playbook](AI-MAINTENANCE-PLAYBOOK.md), independently of any
 assistant's personal memory or skills installation.
 
-## Current development: matched ISO downloads and manual Server guidance
+## RC8 release baseline (owner approved 2026-10-24)
+
+- Owner reports the current test application is working well and explicitly
+  requested another RC before application-update planning or implementation.
+  This authorizes consolidation and RC8 publication, not additional features.
+- Merged #20 as `6dd920b41efae51f5e8f16daa7360c9a1bf06e1c` and #21 as
+  `c3e67f7ff2b0973d3d74c21cbec0a486d60ad43b`. #21 was updated against main and
+  CI run `40101220921` passed. Its integration tree matches the accepted
+  `bd0f2ee` test candidate. Closed #19 as superseded after verifying its required
+  behavior is covered by #21; no duplicate routing implementation was merged.
+- RC8 preparation changes version metadata to `1.1.0-rc.8`/file `1.1.0.8`,
+  the HTTP version identifier and current release documentation only. Preserve
+  the fixed EXE filename, original assets/links and all previous build files.
+- Release gates: warnings-as-errors local Core/headless CLI/client GUI checks,
+  protected-PR validation, merged-main tag/version agreement, then independently
+  download Release assets and verify commit/version/SHA-256/size/read-only CLI.
+  Record final run/artifact evidence on the release PR; do not execute Setup on
+  the development machine or mistake CI for completed migration acceptance.
+- Local rc.8 Core/headless CLI/client GUI suites and actual-EXE read-only checks
+  passed, with zero build warnings/errors. The local native journal fast path
+  explicitly reported SKIP (non-admin); synthetic proof/fallback fixtures passed.
+  Independent review found no functional drift in the release-only source diff.
+- [RC8 notes](RELEASE-RC8.md) and [verification matrix](RC8-TESTING.md) describe
+  scope and remaining field cases. The owner reports stable operation, but did
+  not restate a complete per-profile/source test matrix for this exact binary.
+- Application self-update (#13, design only) and media preparation (#9) remain
+  outside RC8. Updater work starts separately only after this release checkpoint.
+
+The development sections below are historical checkpoints. Their earlier
+no-merge/no-release holds are superseded only by the RC8 approval above; they do
+not authorize unrelated feature changes or a later stable release.
+
+## Previous development: matched ISO downloads and manual Server guidance
 
 ### Owner-approved automatic preflight and GUI next-action follow-up
 

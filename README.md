@@ -5,7 +5,7 @@ in-place Windows upgrade on x64 hardware, including an experimental Windows 11
 compatibility method and an experimental manual Windows 10 target path.
 
 > [!WARNING]
-> RC7 is prerelease software. Its Windows 11 path uses the undocumented
+> RC8 is prerelease software. Its Windows 11 path uses the undocumented
 > `/product server` compatibility behavior. Back up important files
 > before using it. Microsoft can change this behavior in future releases.
 
@@ -18,7 +18,7 @@ project-specific decisions and working procedures across assistants and machines
 
 ## Download
 
-Download [RC7](https://github.com/JavierTorresFelendler/Windows-Upgrade-Assistant-by-PcNinja/releases/tag/v1.1.0-rc.7)
+Download [RC8](https://github.com/JavierTorresFelendler/Windows-Upgrade-Assistant-by-PcNinja/releases/tag/v1.1.0-rc.8)
 from the repository's **Releases** page:
 
 ```text
@@ -28,7 +28,7 @@ Windows-Upgrade-Assistant-By-PcNinja.exe
 The portable x64 EXE contains both the graphical application and the CLI. No
 PowerShell or CMD files are required.
 
-RC7 uses that fixed filename; previous release assets remain unchanged.
+RC8 uses that fixed filename; previous release assets remain unchanged.
 Version/commit metadata remains
 in file properties, diagnostic logs, `version` and `status --json`, not the GUI
 title or executable filename. See [product identity](docs/PRODUCT-IDENTITY.md).
@@ -38,16 +38,16 @@ warning/details area and CLI status. See [outcome diagnostics](docs/SETUP-OUTCOM
 
 ## One-screen graphical workflow
 
-Development only: [matched ISO download guidance](docs/MATCHED-ISO-DOWNLOADS.md)
-adds full-profile own-source priority, public browser recommendations and manual
-Server guidance in a separate Draft PR test build. This is **not in published RC7**.
-The same development PR allows matching manual x64 client LTSC media, without
-enabling automatic LTSC download, edition/channel conversion or Server execution.
+[Matched ISO download guidance](docs/MATCHED-ISO-DOWNLOADS.md) prefers a configured
+PcNinja source only when the installed profile matches its coverage. Otherwise,
+request a matching public browser download, then select the exact ISO manually.
+Matching manual x64 client LTSC media is supported without enabling automatic
+LTSC download, edition/channel conversion or Server execution.
 
-> **New in RC7:** Simpler main-window wording and full dashboard-card redraw
-> during resize. Original branding, public links and upgrade behavior are preserved.
-> Includes RC6's language-aware download, upfront automatic consent, diagnostics
-> and manual Windows 10 POC described below.
+> **New in RC8:** Full-profile automatic-download preflight, matching manual
+> download guidance, safe exact-ISO session reuse, Downloads-first browsing and
+> visual next-action cues. Includes optional quiet Setup and machine-readable CLI
+> results. Original branding, safety gates and two-source screen remain.
 
 The application shows the current Windows version, storage state, and source
 choices on one screen:
@@ -56,7 +56,7 @@ choices on one screen:
 2. **Use an ISO, drive or folder.** Select an ISO, mounted drive, extracted
    Setup folder or network folder in one path field, using **ISO...** or **Folder...**.
 
-RC7 also accepts a manually supplied **Windows 10 client x64**
+RC8 also accepts a manually supplied **Windows 10 client x64**
 image on Windows 10, using the same image selector and `--image-index`. By owner
 request, this POC does **not compare build order inside Windows 10**: older,
 same-build and newer images may be offered to Windows Setup, which must allow
@@ -76,13 +76,18 @@ restart your computer yourself to continue. This is not yet a completed migratio
 
 The automatic operation hands its successfully validated exact source to the GUI
 or CLI without immediate duplicate hashing/mounting. Final prelaunch validation
-is retained. Manual Inspect then Start reuse and automatic mount cleanup remain
-separate future work. Errors stay visible through Refresh; full details/log remain
-available. See [development test checklist](docs/AUTOMATIC-FLOW-TESTING.md).
+is retained. Manual Validate then Start, or switching to Automatic for the exact
+same ISO, can reuse successful session preparation only with unchanged-file and
+exact mount-identity proof; unavailable proof falls back to full validation.
+Automatic mount cleanup is not included. Errors stay visible through Refresh;
+full details/log remain available. See [session reuse](docs/ISO-VALIDATION-REUSE.md).
 
-Automatic download currently supplies **English (en-US)** media. It is disabled
-when Windows' system-default UI language does not match, including en-GB; the
-screen explains the mismatch and keeps manual media selection available.
+Automatic download currently supplies **English (en-US), x64 Windows 11** media
+for eleven configured Home/Pro/Education-family editions. The installed edition,
+language, architecture, client/LTSC/Server type and known build family are checked
+before an ISO transfer or destination creation. An unsupported profile, including
+en-GB, keeps manual media selection available with an explanation. Eligibility
+uses configured media coverage; the actual downloaded bytes must still validate.
 Matching manually supplied media is not restricted to English. Edition, x64,
 Windows 11 build and all other safety checks still apply; this is not a claim
 that every language/media combination has been field-tested.
@@ -97,7 +102,12 @@ source, image selection and restart policy are retained when the source is uncha
 A single ISO beside the EXE is offered automatically; multiple files are never
 resolved by newest-file guessing.
 
-Use **Inspect images**, or **Start**, to enumerate the actual installation images.
+ISO browsing starts in the user's registered Downloads folder. Visual cues guide
+manual selection through **ISO...**, **Validate**, image choice and **Start**;
+the cues do not replace validation, consent or mismatch/error explanations.
+Automatic mode retains its direct Start/download/validation/upgrade flow.
+
+Use **Validate**, or **Start**, to enumerate the actual installation images.
 Names, indexes, edition, x64 architecture, build and default language come from
 that source. A unique same-edition/language match is selected; otherwise select
 an image in the same screen. Incompatible images are rejected. Replacing the
@@ -126,9 +136,11 @@ the button is disabled as **SETUP RUNNING**. Closing the assistant is blocked
 while it is busy. The application launches without a console window.
 
 If the direct automatic transfer is temporarily unavailable, the application
-opens [PcNinja ISO downloads](https://iso.pcninja.pro) for manual selection
-and switches to exact local-ISO selection. After the browser download
-finishes, select that file with **ISO...**. The official
+opens the [matched PcNinja browser route](docs/MATCHED-ISO-DOWNLOADS.md) and
+switches to exact local-ISO selection. Other profiles retain the broader
+[PcNinja ISO downloads](https://iso.pcninja.pro) catalog and can request a matching
+alternative. After the browser download finishes, select that file with **ISO...**.
+Browser fallback does not resume unattended upgrade consent. The official
 [Microsoft Windows 11 download page](https://www.microsoft.com/software-download/windows11)
 is always available as an additional fallback.
 
@@ -164,11 +176,11 @@ Mounted media/extracted folders do not support whole-ISO checksum comparison.
 
 Routine errors appear in the main window; **View details** shows diagnostics.
 See the [message catalog](docs/UI-MESSAGES.md) for the short English wording
-used in RC6 and the [RC7 test notes](docs/RC7-TESTING.md) for current coverage and limits.
+and the [RC8 test notes](docs/RC8-TESTING.md) for current coverage and limits.
 
 ## CLI
 
-Development feature (not in published RC7): [quiet Setup and automation results](docs/CLI-AUTOMATION.md)
+RC8 includes [quiet Setup and automation results](docs/CLI-AUTOMATION.md)
 for remote scripts/management agents, including explicit restart readiness.
 
 The same EXE contains global help, per-command help, and a complete offline
@@ -184,6 +196,7 @@ downloads, validation-only runs, JSON output, confirmations, and exit codes.
 .\Windows-Upgrade-Assistant-By-PcNinja.exe help upgrade
 .\Windows-Upgrade-Assistant-By-PcNinja.exe status --json
 .\Windows-Upgrade-Assistant-By-PcNinja.exe scan
+.\Windows-Upgrade-Assistant-By-PcNinja.exe downloads --json
 .\Windows-Upgrade-Assistant-By-PcNinja.exe validate --iso "D:\Windows11.iso"
 .\Windows-Upgrade-Assistant-By-PcNinja.exe validate --mounted E:\
 .\Windows-Upgrade-Assistant-By-PcNinja.exe upgrade --iso "D:\Windows11.iso" --no-restart
@@ -218,11 +231,15 @@ Stable CLI exit codes:
 
 ## Upgrade and restart behavior
 
-The upgrade command is:
+The Windows 11 target upgrade command is:
 
 ```text
 setup.exe /product server /auto upgrade /eula accept /dynamicupdate disable /compat ignorewarning /imageindex <selected-index> /installfrom "<validated-image-file>"
 ```
+
+Windows 10 targets use the same upgrade-only profile without `/product server`
+or `/eula accept`. Optional quiet mode adds `/quiet`. CLI `--quiet` requires
+explicit `--yes`; CLI restart control remains independent of quiet mode.
 
 Clearing **Allow Windows Setup to restart the computer automatically**, or using
 CLI option `--no-restart`, adds `/noreboot`. The application never calls
@@ -259,10 +276,10 @@ copying the standalone interface.
 ## ISO sources and acknowledgements
 
 Thank you to the [Massgrave](https://massgrave.dev/) contributors for maintaining
-the public Windows ISO catalogs used by our [development download fallback](docs/MATCHED-ISO-DOWNLOADS.md).
+the public Windows ISO catalogs used by our [matching download fallback](docs/MATCHED-ISO-DOWNLOADS.md).
 PcNinja sources remain the preferred configured option; the external catalog
 helps users find matching media in other languages and editions. This fallback
-is a development feature, not part of the published RC7 binary.
+is included in RC8 as manual browser guidance, not automatic third-party transfer.
 
 - [Massgrave website and ISO catalogs](https://massgrave.dev/)
 - [Catalog and website source on GitHub](https://github.com/massgravel/massgrave.dev)
@@ -297,11 +314,13 @@ when a `v*` tag is pushed.
 
 - Windows 10 and Windows 11 client editions
 - x64 only
-- Consumer Windows 11 x64 ISO media
+- Matching Windows 10/11 x64 client ISO or extracted/mounted media
 - In-place upgrade only
-- No Windows Server or LTSC upgrade execution in published RC7; see the development
-  PR note above for manual client LTSC and Server guidance-only behavior
+- Matching manual client LTSC media; no automatic LTSC download/channel conversion
+- Windows Server download/inspection/explicit manual-command-copy guidance only;
+  the assistant never starts Setup on Server
 - English interface and CLI
 - Unsigned prerelease binary
+- No application self-updater or media extraction/copy/detach preparation in RC8
 
 RC releases remain prereleases. Repository visibility is managed separately.
