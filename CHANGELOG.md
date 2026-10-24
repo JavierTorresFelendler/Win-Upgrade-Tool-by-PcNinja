@@ -1,7 +1,70 @@
 # Changelog
 
-## Unreleased
+## 1.1.0-rc.8 - 2026-10-24
 
+- Prefer the configured owner ISO for eleven matching en-US/x64 client editions;
+  enforce full-profile preflight before automatic HTTP/file creation. Preserve
+  direct download, Windows 10 transport fallback, exact-file reuse and automatic
+  upgrade flow. Include the matching public page in CLI download-failure guidance.
+- Add bounded on-demand exact-language/edition public ISO catalog browser guidance,
+  manual-only Server inspection/command copy and read-only `downloads [--json]`.
+  Add Massgrave ISO-catalog credits; no activation/licensing code is integrated.
+- Permit exact matching manually supplied client LTSC media under a shared GUI/CLI
+  host policy; retain automatic LTSC exclusion, Server execution block and all
+  final image/storage/signature/answer-file checks. Explain actual host blockers.
+- Reuse unchanged exact-ISO preparation within a session only with conservative
+  file/journal/CLOSE and mount-identity proof; otherwise perform full checks.
+  Keep fresh safety checks, preparation progress and final Setup validation.
+- Default ISO browsing to registered Downloads and add exclusive visual next-step
+  cues for manual source/Validate/image/Start. Preserve automatic Start, direct
+  advanced Start, real Cancel, mismatch details, branding and two-source screen.
+- Media preparation/extraction and application self-update are not included.
+  Previous published RC assets remain unchanged.
+
+- Replace the blank image-selector row with state-aware guidance, without adding
+  a fake selectable image/index. Inspect now explains no compatible media using
+  the existing Core reasons; preserve selected-image warnings and error details.
+  Image matching, automatic selection, upgrade commands and CLI remain unchanged
+  by this presentation-only follow-up.
+
+- Add opt-in silent Windows Setup in GUI/CLI using /quiet. CLI restart policy
+  remains independent; GUI silent mode selects/locks automatic restart and
+  restores the previous preference when disabled. Preserve all safety gates.
+- Add machine-readable result identifiers, explicit restart readiness and native
+  Setup integer/hex to CLI JSON without changing process exit groups 0-8. Quiet
+  CLI requires explicit --yes, never opens a fallback browser or GUI error popup.
+- Add headless result-contract fixtures, command-matrix/client GUI checks and
+  offline help/completion. Preserve the fixed EXE filename and existing branding.
+
+## 1.1.0-rc.7 - 2026-10-21
+
+- Simplify approved main-window headings, source descriptions and control labels
+  from PR #16; preserve the original branding and real website/download links.
+- Redraw the full dashboard card on resize and enable double buffering to avoid
+  old border trails when stretching/maximizing/restoring the window. Add live
+  resize invalidation and window-state regression coverage.
+- No upgrade/download/CLI-policy or confirmation-flow changes. Keep the fixed
+  EXE filename and metadata-only version identity; preserve all previous releases.
+
+## 1.1.0-rc.6 - 2026-10-20
+
+- Rename the public product to Windows Upgrade Assistant By PcNinja. Use a fixed
+  Windows-Upgrade-Assistant-By-PcNinja.exe asset name without GUI release labels;
+  retain version/commit identity in file properties, startup logs and explicit
+  CLI diagnostics. Preserve historical release assets and history/log locations.
+- Add bounded, read-only Panther/Rollback correlation for completed rollback.
+  GUI and CLI status expose actual Setup result/extended codes and phase while
+  preserving the process-stage record. Missing/stale/incomplete evidence stays
+  unknown; no automatic Recovery cleanup or forced restart is introduced.
+
+- Add an owner-scoped manual Windows 10 -> Windows 10 POC using existing image
+  selection. Detect the target family from image metadata; use `/auto upgrade`
+  without `/product server` or `/eula accept`. Do not compare Windows 10 build
+  order in this experiment; let Setup decide migration eligibility, with no
+  clean/data-only fallback. Windows 11 target behavior and all other gates remain.
+- Keep automatic download Windows 11-only; expose selected Setup profile and
+  build-order policy in CLI diagnostics. Windows 10 outcome verification remains
+  manual because shared-base metadata is not an exact feature-release identity.
 - Show an OK-only manual-restart information dialog and persistent guidance after
   successful Setup preparation with automatic restart off. CLI prints the same
   action and adds `manualRestartRequired` to successful upgrade JSON; no forced
@@ -23,7 +86,7 @@
 - Use https://iso.pcninja.pro for manual PcNinja ISO selection; preserve the
   internal automatic transport and Microsoft's official manual alternative.
 - Recommend Microsoft for standard Microsoft media; document language behavior
-  and CLI availability diagnostics. Published RC5 assets remain unchanged.
+  and CLI availability diagnostics. Historical RC5 assets remain unchanged.
 
 ## 1.1.0-rc.5
 

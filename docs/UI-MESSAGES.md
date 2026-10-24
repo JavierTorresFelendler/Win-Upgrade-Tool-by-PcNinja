@@ -1,6 +1,159 @@
-# RC5 user-message catalog
+# User-message catalog
 
-## Pending next release: automatic flow and diagnostics
+## RC8: visual next action and ISO browsing
+
+- ISO browsing defaults to the current user's registered Windows Downloads known
+  folder (including redirected/localized paths), with profile fallback if the
+  Shell API is unavailable. Keep exact-file filtering and restore the working
+  directory so browsing does not hold mounted media through CWD changes.
+- Manual flow cues exactly one next action: ISO browsing for an empty source,
+  blue Validate for a new nonempty path, a purple image-selector frame while a
+  compatible image needs selection, then a bright Start border for a compatible
+  selected image on an eligible host. Clear the previous cue on source changes.
+- No timers, flashing, automatic validation, new pages or focus stealing. Hints
+  do not create image selections or override independent mismatch/error notices.
+  Validate is enabled only for nonempty manual paths; advanced direct Start still
+  performs the existing complete validation/consent workflow.
+- Automatic stays automatic: Start remains the next action for eligible PcNinja
+  profiles, without a new manual Validate step. Busy/running states clear idle
+  cues and preserve actual red Cancel/locked Setup controls. Server never gets a
+  Start recommendation; matching explicit Server images may cue manual Copy only.
+- Reset displayed prepared state before a new media check, so failed/cancelled
+  revalidation cannot advertise an old Ready image. Core reuse proof and final
+  Setup revalidation remain mandatory and unchanged.
+
+## RC8: matching ISO and Server guidance
+
+- LTSC correction: matching manually supplied x64 client LTSC media may proceed
+  under the same Core host policy as the CLI; automatic consumer transfer remains
+  unavailable. Readable media alone is not readiness. Unsupported-host inspection
+  says **Media inspected, but upgrade is blocked on this computer.** and shows the
+  shared blocker while retaining image mismatch details. Never ask the user to
+  click Start when the host gate disables it. Keep Server manual-copy-only wording.
+
+- Keep the same two source choices, logo and www.pcninja.pro branding. Add
+  **Find matching ISO** beside the existing manual download buttons.
+- Automatic availability explains the full-profile match, not just the language.
+  All eleven en-US/x64 OEM editions remain eligible on supported client families.
+- While searching: use the existing cancellable operation and status area.
+  On browser launch, clear old source/image/consent state and persist the chosen
+  filename plus instructions to finish downloading, select **ISO...**, then
+  **Validate**. Explicitly say the assistant will not continue automatically.
+- No exact match/timeout/changed HTML uses manual catalog guidance; do not claim
+  a specific ISO was found or substitute English. Existing errors/details remain.
+- Server shows **MANUAL GUIDANCE ONLY**, disables Start/quiet/restart and presents
+  the manual-only advisory. Inspection asks for an explicit matching image, then
+  enables **Copy upgrade command**. Copy rechecks media, previews the CMD command
+  and says it was copied, not executed. Cancellation says nothing was copied.
+- Same-feature media is called a repair candidate; older/equal revision is not a
+  newer OS. 26H1 is separately explained. Exact behavior/limits are documented in
+  [matched ISO downloads](MATCHED-ISO-DOWNLOADS.md). Published RC7 is unchanged.
+
+## RC8: ISO preparation progress
+
+- Checksum stage: `Checking the ISO checksum... N%`.
+- Image metadata: `Reading Windows image X of Y...`.
+- Proven same-session reuse: `Reusing the unchanged ISO; rechecking signature and media safety...`.
+- These update the existing status area, not a new popup. Cancelled/previous
+  operation progress cannot replace the outcome. Final prelaunch revalidation,
+  independent error details and existing image-selector cues remain unchanged.
+- Unsupported or missing unchanged-file proof silently uses full checks; this is
+  not an incompatible-media or corrupt-download error. See `ISO-VALIDATION-REUSE.md`.
+
+## RC8: installation-image guidance
+
+| Image-selector state | Empty-row cue |
+| --- | --- |
+| Source has not been validated / source changed | Validate a source first |
+| Successfully read media has matching images but none is selected | Choose a Windows image… |
+| Successfully read media has no matching image | No compatible Windows image |
+| An actual image is selected | Original image name/index/language/architecture/version |
+
+These are visual cues, not extra dropdown items. Existing unique-match automatic
+selection and same-source selection retention remain unchanged. Inspect reports
+the selected image when valid, asks for a choice when needed, or shows the actual
+Core incompatibility reasons in the existing warning area. Keep both languages in
+language-mismatch warnings and retain the experimental Windows 10 notice.
+Image cues do not change independent error/details messages. A failed read/mount
+is not evidence that enumerated images are incompatible. No new popup is added.
+Included from merged PR #18 in RC8; published RC7 remains unchanged.
+
+## RC8: quiet Setup
+
+- Add **Run Windows Setup silently** above automatic restart. Description:
+  "Hide Windows Setup windows and allow automatic restart. Errors still appear
+  in this assistant."
+- When checked, select/disable automatic restart; when unchecked, restore the
+  previous restart preference. Disable both choices during an operation.
+- Initial automatic/manual consent adds "Windows Setup will run silently."
+  Changed quiet intent invalidates the automatic-consent shortcut.
+- Keep current GUI success/failure notices, source/image/storage/unsafe-media
+  gates, branding and links. CLI never shows these GUI dialogs; see
+  `CLI-AUTOMATION.md` for result identifiers and raw Setup error evidence.
+- Included in RC8; published RC7 remains unchanged.
+
+## RC7: approved main-window copy
+
+The owner approved the simplified main-window preview and its inclusion in RC7.
+Published RC6 remains unchanged. This pass changes headings, descriptions and related control captions,
+not popup flow, download providers, validation, Setup commands or CLI contracts.
+
+| Area | Approved wording |
+| --- | --- |
+| Header subtitle | Upgrade Windows 10 or Windows 11 while keeping your apps and files. |
+| Source heading | Choose your installation source |
+| Source description | Download automatically, or select an ISO, drive or folder. |
+| Automatic choice | Download Windows 11 automatically |
+| Automatic description (available) | English (en-US). The ISO is checked before the upgrade starts. |
+| Existing-media choice | Use an ISO, drive or folder |
+| Existing-media description | Windows 10 or 11 media, on this computer or your network. |
+| Image heading / action | Windows installation image / Validate |
+| Image guidance | A matching image is selected automatically when possible. |
+| Manual downloads | Use Microsoft for standard Windows, or PcNinja for PcNinja media. Choose the same language as your installed Windows. |
+| Computer heading | Your computer & upgrade settings |
+| Restart checkbox | Restart automatically when needed |
+| Restart guidance | Turn off to restart manually after upgrade preparation. |
+
+Remove the redundant INSTALLATION SOURCE and THIS COMPUTER kickers. Refresh,
+PcNinja downloads and Microsoft downloads are shorter button captions. Preserve
+START UPGRADE/CANCEL, ISO..., Folder..., View log and View details. The manual
+restart summary says Automatic or Manual restart, not the internal /noreboot switch.
+
+Keep the original embedded mascot, application icon, product name and clickable
+www.pcninja.pro header. Public destinations remain https://www.pcninja.pro,
+https://iso.pcninja.pro and https://www.microsoft.com/software-download/windows11.
+The internal automatic provider and browser-fallback behavior are unchanged.
+
+Unlike the illustrative preview, the application does not display invented
+hardware values or a static Not checked yet result. Its validation row remains
+the policy Required; actual outcomes remain in existing notices. Short summary
+values avoid clipping at the supported minimum window width.
+The following RC6 sections describe the published baseline where wording differs.
+
+## Branding and outcome evidence
+
+- GUI/product name: **Windows Upgrade Assistant By PcNinja**; footer **View log**.
+  Version/build identity remains metadata and explicit diagnostics, not visible
+  release branding. No additional popup is added by outcome reconciliation.
+- Correlated completed rollback shows its summary, actual result/extended codes
+  and phase in the existing persistent warning. **View details** includes the
+  Windows log path. Do not label a process exit code as its root cause.
+- Exact wording review follows owner-approved popup/flow cleanup. Existing
+  upgrade consent and unsafe-media safety remain unchanged in this change.
+
+## RC6: manual Windows 10 POC
+
+- Reuse the existing two source modes and image selector. The automatic label
+  explicitly says Windows 11; manual browse accepts Windows 10/11 x64 media.
+- Windows 10 image/confirmation warning: "Experimental Windows 10 path: build
+  order is not checked. Windows Setup must allow keeping apps and files;
+  otherwise stop. No clean-install fallback."
+- Windows 11 -> 10: "The experimental Windows 10 target requires a Windows 10
+  computer. Windows 11 to Windows 10 is blocked."
+- Language/no-matching-media wording is target-neutral. All existing file safety,
+  signature, space, image-index, restart, failure and Cancel messages remain.
+
+## RC6: automatic flow and diagnostics
 
 - Successful Setup preparation with automatic restart off: information dialog
   **Restart required**, OK only: "Upgrade preparation is complete. Restart your
@@ -22,9 +175,9 @@
 - Errors/no matching image stay in a multiline readiness warning through Refresh,
   with optional diagnostic details. This is not a new wizard page.
 
-## Pending next release: language-aware download choice
+## RC6: language-aware download choice
 
-These source changes are not yet included in the published RC5 executable.
+These changes are included in RC6; historical RC5 assets remain unchanged.
 
 - Automatic download is available only when the system-default UI language
   matches the automatic ISO (**en-US**); the disabled option explains both values.
@@ -34,12 +187,12 @@ These source changes are not yet included in the published RC5 executable.
   media, use PcNinja ISO downloads. Select a matching language, then choose ISO...
   or Folder... above."
 - Image mismatch: "Language mismatch: this Windows installation uses [system],
-  but the image uses [image]. Choose Windows 11 media with the same system UI
+  but the image uses [image]. Choose Windows media with the same system UI
   language; changing the keyboard language is not enough."
 - Selected-image incompatibility is shown in warning color beside the image
   selector, not only in the bottom status line. Diagnostic details remain available.
 
-## Published RC5 behavior
+## Retained baseline behavior
 
 The interface and repository documentation are English. Routine failures use the
 main status area with **View details**. Destructive-installation risk is a
@@ -58,7 +211,7 @@ blocking warning, not a Yes/No bypass. UAC and Windows Setup own their screens.
 | Cancel requested | Cancelling the current operation... | Inline; CANCELLING... |
 | Cancel complete | Operation cancelled. | Inline; Start restored |
 | No source | No existing installation media selected. Choose an ISO, drive or folder. | Inline + details |
-| Source changed | Source changed. Inspect images or Start to validate this media. | Inline |
+| Source changed | Source changed. Click Validate or START UPGRADE to check this media. | Inline |
 | Multiple eligible images | Choose an installation image above, then click START UPGRADE again. | Inline; same screen |
 | No matching image | No matching image for [edition, language]. Choose matching Windows 11 media. | Inline |
 | Existing download | Validating the existing ISO... | Inline; Cancel available |

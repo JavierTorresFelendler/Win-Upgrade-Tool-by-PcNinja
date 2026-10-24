@@ -72,7 +72,7 @@ Languages :
                 Require(InstallationImages.Select(source with { Images = [localImage] }, null, current with { Language = language }) == localImage,
                     "Matching manually supplied non-US media was rejected because of its language.");
             }
-            Require(!AutomaticDownloadPolicy.IsAvailable(null) && !AutomaticDownloadPolicy.IsAvailable(""),
+            Require(!AutomaticDownloadPolicy.IsAvailable((string?)null) && !AutomaticDownloadPolicy.IsAvailable(""),
                 "An unknown system language enabled automatic download.");
             var mismatch = InstallationImages.GetIncompatibility(pro, current with { Language = "he-IL" })!;
             Require(mismatch.Contains("he-IL") && mismatch.Contains("en-US"), "Image mismatch did not explain both languages.");

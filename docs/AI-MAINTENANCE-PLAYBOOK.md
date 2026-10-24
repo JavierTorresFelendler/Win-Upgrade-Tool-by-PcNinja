@@ -79,9 +79,19 @@ All paths below are relative to the repository root.
 - Automatic download availability follows the configured image language in shared
   Core logic, not only a disabled GUI control. Manual matching media has no
   English-only restriction. A higher build alone does not prove a supported path.
-- Current target eligibility is Windows 11 client x64, equal-or-newer build and
-  matching edition/language. Future OS catalog expansion needs separate design
-  and field tests; discussion is not an implemented capability.
+- Windows 11 targets retain equal-or-newer build eligibility. The owner-scoped
+  manual Windows 10 POC intentionally does not compare intra-Windows-10 build
+  order; preserve edition/language/x64/client gates and Windows 11 -> 10 blocking.
+  This is a test policy delegated to Setup, not a guarantee that downgrades work.
+  Do not reintroduce build-order checks or broaden this exception silently.
+- Select the command profile from actual image metadata, never the ISO/folder
+  name or installed OS alone. Windows 10 omits `/product server` and `/eula accept`;
+  Windows 11 retains its existing profile. Automatic download stays Windows 11-only.
+- Windows 10 2004-22H2 share system files. In the intentionally simple POC,
+  raw DISM image metadata is not an independently verified feature-release build.
+  Do not infer 22H2 from a filename or report automatic target-build confirmation
+  from a shared base. No offline registry extraction was implemented; manual
+  outcome verification is required. See [Windows 10 POC](WINDOWS10-POC.md).
 
 ### 4. Distinguish storage and transport failures
 
@@ -111,13 +121,43 @@ All paths below are relative to the repository root.
 
 - Put operational safety in Core and call it from both interfaces. Add tests for
   both presentation modes when availability, selection or exit behavior changes.
+- Prove automatic eligibility at the real download entry with a fail-if-called
+  fake HTTP handler and no destination creation, not only by testing a predicate.
+  Keep positive own-edition coverage and original transport behavior. Eligibility
+  trusts configured media coverage; actual downloaded bytes still need validation.
+- Visual next-action cues are state presentation, never operational authorization.
+  Clear the previous cue and stale displayed preparation on recheck/source change;
+  preserve automatic mode and red Cancel/Setup lockout. Resolve Downloads via the
+  user's Windows known folder, not a hardcoded English or C: path. Restore CWD
+  after browsing; do not probe network paths on every edit or add a polling timer.
+- Host eligibility, configured-download eligibility and actual image compatibility
+  are three separate decisions. Shared `ManualUpgradePolicy` permits exact manual
+  client LTSC media without enabling consumer downloads or Server execution. A
+  passed image inspection must not advertise Start on a blocked host. Use one
+  detected GUI profile for both host and image guidance, preserve mismatch details
+  and repeat actual host/media checks at final Core launch. Test both a valid LTSC
+  case and invalid architecture/type/edition/language cases; screenshot evidence
+  that Setup offers Keep apps/files is not a completed migration result.
 - A successful Core download already hashes and validates its mounted media.
   Hand that exact result to GUI/CLI rather than immediately repeating it. This
   bounded handoff is not a general cache: retain final prelaunch revalidation,
   and do not skip later manual ISO checks based only on size/timestamps.
+- For later session reuse, require unchanged-file evidence and exact mount
+  identity, not an attachment flag or drive letter. On fixed NTFS, verify the
+  exact retained CLOSE journal record: last-USN alone is vulnerable to coalesced
+  same-kind writes under a long-lived external handle. Missing/reset/trimmed
+  journal evidence means full validation. Keep guards operation-scoped and repeat
+  signatures/attached-media safety even on hits. Do not seed this cache from a
+  fresh transfer hash made before obtaining file proof. See
+  [ISO session validation](ISO-VALIDATION-REUSE.md) for the limits and safe fixtures.
 - Refresh must preserve the exact source, index and restart policy when valid.
   Changing source invalidates the old index. Failure/cancel messages must survive
   the final refresh and explain what to do, not disappear as a brief flash.
+- An empty image-selector cue is presentation, not an InstallationImage or index.
+  Distinguish not validated, awaiting a choice and no compatible image. Reuse Core
+  rejection reasons after successful enumeration; do not mislabel mount/read
+  failures as incompatibility or overwrite the independent error/details notice.
+  Keep real image items and existing automatic/same-source selection rules.
 - Cancellation is for download/preparation. After Setup actually launches, do not
   pretend the assistant can safely cancel it. Do not force a reboot after failure.
 - Root Setup process exit 0 means its current stage completed, not that all files
@@ -130,6 +170,12 @@ All paths below are relative to the repository root.
 - Correlate Panther timestamps with the exact recorded attempt before diagnosis;
   an old morning Appraiser error is not evidence that an evening exit-0 attempt
   crashed. Keep source metadata and process outcome separate from folder names.
+- Reconcile rollback only when Setup is not in progress, the original build is
+  running and the session header matches launch/media/image/index. Require
+  matching terminal failure and completed rollback evidence. Keep process exit
+  separate from Setup result/extended codes; 0x40010004 alone proves neither
+  success nor failure. Bound reads/regex work; stale/incomplete evidence stays
+  unknown. Never auto-clean Recovery following a duplicate-file failure.
 - For a Setup process crash, pair the recorded attempt/source/build/index with
   Panther logs and the faulting application/module in Windows crash events.
   `0xC0000005` is an access violation, not filesystem Access Denied. Do not assign
@@ -146,6 +192,37 @@ All paths below are relative to the repository root.
 - Build >= 22000 identifies Windows 11 in this client's display normalization;
   registry ProductName alone can still say Windows 10. Keep Server detection separate.
 
+### 6. Resize redraw is separate from a fresh screenshot
+
+- A custom border painted from current Width/Height on an ordinary Panel can
+  leave old edge lines after resize if only newly exposed strips are repainted.
+  Set ResizeRedraw on the actual bordered card, with local double buffering to
+  reduce flicker. Double buffering alone does not request full invalidation.
+- Keep this local to the custom-painted panels; do not add global composited
+  window styles, timers, Refresh loops or changes to upgrade operations.
+- GUI regression should check styles and full client invalidation/paint during
+  live repeated resize. DrawToBitmap or explicit Refresh/Invalidate can hide the
+  original defect, so a clean static screenshot is not proof of a resize fix.
+- Local client fixtures do not cover every DPI/graphics/remote-session case;
+  repeat the original owner scenario on the affected machine after release.
+
+### 7. Keep silent Setup separate from orchestration and restart authorization
+
+- `/quiet` hides Setup UX; it must not remove source/image/storage/answer-file
+  checks or imply consent. CLI requires explicit --yes for real quiet upgrades;
+  no browser/popup/hidden input prompt is appropriate for remote/SYSTEM callers.
+- CLI quiet and /noreboot are independent, even if the standalone GUI deliberately
+  locks automatic restart when silent mode is selected. Never enforce GUI policy
+  in Core so that it overrides a remote caller's --no-restart.
+- Exit 0 is not a restart permission: status/validation/dry runs also return 0.
+  Report stable command result identifiers and native Setup integer/hex separately
+  from assistant exit groups. All failure/uncertain/non-upgrade results must have
+  readyForRestart=false. PreparationCompleted is pre-reboot, not final OS success.
+- Test the real result presenter with synthetic Setup exit codes without invoking
+  Setup, including uncertain transition, native failures and every restart/quiet
+  combination. Also test the compiled portable CLI and client UI independently;
+  successful fixtures are not proof of BigFix agent wiring or live quiet upgrades.
+
 ## Safe verification recipe
 
 Run from the repository root on a Windows client with the .NET 8 SDK. Read the
@@ -157,7 +234,7 @@ dotnet build tests/PcNinja.Win11Upgrade.SmokeTests/PcNinja.Win11Upgrade.SmokeTes
 dotnet run --project tests/PcNinja.Win11Upgrade.SmokeTests/PcNinja.Win11Upgrade.SmokeTests.csproj -c Debug --no-build
 dotnet build tests/PcNinja.Win11Upgrade.GuiChecks/PcNinja.Win11Upgrade.GuiChecks.csproj -c Debug -warnaserror
 dotnet run --project tests/PcNinja.Win11Upgrade.GuiChecks/PcNinja.Win11Upgrade.GuiChecks.csproj -c Debug --no-build
-& ./tests/Verify-Cli.ps1 -ExePath ./tests/PcNinja.Win11Upgrade.GuiChecks/bin/Debug/net8.0-windows/win-x64/PcNinja-Win11-Upgrade-Assistant.exe -ExpectedVersion '1.1.0-rc.5'
+& ./tests/Verify-Cli.ps1 -ExePath ./tests/PcNinja.Win11Upgrade.GuiChecks/bin/Debug/net8.0-windows/win-x64/Windows-Upgrade-Assistant-By-PcNinja.exe -ExpectedVersion '1.1.0-rc.8'
 git diff --check
 ```
 
@@ -175,6 +252,30 @@ Real upgrades require a disposable VM/snapshot and owner authorization. Test an
 app-downloaded ISO separately from a manually supplied known-good ISO. Record
 actual source/index, build/edition/language, failure stage and preservation of
 files/apps. Sanitize evidence; never commit raw customer logs or screenshots.
+
+## Source recommendation is not media or upgrade validation
+
+Keep an installed-system profile (edition, native architecture, system-default UI
+language, installation type and build/revision) separate from actual WIM metadata.
+Own-source eligibility and browser fallback must share the full profile across
+GUI/CLI, not just an en-US test. Keep general Consumer coverage independent of
+the ordered owner-source list, so adding a future source cannot change package
+classification. Do not order unrelated release families by numeric build alone.
+
+Treat an external HTML catalog as untrusted, changing input. Bound size/time,
+cross-check per-table heading/build and exact filename/culture/package, allowlist
+public landing URLs, and fail to manual guidance on ambiguity. Omitted HTML table
+closing tags occur in the current catalog; test them. Use a separate no-redirect,
+no-cookie client: checking only the final URL cannot prevent an earlier redirected
+request. Do not reuse the ISO transport's cookies or disable certificate validation.
+Never automate a host challenge or guess a downloaded file after browser fallback.
+
+Server guidance must not weaken client execution guards. Manual command copy is
+an explicit user effect, not an execution step: freshly revalidate exact selected
+source/index and answer-file safety, quote/reject unsafe CMD paths, label the shell,
+explain supported-path/licensing limits, and keep clipboard untouched on failure
+or cancellation. Use fake browser/clipboard/preparation callbacks in GUI fixtures.
+No recommendation or synthetic command proves a supported real Server upgrade.
 
 ## Maintain the knowledge, not just the patch
 

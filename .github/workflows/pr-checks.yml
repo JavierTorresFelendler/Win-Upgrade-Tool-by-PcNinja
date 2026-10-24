@@ -2,7 +2,7 @@ name: PR checks
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, feature/windows10-target-upgrades, feature/iso-validation-reuse]
 
 permissions:
   contents: read
@@ -37,13 +37,21 @@ jobs:
           dotnet publish src/PcNinja.Win11UpgradeAssistant/PcNinja.Win11UpgradeAssistant.csproj -c Release -r win-x64 --self-contained true -o artifacts
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Headless CLI automation result fixtures (no Setup)
+        shell: pwsh
+        run: |
+          dotnet build tests/PcNinja.Win11Upgrade.CliChecks/PcNinja.Win11Upgrade.CliChecks.csproj -c Release -warnaserror
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          dotnet run --project tests/PcNinja.Win11Upgrade.CliChecks/PcNinja.Win11Upgrade.CliChecks.csproj -c Release --no-build
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Build GUI checks and verify read-only CLI
         shell: pwsh
         run: |
           dotnet build tests/PcNinja.Win11Upgrade.GuiChecks/PcNinja.Win11Upgrade.GuiChecks.csproj -c Release -warnaserror
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           [xml]$project = Get-Content src/PcNinja.Win11UpgradeAssistant/PcNinja.Win11UpgradeAssistant.csproj
-          & ./tests/Verify-Cli.ps1 -ExePath artifacts/PcNinja-Win11-Upgrade-Assistant.exe -ExpectedVersion $project.Project.PropertyGroup.Version
+          & ./tests/Verify-Cli.ps1 -ExePath artifacts/Windows-Upgrade-Assistant-By-PcNinja.exe -ExpectedVersion $project.Project.PropertyGroup.Version
 
       - name: Record provenance and checksum
         shell: pwsh
@@ -52,7 +60,7 @@ jobs:
           TESTED_COMMIT: ${{ github.sha }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          $exe = Get-Item -LiteralPath 'artifacts/PcNinja-Win11-Upgrade-Assistant.exe'
+          $exe = Get-Item -LiteralPath 'artifacts/Windows-Upgrade-Assistant-By-PcNinja.exe'
           $hash = (Get-FileHash -LiteralPath $exe.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
           "$hash  $($exe.Name)" | Set-Content artifacts/SHA256SUMS.txt -Encoding ascii
           @(
@@ -74,6 +82,6 @@ jobs:
           retention-days: 30
           if-no-files-found: error
           path: |
-            artifacts/PcNinja-Win11-Upgrade-Assistant.exe
+            artifacts/Windows-Upgrade-Assistant-By-PcNinja.exe
             artifacts/SHA256SUMS.txt
             artifacts/BUILD-INFO.txt

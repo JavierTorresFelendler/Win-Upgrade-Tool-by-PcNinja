@@ -5,7 +5,10 @@ namespace PcNinja.Win11Upgrade.Core;
 
 public sealed record UpgradeAttempt(DateTimeOffset StartedUtc, string SourceRoot, string ImagePath,
     int ImageIndex, int OriginalBuild, int TargetBuild, string TargetEdition, int? ProcessExitCode,
-    string State, string Message);
+    string State, string Message)
+{
+    public SetupFailureEvidence? SetupFailure { get; init; }
+}
 
 public static class UpgradeHistory
 {
@@ -40,14 +43,25 @@ public static class UpgradeHistory
             if (attempt is null) return null;
             using var setup = Registry.LocalMachine.OpenSubKey(@"SYSTEM\Setup");
             var current = CurrentWindows.Read();
-            return Reconcile(attempt, current, Convert.ToInt32(setup?.GetValue("SystemSetupInProgress") ?? 0) != 0);
+            var inProgress = Convert.ToInt32(setup?.GetValue("SystemSetupInProgress") ?? 0) != 0;
+            var failure = !inProgress && current.Build == attempt.OriginalBuild
+                ? SetupOutcomeDiagnostics.Read(attempt, Path.GetPathRoot(
+                    Environment.GetFolderPath(Environment.SpecialFolder.Windows))!) : null;
+            return Reconcile(attempt, current, inProgress, failure);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or FormatException)
         { AppLog.Error($"Cannot read previous upgrade status: {ex.Message}"); return null; }
     }
 
-    internal static UpgradeAttempt Reconcile(UpgradeAttempt attempt, CurrentWindows current, bool setupInProgress) =>
-        !setupInProgress && current.Build != attempt.OriginalBuild && current.Build == attempt.TargetBuild &&
+    internal static UpgradeAttempt Reconcile(UpgradeAttempt attempt, CurrentWindows current, bool setupInProgress,
+        SetupFailureEvidence? failure = null) =>
+        !setupInProgress && current.Build == attempt.OriginalBuild && failure is not null
+            ? attempt with { State = "RollbackObserved", SetupFailure = failure,
+                Message = $"{failure.Summary} {failure.ResultCode} - {failure.ExtendedCode}; phase: {failure.Phase}. See View log." }
+            :
+        // Windows 10's shared-base image metadata is not a verified feature-release
+        // target in this POC. Keep manual outcome verification instead of a false match.
+        !setupInProgress && attempt.TargetBuild >= 22000 && current.Build != attempt.OriginalBuild && current.Build == attempt.TargetBuild &&
         current.Edition.Equals(attempt.TargetEdition, StringComparison.OrdinalIgnoreCase)
             ? attempt with { State = "TargetWindowsObserved", Message = "The target Windows build and edition are now running. Verify that your files and applications are intact." }
             : attempt;

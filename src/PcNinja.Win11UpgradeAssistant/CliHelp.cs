@@ -2,10 +2,10 @@ namespace PcNinja.Win11UpgradeAssistant;
 
 internal static class CliHelp
 {
-    internal const string Version = "1.1.0-rc.5";
+    internal static string Version => ProductIdentity.Version;
 
     private static readonly string[] Topics =
-        ["status", "scan", "validate", "upgrade", "log-path", "completion"];
+        ["status", "downloads", "scan", "validate", "upgrade", "log-path", "completion"];
 
     public static bool TryGetRequestedTopic(string[] args, out string? topic)
     {
@@ -64,6 +64,7 @@ internal static class CliHelp
     private static string? GetTopic(string topic) => topic switch
     {
         "status" => Status,
+        "downloads" => Downloads,
         "scan" or "refresh" or "rescan" => Scan,
         "validate" => Validate,
         "upgrade" => Upgrade,
@@ -73,23 +74,24 @@ internal static class CliHelp
     };
 
     private const string General = """
-PcNinja Windows 11 Upgrade Assistant 1.1.0-rc.5
+Windows Upgrade Assistant By PcNinja
 
 The graphical interface opens when the EXE is started without arguments.
 Supplying a command starts CLI mode.
 
 Usage:
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe <command> [options]
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe help <command>
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe <command> --help
+  Windows-Upgrade-Assistant-By-PcNinja.exe <command> [options]
+  Windows-Upgrade-Assistant-By-PcNinja.exe help <command>
+  Windows-Upgrade-Assistant-By-PcNinja.exe <command> --help
 
 Commands:
   status       Show Windows, storage, administrator, and log information.
+  downloads    Recommend a matching download page without downloading an ISO.
   scan         Find local ISO files, mounted Windows media, and download drives.
   validate     Validate one exact ISO file or mounted Windows source.
   upgrade      Validate a source and start Windows Setup after confirmation.
   log-path     Print the application log path.
-  completion   Generate shell completion code. RC5 supports PowerShell.
+  completion   Generate shell completion code. PowerShell completion is supported.
   help         Show general help or detailed help for one command.
 
 Global options:
@@ -98,10 +100,11 @@ Global options:
   --version       Show the application version.
 
 Learn more:
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe help validate
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe help upgrade
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe help completion
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe help all
+  Windows-Upgrade-Assistant-By-PcNinja.exe help validate
+  Windows-Upgrade-Assistant-By-PcNinja.exe help downloads
+  Windows-Upgrade-Assistant-By-PcNinja.exe help upgrade
+  Windows-Upgrade-Assistant-By-PcNinja.exe help completion
+  Windows-Upgrade-Assistant-By-PcNinja.exe help all
 
 Exit codes:
   0  Success
@@ -116,6 +119,9 @@ Exit codes:
 
 Mounting, validation, and upgrade commands must be run as Administrator.
 The assistant never calls shutdown.exe and never forces a restart after failure.
+JSON results include schemaVersion, resultCode, exitCode, message and readyForRestart.
+Exit 0 alone is NOT permission to restart: status, validate and dry-run also return 0.
+See help upgrade for the remote-script/management-agent result contract.
 """;
 
     private const string Status = """
@@ -125,14 +131,53 @@ Show the detected Windows version, whether upgrades are supported, available
 space on the Windows drive, administrator state, log path, and the previous
 upgrade attempt. TargetWindowsObserved confirms only the running build/edition,
 not preservation of personal files or applications.
-Also reports the system UI language and automatic-download availability/reason.
+Also reports the detected edition, language, architecture, build/revision and
+client/Server/LTSC profile, automatic-download availability/reason and its PcNinja
+browser route. Existing language/status fields are retained. Status stays offline;
+it does not query the external download catalog. Use downloads for a recommendation.
+JSON includes the complete build identity. RollbackObserved and SetupFailure
+report a correlated completed Windows Setup rollback, including its result and
+extended codes. Missing, stale or incomplete logs do not prove success/failure.
 
 Usage:
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe status
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe status --json
+  Windows-Upgrade-Assistant-By-PcNinja.exe status
+  Windows-Upgrade-Assistant-By-PcNinja.exe status --json
 
 This command does not require Administrator permission and can report an
-unsupported Windows Server or LTSC host without attempting an upgrade.
+unsupported Windows Server/architecture/type without attempting an upgrade.
+Matching LTSC client media can use the manual upgrade path; automatic download
+remains unavailable for LTSC. Host eligibility is not image or Setup compatibility.
+""";
+
+    private const string Downloads = """
+COMMAND: downloads
+
+Recommend a download page for the detected edition, language, architecture and
+build/revision without downloading an ISO or starting Windows Setup.
+
+Usage:
+  Windows-Upgrade-Assistant-By-PcNinja.exe downloads
+  Windows-Upgrade-Assistant-By-PcNinja.exe downloads --json
+
+Matching PcNinja automatic-source profiles use their configured browser page
+without contacting an external catalog. Other profiles can query the online
+catalog for matching manual-download guidance. A recommendation is not proof
+of ISO contents or upgrade compatibility: validate the actual downloaded media.
+The command never opens a browser, changes the clipboard, mounts media or
+starts a transfer/Setup, and does not require Administrator permission.
+
+JSON includes recommendation (Source, PageUrl, FileName, TargetRelease,
+TargetVersion, ExactMatch and Message), automaticTransferStarted=false and
+setupStarted=false. Result: DOWNLOAD_RECOMMENDATION, exit 0, readyForRestart=false.
+Unavailable/changed catalogs return manual guidance, exit 0 and ExactMatch=false.
+Unrecoverable resolution errors return DOWNLOAD_FAILED (exit 4); cancellation
+returns CANCELLED (exit 6). None authorizes a restart.
+
+After downloading matching media manually:
+  Windows-Upgrade-Assistant-By-PcNinja.exe validate --iso "D:\ISO\Matching.iso"
+  Windows-Upgrade-Assistant-By-PcNinja.exe upgrade --iso "D:\ISO\Matching.iso"
+
+This does not broaden the standalone upgrader's supported system/target rules.
 """;
 
     private const string Scan = """
@@ -141,8 +186,8 @@ COMMAND: scan
 Rescan sources without changing the computer. Aliases: refresh, rescan.
 
 Usage:
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe scan
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe scan --json
+  Windows-Upgrade-Assistant-By-PcNinja.exe scan
+  Windows-Upgrade-Assistant-By-PcNinja.exe scan --json
 
 The output contains:
   Local ISO files          Suitable .iso files found beside the application.
@@ -150,9 +195,9 @@ The output contains:
   Download locations      Ready fixed or removable drives and free space.
 
 Example workflow for a mounted ISO:
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe scan
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe validate --mounted E:\
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe upgrade --mounted E:\ --no-restart
+  Windows-Upgrade-Assistant-By-PcNinja.exe scan
+  Windows-Upgrade-Assistant-By-PcNinja.exe validate --mounted E:\
+  Windows-Upgrade-Assistant-By-PcNinja.exe upgrade --mounted E:\ --no-restart
 
 This command does not require Administrator permission.
 """;
@@ -163,14 +208,14 @@ COMMAND: validate
 Validate exactly one installation source without starting Windows Setup.
 
 Usage:
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe validate --iso <exact-iso-path> [--sha256 <hash>] [--image-index <index>] [--json]
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe validate --mounted <drive-or-folder> [--image-index <index>] [--json]
+  Windows-Upgrade-Assistant-By-PcNinja.exe validate --iso <exact-iso-path> [--sha256 <hash>] [--image-index <index>] [--json]
+  Windows-Upgrade-Assistant-By-PcNinja.exe validate --mounted <drive-or-folder> [--image-index <index>] [--json]
 
 Examples:
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe validate --iso "D:\ISO\Windows11.iso"
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe validate --mounted E:\
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe validate --mounted "C:\Win11 Extracted"
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe validate --mounted E:\ --json
+  Windows-Upgrade-Assistant-By-PcNinja.exe validate --iso "D:\ISO\Windows11.iso"
+  Windows-Upgrade-Assistant-By-PcNinja.exe validate --mounted E:\
+  Windows-Upgrade-Assistant-By-PcNinja.exe validate --mounted "C:\Win11 Extracted"
+  Windows-Upgrade-Assistant-By-PcNinja.exe validate --mounted E:\ --json
 
 --iso mounts the exact file, then validates the mounted media.
 --mounted accepts either an ISO that Windows already mounted or an extracted
@@ -206,36 +251,75 @@ Additional options:
   --sha256 <hash>          Compare an ISO with a trusted 64-character SHA-256.
   --image-index <index>    Select an image in the validated source; positive integer.
   --no-restart             Add /noreboot; restart manually when ready.
+  --quiet                  Add /quiet; requires --yes unless --dry-run. No browser fallback.
   --dry-run                Perform full validation but do not start Setup.
   --yes                    Explicitly skip the interactive YES confirmation.
   --json                   Emit a machine-readable final result.
 
 Examples:
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe upgrade --mounted E:\
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe upgrade --mounted "C:\Win11 Extracted"
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe upgrade --mounted E:\ --no-restart
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe upgrade --iso "D:\ISO\Windows11.iso" --dry-run
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe upgrade --iso "D:\ISO\Windows11.iso" --no-restart
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe upgrade --download --destination "F:\PcNinja Downloads"
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe upgrade --mounted E:\ --no-restart --yes --json
+  Windows-Upgrade-Assistant-By-PcNinja.exe upgrade --mounted E:\
+  Windows-Upgrade-Assistant-By-PcNinja.exe upgrade --mounted "C:\Win11 Extracted"
+  Windows-Upgrade-Assistant-By-PcNinja.exe upgrade --mounted E:\ --no-restart
+  Windows-Upgrade-Assistant-By-PcNinja.exe upgrade --iso "D:\ISO\Windows11.iso" --dry-run
+  Windows-Upgrade-Assistant-By-PcNinja.exe upgrade --iso "D:\ISO\Windows11.iso" --no-restart
+  Windows-Upgrade-Assistant-By-PcNinja.exe upgrade --download --destination "F:\PcNinja Downloads"
+  Windows-Upgrade-Assistant-By-PcNinja.exe upgrade --mounted E:\ --no-restart --yes --json
+  Windows-Upgrade-Assistant-By-PcNinja.exe upgrade --mounted E:\ --quiet --no-restart --yes --json
 
-The same-edition, x64, system-UI-language, equal-or-newer Windows 11 image is
-selected automatically only when exactly one match exists. Otherwise specify
+The same-edition, x64, system-UI-language image is selected automatically only
+when exactly one match exists. Windows 11 targets must be equal-or-newer builds.
+For Windows 10 -> Windows 10, this POC does NOT compare build order: Setup must
+decide whether an in-place upgrade/repair keeping apps and files is available.
+Windows 11 -> Windows 10 remains blocked. Windows 10 targets require manually
+supplied --iso or --mounted media; --download remains Windows 11 only.
+Validation/dry-run JSON reports setupProfile and buildOrderChecked (null if no
+unique/explicit image was selected). These are policy details, not proof of
+migration support. Otherwise specify
 --image-index after inspecting validate output. An explicit incompatible image
 is rejected; there is no clean-install or arbitrary edition-change fallback.
 
 Without --yes, type YES at the final safety prompt. Non-interactive execution
 without --yes is cancelled. Administrator permission is required.
 
-Windows Setup arguments:
+Windows 11 target arguments (existing experimental profile):
   /product server /auto upgrade /eula accept /dynamicupdate disable
   /compat ignorewarning /imageindex <selected-index> /installfrom "<image-file>"
+
+Windows 10 target arguments:
+  /auto upgrade /dynamicupdate disable /compat ignorewarning
+  /imageindex <selected-index> /installfrom "<image-file>"
+No /product server or /eula accept for Windows 10. /quiet is added only with
+explicit --quiet. No clean or data-only fallback is added. A refused migration
+must stop, not switch installation type.
 
 --no-restart additionally supplies /noreboot. PcNinja never calls shutdown.exe.
 After Setup exit 0 with --no-restart, restart manually to continue the upgrade.
 Successful upgrade JSON includes manualRestartRequired. /noreboot suppresses
 the first post-preparation reboot, not later Setup reboots after manual restart.
 PreparationCompleted does not confirm a finished OS migration.
+
+--quiet hides Windows Setup UI, not diagnostic results or safety checks. It does
+not imply --yes and does not change restart policy in CLI: add --no-restart for
+external orchestration. No CLI error popups are shown, including remote/SYSTEM use.
+Quiet mode suppresses progress and never opens a fallback browser.
+
+Remote scripts/management agents (including BigFix): use --quiet --no-restart
+--yes --json, wait for this process to exit, and capture stdout and exit code.
+JSON schemaVersion 1 preserves prior fields and adds stable resultCode/message,
+readyForRestart, exitCode, logPath and build. Setup results include the original
+signed setupExitCode and setupExitCodeHex. Result identifiers:
+  UPGRADE_PREPARED_RESTART_REQUIRED   Exit 0; preparation complete, restart needed.
+  UPGRADE_PREPARED_AUTOMATIC_RESTART  Exit 0; Windows handles restart; do not force one.
+  SETUP_FAILED                      Exit 7; native Setup error; do not restart.
+  SETUP_OUTCOME_UNCONFIRMED          Exit 8; uncertain transition; do not auto-restart.
+  VALIDATION_PASSED / DRY_RUN_COMPLETED / STATUS_REPORTED / SOURCES_SCANNED
+  DOWNLOAD_RECOMMENDATION
+                                    Exit 0, but readyForRestart=false.
+Other failures retain exit codes 1-6 and return readyForRestart=false.
+Only authorize a controller-managed restart after the actual upgrade returns
+exit 0, resultCode UPGRADE_PREPARED_RESTART_REQUIRED, outcome PreparationCompleted,
+setupExitCode 0 and readyForRestart=true. JSON/transport/timeout failure is NOT success.
+Text results include RESULT_CODE markers; diagnostics also go to the app log.
 
 Ctrl+C cancels download, checksum and preparation work (exit code 6). It does
 not interrupt Windows Setup after launch. Network failures may open the normal
@@ -249,9 +333,14 @@ cancellation, media safety and environmental errors preserve the existing ISO.
 The original filename is required; files are never guessed by a wildcard.
 A short-link TLS connection failure triggers a secure direct-provider attempt;
 provider blocks may still require the normal browser fallback.
-Automatic download currently provides en-US media and requires system UI
-language en-US. Other languages (including en-GB) must use matching manual
-media with --iso or --mounted; --download is rejected with exit code 3.
+Automatic transfer is available only when the full detected system profile
+matches a configured PcNinja source: edition, language, architecture, client
+family, LTSC status and build eligibility all matter, not language alone.
+The configured Windows 11 source is en-US; other profiles (including en-GB)
+must use matching manual media with --iso or --mounted. --download is rejected
+with exit code 3 rather than downloading a mismatched ISO. Run downloads or
+downloads --json for matching manual-download guidance. This command does not
+silently change the automatic source or start a different Windows-family upgrade.
 Manual downloads: https://iso.pcninja.pro or
 https://www.microsoft.com/software-download/windows11
 For standard Microsoft Windows media, prefer Microsoft's download page.
@@ -265,7 +354,7 @@ COMMAND: log-path
 Print the full path of the PcNinja upgrade log.
 
 Usage:
-  PcNinja-Win11-Upgrade-Assistant-RC5.exe log-path
+  Windows-Upgrade-Assistant-By-PcNinja.exe log-path
 
 This command does not require Administrator permission.
 """;
@@ -276,7 +365,7 @@ COMMAND: completion
 Generate a PowerShell native argument completer for the current EXE name.
 
 Enable completion for the current PowerShell session:
-  & .\PcNinja-Win11-Upgrade-Assistant-RC5.exe completion powershell |
+  & .\Windows-Upgrade-Assistant-By-PcNinja.exe completion powershell |
     Out-String | Invoke-Expression
 
 After registration, press Tab to complete commands, relevant options, mounted
@@ -284,12 +373,12 @@ drives containing setup.exe, ISO paths, and destination directories.
 
 The command prints a script only. It does not modify $PROFILE automatically.
 To make it persistent, review the generated script and add it to your profile.
-PowerShell completion is supported in RC5; CMD receives the embedded help only.
+PowerShell completion is supported; CMD receives the embedded help only.
 """;
 
     private const string PowerShellCompletion = """
-# PcNinja Windows 11 Upgrade Assistant native completion (RC5)
-Register-ArgumentCompleter -Native -CommandName '__EXE_NAME__', 'PcNinja-Win11-Upgrade-Assistant.exe' -ScriptBlock {
+# Windows Upgrade Assistant By PcNinja native completion
+Register-ArgumentCompleter -Native -CommandName '__EXE_NAME__', 'Windows-Upgrade-Assistant-By-PcNinja.exe' -ScriptBlock {
     param($wordToComplete, $commandAst, $cursorPosition)
 
     $elements = @($commandAst.CommandElements | ForEach-Object { $_.Extent.Text.Trim("'").Trim('"') })
@@ -327,16 +416,17 @@ Register-ArgumentCompleter -Native -CommandName '__EXE_NAME__', 'PcNinja-Win11-U
         return
     }
 
-    $commands = @('status', 'scan', 'validate', 'upgrade', 'log-path', 'completion', 'help', '--help', '--version')
+    $commands = @('status', 'downloads', 'scan', 'validate', 'upgrade', 'log-path', 'completion', 'help', '--help', '--version')
     $options = switch ($command) {
         'status'     { @('--json', '--help') }
+        'downloads'  { @('--json', '--help') }
         'scan'       { @('--json', '--help') }
         'refresh'    { @('--json', '--help') }
         'rescan'     { @('--json', '--help') }
         'validate'   { @('--iso', '--mounted', '--sha256', '--image-index', '--json', '--help') }
-        'upgrade'    { @('--iso', '--mounted', '--download', '--destination', '--sha256', '--image-index', '--no-restart', '--dry-run', '--yes', '--json', '--help') }
+        'upgrade'    { @('--iso', '--mounted', '--download', '--destination', '--sha256', '--image-index', '--no-restart', '--quiet', '--dry-run', '--yes', '--json', '--help') }
         'completion' { @('powershell', '--help') }
-        'help'       { @('status', 'scan', 'validate', 'upgrade', 'log-path', 'completion', 'all') }
+        'help'       { @('status', 'downloads', 'scan', 'validate', 'upgrade', 'log-path', 'completion', 'all') }
         default      { $commands }
     }
 

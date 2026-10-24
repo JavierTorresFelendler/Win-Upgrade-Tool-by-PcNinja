@@ -1,11 +1,12 @@
-# PcNinja Windows 11 Upgrade Assistant
+# Windows Upgrade Assistant By PcNinja
 
 Standalone Windows application for guiding advanced home users through an
-in-place Windows 11 upgrade on unsupported x64 hardware.
+in-place Windows upgrade on x64 hardware, including an experimental Windows 11
+compatibility method and an experimental manual Windows 10 target path.
 
 > [!WARNING]
-> RC5 is prerelease software. It uses the undocumented `/product server`
-> compatibility behavior with Windows client Setup. Back up important files
+> RC8 is prerelease software. Its Windows 11 path uses the undocumented
+> `/product server` compatibility behavior. Back up important files
 > before using it. Microsoft can change this behavior in future releases.
 
 ## AI-assisted maintenance
@@ -17,26 +18,51 @@ project-specific decisions and working procedures across assistants and machines
 
 ## Download
 
-Download the latest prerelease from the repository's **Releases** page:
+Download [RC8](https://github.com/JavierTorresFelendler/Windows-Upgrade-Assistant-by-PcNinja/releases/tag/v1.1.0-rc.8)
+from the repository's **Releases** page:
 
 ```text
-PcNinja-Win11-Upgrade-Assistant-RC5.exe
+Windows-Upgrade-Assistant-By-PcNinja.exe
 ```
 
 The portable x64 EXE contains both the graphical application and the CLI. No
 PowerShell or CMD files are required.
 
+RC8 uses that fixed filename; previous release assets remain unchanged.
+Version/commit metadata remains
+in file properties, diagnostic logs, `version` and `status --json`, not the GUI
+title or executable filename. See [product identity](docs/PRODUCT-IDENTITY.md).
+
+Completed, correlated Windows Setup rollbacks are reported in the existing GUI
+warning/details area and CLI status. See [outcome diagnostics](docs/SETUP-OUTCOME-DIAGNOSTICS.md).
+
 ## One-screen graphical workflow
 
-> **Pending next release:** The language policy, automatic consent and diagnostics below
-> are source changes, not a replacement for the published RC5 executable.
+[Matched ISO download guidance](docs/MATCHED-ISO-DOWNLOADS.md) prefers a configured
+PcNinja source only when the installed profile matches its coverage. Otherwise,
+request a matching public browser download, then select the exact ISO manually.
+Matching manual x64 client LTSC media is supported without enabling automatic
+LTSC download, edition/channel conversion or Server execution.
+
+> **New in RC8:** Full-profile automatic-download preflight, matching manual
+> download guidance, safe exact-ISO session reuse, Downloads-first browsing and
+> visual next-action cues. Includes optional quiet Setup and machine-readable CLI
+> results. Original branding, safety gates and two-source screen remain.
 
 The application shows the current Windows version, storage state, and source
 choices on one screen:
 
-1. **Download the ISO automatically.** Choose a download drive/folder.
-2. **Use existing installation media.** Select an ISO, mounted drive, extracted
+1. **Download Windows 11 automatically.** Choose a download drive/folder.
+2. **Use an ISO, drive or folder.** Select an ISO, mounted drive, extracted
    Setup folder or network folder in one path field, using **ISO...** or **Folder...**.
+
+RC8 also accepts a manually supplied **Windows 10 client x64**
+image on Windows 10, using the same image selector and `--image-index`. By owner
+request, this POC does **not compare build order inside Windows 10**: older,
+same-build and newer images may be offered to Windows Setup, which must allow
+keeping apps/files or stop. This is not a promise of downgrade/repair support.
+Windows 11 to 10 remains blocked; Windows 11 target build checks are unchanged.
+Automatic download remains Windows 11 only. See [Windows 10 POC tests](docs/WINDOWS10-POC.md).
 
 Automatic Start asks once **before** downloading/reusing media, explaining that
 validation and the compatible in-place upgrade follow with the chosen restart
@@ -50,13 +76,18 @@ restart your computer yourself to continue. This is not yet a completed migratio
 
 The automatic operation hands its successfully validated exact source to the GUI
 or CLI without immediate duplicate hashing/mounting. Final prelaunch validation
-is retained. Manual Inspect then Start reuse and automatic mount cleanup remain
-separate future work. Errors stay visible through Refresh; full details/log remain
-available. See [development test checklist](docs/AUTOMATIC-FLOW-TESTING.md).
+is retained. Manual Validate then Start, or switching to Automatic for the exact
+same ISO, can reuse successful session preparation only with unchanged-file and
+exact mount-identity proof; unavailable proof falls back to full validation.
+Automatic mount cleanup is not included. Errors stay visible through Refresh;
+full details/log remain available. See [session reuse](docs/ISO-VALIDATION-REUSE.md).
 
-Automatic download currently supplies **English (en-US)** media. It is disabled
-when Windows' system-default UI language does not match, including en-GB; the
-screen explains the mismatch and keeps manual media selection available.
+Automatic download currently supplies **English (en-US), x64 Windows 11** media
+for eleven configured Home/Pro/Education-family editions. The installed edition,
+language, architecture, client/LTSC/Server type and known build family are checked
+before an ISO transfer or destination creation. An unsupported profile, including
+en-GB, keeps manual media selection available with an explanation. Eligibility
+uses configured media coverage; the actual downloaded bytes must still validate.
 Matching manually supplied media is not restricted to English. Edition, x64,
 Windows 11 build and all other safety checks still apply; this is not a claim
 that every language/media combination has been field-tested.
@@ -71,7 +102,12 @@ source, image selection and restart policy are retained when the source is uncha
 A single ISO beside the EXE is offered automatically; multiple files are never
 resolved by newest-file guessing.
 
-Use **Inspect images**, or **Start**, to enumerate the actual installation images.
+ISO browsing starts in the user's registered Downloads folder. Visual cues guide
+manual selection through **ISO...**, **Validate**, image choice and **Start**;
+the cues do not replace validation, consent or mismatch/error explanations.
+Automatic mode retains its direct Start/download/validation/upgrade flow.
+
+Use **Validate**, or **Start**, to enumerate the actual installation images.
 Names, indexes, edition, x64 architecture, build and default language come from
 that source. A unique same-edition/language match is selected; otherwise select
 an image in the same screen. Incompatible images are rejected. Replacing the
@@ -100,9 +136,11 @@ the button is disabled as **SETUP RUNNING**. Closing the assistant is blocked
 while it is busy. The application launches without a console window.
 
 If the direct automatic transfer is temporarily unavailable, the application
-opens [PcNinja ISO downloads](https://iso.pcninja.pro) for manual selection
-and switches to exact local-ISO selection. After the browser download
-finishes, select that file with **ISO...**. The official
+opens the [matched PcNinja browser route](docs/MATCHED-ISO-DOWNLOADS.md) and
+switches to exact local-ISO selection. Other profiles retain the broader
+[PcNinja ISO downloads](https://iso.pcninja.pro) catalog and can request a matching
+alternative. After the browser download finishes, select that file with **ISO...**.
+Browser fallback does not resume unattended upgrade consent. The official
 [Microsoft Windows 11 download page](https://www.microsoft.com/software-download/windows11)
 is always available as an additional fallback.
 
@@ -120,8 +158,8 @@ Before starting Setup, the application validates:
 - answer-file safety on the selected source and other attached media, repeated
   immediately before Setup; narrowly scoped writable selected-source answer
   files are removed, while secondary/read-only media blocks the upgrade
-- actual image index, matching edition (including N/Single Language), x64,
-  system-default UI language, and equal-or-newer Windows 11 build
+- actual image index, matching edition (including N/Single Language), x64 and
+  system-default UI language; equal-or-newer build for Windows 11 targets only
 
 Downloading onto the Windows drive reserves space for both the remaining ISO
 bytes and the 20 GB upgrade workspace, plus a 1 GB download margin. Windows
@@ -138,9 +176,12 @@ Mounted media/extracted folders do not support whole-ISO checksum comparison.
 
 Routine errors appear in the main window; **View details** shows diagnostics.
 See the [message catalog](docs/UI-MESSAGES.md) for the short English wording
-used in RC5 and the [RC5 test notes](docs/RC5-TESTING.md) for coverage and limits.
+and the [RC8 test notes](docs/RC8-TESTING.md) for current coverage and limits.
 
 ## CLI
+
+RC8 includes [quiet Setup and automation results](docs/CLI-AUTOMATION.md)
+for remote scripts/management agents, including explicit restart readiness.
 
 The same EXE contains global help, per-command help, and a complete offline
 manual. It can also generate PowerShell Tab completion. Read-only commands do
@@ -150,22 +191,23 @@ See the [complete CLI guide](docs/CLI.md) for mounted ISO drives, automatic
 downloads, validation-only runs, JSON output, confirmations, and exit codes.
 
 ```powershell
-.\PcNinja-Win11-Upgrade-Assistant-RC5.exe help
-.\PcNinja-Win11-Upgrade-Assistant-RC5.exe help all
-.\PcNinja-Win11-Upgrade-Assistant-RC5.exe help upgrade
-.\PcNinja-Win11-Upgrade-Assistant-RC5.exe status --json
-.\PcNinja-Win11-Upgrade-Assistant-RC5.exe scan
-.\PcNinja-Win11-Upgrade-Assistant-RC5.exe validate --iso "D:\Windows11.iso"
-.\PcNinja-Win11-Upgrade-Assistant-RC5.exe validate --mounted E:\
-.\PcNinja-Win11-Upgrade-Assistant-RC5.exe upgrade --iso "D:\Windows11.iso" --no-restart
-.\PcNinja-Win11-Upgrade-Assistant-RC5.exe upgrade --mounted E:\ --no-restart
-.\PcNinja-Win11-Upgrade-Assistant-RC5.exe upgrade --download --destination "E:\PcNinja Downloads"
+.\Windows-Upgrade-Assistant-By-PcNinja.exe help
+.\Windows-Upgrade-Assistant-By-PcNinja.exe help all
+.\Windows-Upgrade-Assistant-By-PcNinja.exe help upgrade
+.\Windows-Upgrade-Assistant-By-PcNinja.exe status --json
+.\Windows-Upgrade-Assistant-By-PcNinja.exe scan
+.\Windows-Upgrade-Assistant-By-PcNinja.exe downloads --json
+.\Windows-Upgrade-Assistant-By-PcNinja.exe validate --iso "D:\Windows11.iso"
+.\Windows-Upgrade-Assistant-By-PcNinja.exe validate --mounted E:\
+.\Windows-Upgrade-Assistant-By-PcNinja.exe upgrade --iso "D:\Windows11.iso" --no-restart
+.\Windows-Upgrade-Assistant-By-PcNinja.exe upgrade --mounted E:\ --no-restart
+.\Windows-Upgrade-Assistant-By-PcNinja.exe upgrade --download --destination "E:\PcNinja Downloads"
 ```
 
 Enable PowerShell completion for the current session:
 
 ```powershell
-& .\PcNinja-Win11-Upgrade-Assistant-RC5.exe completion powershell | Out-String | Invoke-Expression
+& .\Windows-Upgrade-Assistant-By-PcNinja.exe completion powershell | Out-String | Invoke-Expression
 ```
 
 Mount, validation, download-and-mount, and upgrade operations must be launched
@@ -189,11 +231,15 @@ Stable CLI exit codes:
 
 ## Upgrade and restart behavior
 
-The upgrade command is:
+The Windows 11 target upgrade command is:
 
 ```text
 setup.exe /product server /auto upgrade /eula accept /dynamicupdate disable /compat ignorewarning /imageindex <selected-index> /installfrom "<validated-image-file>"
 ```
+
+Windows 10 targets use the same upgrade-only profile without `/product server`
+or `/eula accept`. Optional quiet mode adds `/quiet`. CLI `--quiet` requires
+explicit `--yes`; CLI restart control remains independent of quiet mode.
 
 Clearing **Allow Windows Setup to restart the computer automatically**, or using
 CLI option `--no-restart`, adds `/noreboot`. The application never calls
@@ -227,6 +273,23 @@ This boundary is intentional. The standalone product remains independent while
 the Core project can later be integrated into PcNinja WinUpdate Tool without
 copying the standalone interface.
 
+## ISO sources and acknowledgements
+
+Thank you to the [Massgrave](https://massgrave.dev/) contributors for maintaining
+the public Windows ISO catalogs used by our [matching download fallback](docs/MATCHED-ISO-DOWNLOADS.md).
+PcNinja sources remain the preferred configured option; the external catalog
+helps users find matching media in other languages and editions. This fallback
+is included in RC8 as manual browser guidance, not automatic third-party transfer.
+
+- [Massgrave website and ISO catalogs](https://massgrave.dev/)
+- [Catalog and website source on GitHub](https://github.com/massgravel/massgrave.dev)
+- [Massgrave's main project on GitHub](https://github.com/massgravel/Microsoft-Activation-Scripts)
+
+Our integration references ISO download catalogs only; it does not include or run
+activation scripts or modify licensing. Microsoft's official download alternative
+remains available. Source recommendations do not replace PcNinja's actual-media
+compatibility, signature and safety checks.
+
 ## Development workflow
 
 Work is tracked through issues, feature branches and Draft PRs under the owner's
@@ -251,10 +314,13 @@ when a `v*` tag is pushed.
 
 - Windows 10 and Windows 11 client editions
 - x64 only
-- Consumer Windows 11 x64 ISO media
+- Matching Windows 10/11 x64 client ISO or extracted/mounted media
 - In-place upgrade only
-- No Windows Server or LTSC support
+- Matching manual client LTSC media; no automatic LTSC download/channel conversion
+- Windows Server download/inspection/explicit manual-command-copy guidance only;
+  the assistant never starts Setup on Server
 - English interface and CLI
 - Unsigned prerelease binary
+- No application self-updater or media extraction/copy/detach preparation in RC8
 
 RC releases remain prereleases. Repository visibility is managed separately.
