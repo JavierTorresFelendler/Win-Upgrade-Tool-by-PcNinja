@@ -33,11 +33,13 @@ Version/commit metadata remains
 in file properties, diagnostic logs, `version` and `status --json`, not the GUI
 title or executable filename. See [product identity](docs/PRODUCT-IDENTITY.md).
 
-Application updating is implemented separately in development Draft PR #13;
-it is **not in the published RC8 EXE**. The development updater discovers only
-newer stable GitHub releases and requires consent to save a protected Program
-Files copy, leaving a portable original elsewhere untouched. It never upgrades
-Windows or authorizes a reboot. See [app updates and remaining VM acceptance](docs/APPLICATION-UPDATES.md).
+Application updates are in the separate [Beta trial](docs/APPLICATION-UPDATES.md)
+in Draft PR #13, not the unchanged RC8 EXE. New version-named EXEs stay beside
+the running tool; nothing moves to Program Files or replaces the old EXE.
+A regular/critical offer shows the release summary and exact GitHub notes;
+only **Download and run the new version** authorizes EXE transfer.
+Beta discovers Beta only; stable/RC discovers stable only. First test Beta 1,
+then publish Beta 2 for the owner's live update check; no stable release yet.
 
 Completed, correlated Windows Setup rollbacks are reported in the existing GUI
 warning/details area and CLI status. See [outcome diagnostics](docs/SETUP-OUTCOME-DIAGNOSTICS.md).
@@ -314,14 +316,18 @@ dotnet publish src\PcNinja.Win11UpgradeAssistant\PcNinja.Win11UpgradeAssistant.c
 ```
 
 `Directory.Build.props` contains the authoritative literal `PcNinjaReleaseVersion`
-for Core/GUI metadata and packaging. Development updater/packaging support does
-not change the current `1.1.0-rc.8` identity or any published asset.
+for Core/GUI metadata and packaging. Current development is `1.1.0-beta.1`;
+published RC8 and older assets remain immutable.
 
 The tag workflow requires reviewed main ancestry, matching tag/version/notes,
 read-only CLI verification and the final EXE's exact `version+commit` metadata
-under the 100,000,000-byte cap. RC notes use `docs/RELEASE-RC{N}.md`; RC releases
+under the 100,000,000-byte cap; the explicitly authorized Beta branch test
+requires exact passed PR CI instead of main ancestry. RC notes use `docs/RELEASE-RC{N}.md`; RC releases
 keep EXE, SHA256SUMS and BUILD-INFO as three prerelease assets, with no updater
-manifest. Future numeric `x.y.z` stable releases require
+manifest. Beta releases additionally include a channel-bound manifest and validated
+`docs/updates/{version}.json` regular/critical message. They are non-latest
+prereleases and may use an owner-approved exact PR-CI-passed unmerged commit.
+Numeric `x.y.z` stable releases require
 `docs/RELEASE-{version}.md` and add `update-manifest.json` as a fourth asset.
 Both use draft-first upload/metadata verification; stable publication updates
 latest only after verified assets and refuses backwards movement. Existing

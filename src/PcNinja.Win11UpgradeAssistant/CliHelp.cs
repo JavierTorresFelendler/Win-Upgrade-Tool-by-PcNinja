@@ -21,7 +21,7 @@ internal static class CliHelp
 
         if (first is "--help" or "-h") return true;
         if (first == "app-update" && args.Length == 3 &&
-            args[1].ToLowerInvariant() is "check" or "status" or "install" && args[2] is "--help" or "-h")
+            args[1].ToLowerInvariant() is "check" or "status" or "run" or "install" && args[2] is "--help" or "-h")
         {
             topic = first;
             return true;
@@ -359,34 +359,41 @@ compare with a trusted value; a calculated hash alone is not proof of integrity.
     private const string AppUpdate = """
 COMMAND: app-update
 
-Update this application, NOT the Windows operating system.
+Download and run a new portable assistant, NOT a Windows update or installer.
 
-Usage:
-  Windows-Upgrade-Assistant-By-PcNinja.exe app-update check [--json]
-  Windows-Upgrade-Assistant-By-PcNinja.exe app-update status [--json]
-  Windows-Upgrade-Assistant-By-PcNinja.exe app-update install --yes [--json]
+Usage (substitute the exact version-named EXE you are running):
+  Windows-Upgrade-Assistant-By-PcNinja-V1.1-Beta1.exe app-update check [--json]
+  Windows-Upgrade-Assistant-By-PcNinja-V1.1-Beta1.exe app-update status [--json]
+  Windows-Upgrade-Assistant-By-PcNinja-V1.1-Beta1.exe app-update run --yes [--json]
 
-check queries only this project's latest stable GitHub release and same-release
-manifest. RCs, drafts, older/equal versions and other repositories are rejected.
-No stable release yet is a normal result. status stays offline.
+check reads only pinned GitHub release metadata/manifest. Beta executables select
+numbered Beta releases; stable/RC executables select stable only. Drafts, other
+repositories and older/equal versions are not offered. status stays offline.
 
-install requires Administrator and explicit --yes. It verifies the exact pinned
-EXE bytes, size, SHA-256, x64 GUI/product/version and publisher continuity when
-signed. Unsigned releases rely on this project's GitHub release/manifest trust;
-a checksum is not a digital signature. No arbitrary feed or target switch exists.
+run requires Administrator and explicit --yes. The exact version-named EXE is
+verified and saved BESIDE THE RUNNING EXE, not the current shell directory.
+No Program Files relocation, original replacement/rename or numbered Copy N.
+An existing exact-name file is validated for reuse; a mismatch is not overwritten.
+Unsupported/read-only folders fail rather than silently choosing another location.
+The install verb remains an alias for run; no software is installed.
 
-The updated portable copy is saved in Program Files\PcNinja\WindowsUpgradeAssistant.
-An original outside that protected folder stays untouched. A helper waits for
-this exact process to exit before recoverable replacement. The CLI does not
-relaunch a GUI or replay any arguments. No OS upgrade/reboot is started.
+GUI shows Regular update or Critical update, publisher summary and exact GitHub
+release notes, with Download and run the new version / Not now choices. Critical
+does NOT authorize an automatic download. CLI emits these metadata in --json.
 
-APP_UPDATE_HANDOFF_STARTED means staged/handed off, NOT installed yet. Inspect
-app-update status and run the new copy's --version after the helper completes.
-Every app-update result has readyForRestart=false and setupStarted=false.
-Process exits retain the existing groups: 0 result/handoff, 2 invalid arguments,
-3 blocked, 4 network/verification/helper failure, 5 permission, 6 cancelled.
-Active PcNinja preparation/Setup, external Windows Setup or a pending Windows
-restart blocks installation; no force-close, forced restart or bypass is provided.
+Bytes, size, SHA-256, x64 GUI/product/version and signed-publisher continuity are
+verified. Unsigned trust depends on the publishing GitHub account/manifest; a
+checksum or critical tag is not an independent digital signature.
+
+A verified helper waits for this exact parent to exit. GUI reopens the new EXE
+with no arguments; CLI never opens a GUI or replays commands. The old file stays.
+APP_UPDATE_HANDOFF_STARTED means handed off, NOT running yet. Inspect subsequent
+app-update status and the new copy's --version. readyForRestart and setupStarted
+are always false. No Windows upgrade/reboot is started.
+
+Exit groups: 0 result/handoff, 2 invalid arguments, 3 blocked, 4 check/verification/
+helper failure, 5 permission, 6 cancelled. Active Windows operations, external
+Setup or pending Windows restart block running an update; no force bypass.
 """;
 
     private const string LogPath = """
@@ -466,7 +473,7 @@ Register-ArgumentCompleter -Native -CommandName '__EXE_NAME__', 'Windows-Upgrade
         'rescan'     { @('--json', '--help') }
         'validate'   { @('--iso', '--mounted', '--sha256', '--image-index', '--json', '--help') }
         'upgrade'    { @('--iso', '--mounted', '--download', '--destination', '--sha256', '--image-index', '--no-restart', '--quiet', '--dry-run', '--yes', '--json', '--help') }
-        'app-update' { @('check', 'status', 'install', '--yes', '--json', '--help') }
+        'app-update' { @('check', 'status', 'run', '--yes', '--json', '--help') }
         'completion' { @('powershell', '--help') }
         'help'       { @('status', 'downloads', 'scan', 'validate', 'upgrade', 'app-update', 'log-path', 'completion', 'all') }
         default      { $commands }

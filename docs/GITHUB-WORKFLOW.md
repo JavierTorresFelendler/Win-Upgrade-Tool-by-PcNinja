@@ -73,7 +73,17 @@ In the initial workflow-preparation PR, application code and the product version
 remain RC4. Its EXE only verifies the baseline build; it does not include the RC5
 requirements tracked in the issues.
 
-### Application-update publication preparation
+### Current Beta publication exception
+
+Owner-approved Beta tags may use unmerged source ONLY after exact-source PR checks
+pass. The workflow checks that proof before building. Beta is a prerelease,
+never latest stable, with version-named EXE, manifest and regular/critical notice
+configuration. Beta 2 waits until the owner has opened/tested Beta 1. This does
+not permit stable/RC tags off main, merging PR #13 or changing existing releases.
+See [Beta acceptance](APPLICATION-UPDATES.md). The older destination/first-stable
+plan below is historical and superseded by this portable Beta trial.
+
+### Earlier application-update publication preparation
 
 Updater development lives in Draft PR #13; RC8 remains unchanged. The authoritative
 version now resides in `Directory.Build.props`. A literal `x.y.z-rc.N` still produces

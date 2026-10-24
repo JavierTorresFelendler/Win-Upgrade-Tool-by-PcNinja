@@ -235,7 +235,7 @@ dotnet build tests/PcNinja.Win11Upgrade.SmokeTests/PcNinja.Win11Upgrade.SmokeTes
 dotnet run --project tests/PcNinja.Win11Upgrade.SmokeTests/PcNinja.Win11Upgrade.SmokeTests.csproj -c Debug --no-build
 dotnet build tests/PcNinja.Win11Upgrade.GuiChecks/PcNinja.Win11Upgrade.GuiChecks.csproj -c Debug -warnaserror
 dotnet run --project tests/PcNinja.Win11Upgrade.GuiChecks/PcNinja.Win11Upgrade.GuiChecks.csproj -c Debug --no-build
-& ./tests/Verify-Cli.ps1 -ExePath ./tests/PcNinja.Win11Upgrade.GuiChecks/bin/Debug/net8.0-windows/win-x64/Windows-Upgrade-Assistant-By-PcNinja.exe -ExpectedVersion '1.1.0-rc.8'
+& ./tests/Verify-Cli.ps1 -ExePath ./tests/PcNinja.Win11Upgrade.GuiChecks/bin/Debug/net8.0-windows/win-x64/Windows-Upgrade-Assistant-By-PcNinja.exe -ExpectedVersion '1.1.0-beta.1'
 git diff --check
 ```
 
@@ -291,24 +291,34 @@ Unsigned builds explicitly depend on the project GitHub/TLS trust boundary.
 Preserve a valid existing signing certificate when signing is enabled; do not
 silently downgrade to unsigned or disable trust checks on a network error.
 
-Privileged replacement must not trust a writable Downloads path or path-only
-PID/lock checks. The implementation uses a protected fixed local target, safe
-directory/file ACLs, non-reparse anchored ancestors, exact executable inspection,
-a verified successor helper and an exact parent-process handle. Its READY/GO
-protocol transfers a non-thread-affine machine-wide semaphore before the parent
-exits. Never substitute a sleep, thread-affine mutex or stale history file.
+The owner chose side-by-side versioned EXEs, not privileged in-place replacement
+or Program Files relocation. Keep private same-folder staging, anchored ancestors,
+exact executable verification and a verified successor helper. A held no-write/
+no-delete executable guard must cover the final verification and launch; a path
+hash followed by an unlocked CreateProcess permits swapping bytes in a writable
+Desktop/Downloads folder. Never overwrite unknown existing version-named files.
+CopyFile can preserve a user-writable source ACL: explicitly secure reused
+candidate/helper copies before validation/execution. Existing unsafe staging ACLs
+are refused, not taken over. The exact parent handle and READY/GO transfer keep
+the non-thread-affine operation barrier through handoff. Never replace that
+protocol with a sleep, thread-affine mutex or stale history file.
 
 Keep app/Windows operations mutually exclusive and repeat external Setup/restart
 checks after slow hashing. Failure/cancellation before handoff leaves the current
-app unchanged; after handoff, keep recovery files and correlate helper status by
-operation ID. Atomic replacement and restore tests use disposable ordinary files;
+app unchanged; after handoff, keep the original EXE and diagnostic files and correlate helper status by
+operation ID. Native publish/reuse/launch-lock tests use disposable files;
 they do not prove signing, elevation, handoff or relaunch on a customer's VM.
 
 Stable release packaging must verify exact product/version/source commit and
 final bytes before publishing. Upload immutable assets to a draft, verify them,
 then publish stable/latest last; never clobber assets or mutate a published tag.
-RCs publish no stable update manifest. Keep the first-stable then higher-stable
-live-update experiment a separate owner-approved step with VM snapshots.
+RCs publish no update manifest. Beta has its own explicit numbered preview
+channel and may publish an exact PR-CI-passed unmerged commit when the owner
+authorizes that test. Stable/RC still require main ancestry. Test Beta 1 before
+publishing Beta 2; do not advance stable/latest or merge merely to demonstrate
+an update. Regular/critical badges and plain-text release messages never replace
+consent or digital signing. Notes links point to the exact GitHub release and
+must not imply download consent.
 
 ## Maintain the knowledge, not just the patch
 

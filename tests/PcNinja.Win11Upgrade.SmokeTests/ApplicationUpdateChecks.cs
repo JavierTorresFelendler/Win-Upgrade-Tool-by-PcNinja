@@ -19,8 +19,8 @@ internal static class ApplicationUpdateChecks
     }
 
     private static AppUpdateManifest Manifest(string version = "1.1.0") => new(1, AppUpdateIdentity.Product,
-        AppUpdateIdentity.Repository, "stable", version, "v" + version, AppUpdateIdentity.AssetName,
-        AssetUrl("v" + version, AppUpdateIdentity.AssetName), FixtureBytes.Length,
+        AppUpdateIdentity.Repository, AppUpdateIdentity.ChannelFor(version), version, "v" + version, AppUpdateIdentity.AssetNameFor(version),
+        AssetUrl("v" + version, AppUpdateIdentity.AssetNameFor(version)), FixtureBytes.Length,
         Convert.ToHexString(SHA256.HashData(FixtureBytes)), NotesUrl("v" + version));
 
     private static string AssetUrl(string tag, string name) =>
@@ -48,7 +48,8 @@ internal static class ApplicationUpdateChecks
         MustRejectManifest(Manifest("1.1.0+unpublished"));
         foreach (var invalid in new[]
         {
-            valid with { SchemaVersion = 2 }, valid with { Product = "Other product" }, valid with { Repository = "evil/repository" },
+            valid with { SchemaVersion = 2 }, valid with { Importance = "urgent" }, valid with { Message = "" },
+            valid with { Message = new string('x', 1201) }, valid with { Message = "unsafe\u202Etext" }, valid with { Product = "Other product" }, valid with { Repository = "evil/repository" },
             valid with { Channel = "preview" }, valid with { Version = "1.1.0-rc.1", Tag = "v1.1.0-rc.1" },
             valid with { Version = "01.1.0" }, valid with { Tag = "v1.1.1" }, valid with { AssetName = "../other.exe" },
             valid with { AssetUrl = valid.AssetUrl.Replace(AppUpdateIdentity.Repository, "evil/repository") },
@@ -65,6 +66,11 @@ internal static class ApplicationUpdateChecks
 
     private static async Task CheckDiscoveryAsync()
     {
+        var beta = Manifest("1.1.0-beta.2");
+        Require((await CheckFixtureAsync(beta, "1.1.0-beta.1")).State == AppUpdateCheckState.Available, "Beta 1 did not offer Beta 2.");
+        Require((await CheckFixtureAsync(beta, "1.1.0-beta.2")).State == AppUpdateCheckState.UpToDate, "Beta offered itself.");
+        Require((await CheckFixtureAsync(beta, "1.1.0")).State == AppUpdateCheckState.Unavailable, "Stable accepted a Beta.");
+        Require((await CheckFixtureAsync(Manifest(), "1.1.0-beta.1")).State == AppUpdateCheckState.NoBetaRelease, "Beta selected a stable release.");
         var release = Manifest();
         foreach (var pair in new[] { ("1.1.0-rc.8+commit", AppUpdateCheckState.Available), ("1.0.9", AppUpdateCheckState.Available),
             ("1.1.0", AppUpdateCheckState.UpToDate), ("1.1.0+different", AppUpdateCheckState.UpToDate), ("1.1.1", AppUpdateCheckState.UpToDate),
@@ -89,7 +95,7 @@ internal static class ApplicationUpdateChecks
         }) Require((await CheckFixtureAsync(release, "1.0.0", apiChange: change)).State == AppUpdateCheckState.Unavailable,
             "Malformed or unbound GitHub release metadata supplied an update.");
         foreach (var changed in new[] { release with { Product = "Wrong" }, release with { Channel = "preview" },
-            release with { AssetUrl = AssetUrl("v1.0.9", AppUpdateIdentity.AssetName) }, release with { SizeBytes = release.SizeBytes + 1 },
+            release with { AssetUrl = AssetUrl("v1.0.9", AppUpdateIdentity.AssetNameFor("1.0.9")) }, release with { SizeBytes = release.SizeBytes + 1 },
             release with { Version = "1.1.1", Tag = "v1.1.1" } })
             Require((await CheckFixtureAsync(release, "1.0.0", manifestBytes: JsonSerializer.SerializeToUtf8Bytes(changed, CamelJson))).State == AppUpdateCheckState.Unavailable,
                 "A malformed/mismatched manifest supplied an update.");
@@ -145,10 +151,10 @@ internal static class ApplicationUpdateChecks
         manifestBytes ??= JsonSerializer.SerializeToUtf8Bytes(release, CamelJson);
         var api = JsonSerializer.SerializeToNode(new
         {
-            tag_name = release.Tag, draft = false, prerelease = false,
+            tag_name = release.Tag, draft = false, prerelease = release.Channel == "beta",
             assets = new[]
             {
-                new { name = AppUpdateIdentity.AssetName, browser_download_url = release.AssetUrl, size = release.SizeBytes,
+                new { name = release.AssetName, browser_download_url = release.AssetUrl, size = release.SizeBytes,
                     state = "uploaded", digest = "sha256:" + release.Sha256 },
                 new { name = AppUpdateIdentity.ManifestName, browser_download_url = AssetUrl(release.Tag, AppUpdateIdentity.ManifestName),
                     size = (long)manifestBytes.Length, state = "uploaded", digest = "sha256:" + Convert.ToHexString(SHA256.HashData(manifestBytes)) }
@@ -158,6 +164,8 @@ internal static class ApplicationUpdateChecks
         using var handler = new FixtureHandler((request, _) =>
         {
             var uri = request.RequestUri!.AbsoluteUri;
+            if (uri.StartsWith(AppUpdateClient.BetaReleasesUrl, StringComparison.Ordinal))
+                return Task.FromResult(Response(request, new StringContent("[" + api.ToJsonString() + "]")));
             if (uri == AppUpdateClient.LatestReleaseUrl)
                 return Task.FromResult(redirectApi ? Redirect("https://api.github.com/other") : Response(request, new StringContent(api.ToJsonString())));
             if (uri == AssetUrl(release.Tag, AppUpdateIdentity.ManifestName))

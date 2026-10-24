@@ -9,6 +9,7 @@ namespace PcNinja.Win11Upgrade.Core;
 public sealed class AppUpdateClient : IDisposable
 {
     public const string LatestReleaseUrl = "https://api.github.com/repos/" + AppUpdateIdentity.Repository + "/releases/latest";
+    public const string BetaReleasesUrl = "https://api.github.com/repos/" + AppUpdateIdentity.Repository + "/releases?per_page=5&page=";
     internal const int MaximumJsonBytes = 128 * 1024;
     private static readonly TimeSpan CheckTimeout = TimeSpan.FromSeconds(15);
     private static readonly TimeSpan DownloadTimeout = TimeSpan.FromMinutes(10);
@@ -45,19 +46,18 @@ public sealed class AppUpdateClient : IDisposable
         try
         {
             var installed = ReleaseVersion.Parse(installedVersion);
-            using var response = await GetAsync(new Uri(LatestReleaseUrl), false, deadline.Token).ConfigureAwait(false);
-            if (response.StatusCode == HttpStatusCode.NotFound)
-                return new(AppUpdateCheckState.NoStableRelease, "No stable application release has been published yet.");
-            response.EnsureSuccessStatusCode();
-            var releaseBytes = await ReadJsonBytesAsync(response, null, deadline.Token).ConfigureAwait(false);
-            using var releaseJson = ReadJson(releaseBytes);
-            var root = releaseJson.RootElement;
-            if (root.GetProperty("draft").GetBoolean() || root.GetProperty("prerelease").GetBoolean())
-                throw new InvalidDataException("The application release is not stable.");
+            var selected = await SelectReleaseAsync(installed.IsBeta, deadline.Token).ConfigureAwait(false);
+            if (selected is null)
+                return installed.IsBeta ? new(AppUpdateCheckState.NoBetaRelease, "No Beta application release has been published yet.")
+                    : new(AppUpdateCheckState.NoStableRelease, "No stable application release has been published yet.");
+            var root = selected.Value;
             var tag = root.GetProperty("tag_name").GetString() ?? "";
-            if (!tag.StartsWith('v') || !ReleaseVersion.TryParse(tag[1..], out var available) || !available!.IsStable)
-                throw new InvalidDataException("The release tag is not a stable semantic version.");
-            var asset = FindAsset(root, tag, AppUpdateIdentity.AssetName, AppUpdateIdentity.MaximumBytes);
+            if (!tag.StartsWith('v') || !ReleaseVersion.TryParse(tag[1..], out var available) ||
+                root.GetProperty("draft").GetBoolean() ||
+                root.GetProperty("prerelease").GetBoolean() != installed.IsBeta ||
+                (installed.IsBeta ? !available!.IsBeta : !available!.IsStable))
+                throw new InvalidDataException("The release is outside this application's update channel.");
+            var asset = FindAsset(root, tag, AppUpdateIdentity.AssetNameFor(tag[1..]), AppUpdateIdentity.MaximumBytes);
             var manifestAsset = FindAsset(root, tag, AppUpdateIdentity.ManifestName, MaximumJsonBytes);
             using var manifestResponse = await GetAsync(new Uri(manifestAsset.Url), true, deadline.Token).ConfigureAwait(false);
             manifestResponse.EnsureSuccessStatusCode();
@@ -67,18 +67,51 @@ public sealed class AppUpdateClient : IDisposable
             var manifest = manifestJson.RootElement.Deserialize<AppUpdateManifest>(ManifestJson)
                 ?? throw new InvalidDataException("The update manifest is empty.");
             ValidateManifest(manifest);
-            if (manifest.Tag != tag || manifest.AssetUrl != asset.Url || manifest.SizeBytes != asset.Size)
+            if (manifest.Tag != tag || manifest.Channel != (installed.IsBeta ? "beta" : "stable") ||
+                manifest.AssetUrl != asset.Url || manifest.SizeBytes != asset.Size)
                 throw new InvalidDataException("The update manifest does not match its published release assets.");
             VerifyOptionalDigest(asset.Digest, manifest.Sha256);
             return available.CompareTo(installed) > 0
                 ? new(AppUpdateCheckState.Available, $"Application update {manifest.Version} is available.", manifest)
-                : new(AppUpdateCheckState.UpToDate, "No newer stable application version is available.");
+                : new(AppUpdateCheckState.UpToDate, "No newer application version is available in this channel.");
         }
         catch (OperationCanceledException) when (!token.IsCancellationRequested)
         { return new(AppUpdateCheckState.Unavailable, "The application update check timed out. Normal tool use can continue."); }
         catch (Exception ex) when (ex is HttpRequestException or IOException or InvalidDataException or JsonException or FormatException or
             InvalidOperationException or KeyNotFoundException or ArgumentException)
         { return new(AppUpdateCheckState.Unavailable, "Application updates are unavailable or release verification failed. Normal tool use can continue."); }
+    }
+
+    private async Task<JsonElement?> SelectReleaseAsync(bool beta, CancellationToken token)
+    {
+        if (!beta)
+        {
+            using var response = await GetAsync(new Uri(LatestReleaseUrl), false, token).ConfigureAwait(false);
+            if (response.StatusCode == HttpStatusCode.NotFound) return null;
+            response.EnsureSuccessStatusCode();
+            using var json = ReadJson(await ReadJsonBytesAsync(response, null, token).ConfigureAwait(false));
+            return json.RootElement.Clone();
+        }
+        JsonElement? selected = null;
+        ReleaseVersion? best = null;
+        // Bounded preview discovery; stable builds never request this list.
+        for (var page = 1; page <= 3; page++)
+        {
+            using var response = await GetAsync(new Uri(BetaReleasesUrl + page), false, token).ConfigureAwait(false);
+            response.EnsureSuccessStatusCode();
+            using var json = ReadJson(await ReadJsonBytesAsync(response, null, token).ConfigureAwait(false));
+            var entries = json.RootElement.EnumerateArray().ToArray();
+            if (entries.Length > 5) throw new InvalidDataException("The Beta release page exceeds its entry limit.");
+            foreach (var entry in entries)
+            {
+                if (entry.GetProperty("draft").GetBoolean() || !entry.GetProperty("prerelease").GetBoolean()) continue;
+                var tag = entry.GetProperty("tag_name").GetString() ?? "";
+                if (!tag.StartsWith('v') || !ReleaseVersion.TryParse(tag[1..], out var version) || !version!.IsBeta) continue;
+                if (best is null || version.CompareTo(best) > 0) { best = version; selected = entry.Clone(); }
+            }
+            if (entries.Length < 5) break;
+        }
+        return selected;
     }
 
     /// <summary>The caller owns staging and must discard all output if this method fails.</summary>
@@ -129,12 +162,17 @@ public sealed class AppUpdateClient : IDisposable
     public static void ValidateManifest(AppUpdateManifest release)
     {
         if (release is null || release.SchemaVersion != 1 || release.Product != AppUpdateIdentity.Product ||
-            release.Repository != AppUpdateIdentity.Repository || release.Channel != "stable" ||
-            !ReleaseVersion.TryParse(release.Version, out var version) || !version!.IsStable || release.Version.Contains('+') ||
-            release.Tag != "v" + release.Version || release.AssetName != AppUpdateIdentity.AssetName ||
+            release.Repository != AppUpdateIdentity.Repository ||
+            !ReleaseVersion.TryParse(release.Version, out var version) ||
+            !(release.Channel == "stable" && version!.IsStable || release.Channel == "beta" && version!.IsBeta) || release.Version.Contains('+') ||
+            release.Tag != "v" + release.Version || release.AssetName != AppUpdateIdentity.AssetNameFor(release.Version) ||
             release.SizeBytes <= 0 || release.SizeBytes > AppUpdateIdentity.MaximumBytes ||
-            !IsPinnedUrl(release.AssetUrl, release.Tag, AppUpdateIdentity.AssetName) ||
+            !IsPinnedUrl(release.AssetUrl, release.Tag, release.AssetName) ||
             release.ReleaseNotesUrl != ReleasePage(release.Tag) ||
+            release.Importance is not ("normal" or "critical") ||
+            string.IsNullOrWhiteSpace(release.Message) || release.Message.Length > 1200 ||
+            release.Message.Any(c => char.IsControl(c) && c is not ('\r' or '\n')) ||
+            release.Message.Any(c => c is >= '\u202a' and <= '\u202e' or >= '\u2066' and <= '\u2069') ||
             release.Sha256 is not { Length: 64 } || !release.Sha256.All(Uri.IsHexDigit))
             throw new InvalidDataException("The application update manifest has invalid identity, version, release URL, size or SHA-256.");
     }

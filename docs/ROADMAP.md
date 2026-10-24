@@ -1,5 +1,16 @@
 # Roadmap
 
+## Current: owner-approved Beta updater trial
+
+This section supersedes the older Program Files/first-stable test plan below.
+See [portable updates](APPLICATION-UPDATES.md) for the implemented contract.
+Prepare/publish Beta 1 only after safe local/CI/artifact checks; wait for the owner
+to open it before publishing Beta 2. Two version-named EXEs beside each other,
+explicit download/run consent, Regular/Critical summary and GitHub notes, no
+original overwrite/rename and no Program Files. Beta is an isolated non-latest
+preview channel. After the live demo and field acceptance, consider RC9 and
+then a separately approved official V1.1. Do not merge or publish stable now.
+
 ## Current owner scope: stability, then application updates
 
 The owner reaffirmed this scope on 2026-10-24:

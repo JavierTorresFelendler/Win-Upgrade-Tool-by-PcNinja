@@ -15,6 +15,9 @@ public sealed class ReleaseVersion : IComparable<ReleaseVersion>
     public int Patch { get; }
     public string Value { get; }
     public bool IsStable => _prerelease.Length == 0;
+    public bool IsBeta => _prerelease.Length == 2 && _prerelease[0] == "beta" &&
+        int.TryParse(_prerelease[1], NumberStyles.None, CultureInfo.InvariantCulture, out var number) && number > 0 && number <= 65534;
+    public string Prerelease => string.Join('.', _prerelease);
 
     private ReleaseVersion(int major, int minor, int patch, string value, string[] prerelease)
     {

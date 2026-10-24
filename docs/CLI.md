@@ -53,67 +53,45 @@ drives, extracted folders, ISO paths, and destination directories. The EXE
 does not modify `$PROFILE`; run `help completion` before adding the generated
 script to a persistent profile.
 
-## Application updates (development only)
+## Application updates (Beta trial)
 
-These commands update the assistant EXE, **not Windows**, through the same pinned
-stable GitHub service as the development GUI:
-
-```powershell
-.\Windows-Upgrade-Assistant-By-PcNinja.exe help app-update
-.\Windows-Upgrade-Assistant-By-PcNinja.exe app-update check --json
-.\Windows-Upgrade-Assistant-By-PcNinja.exe app-update status --json
-```
-
-`check` fetches the project's latest stable release metadata and same-release
-manifest, not the EXE. Drafts/RCs and equal/older versions are not offers. Missing
-stable release is a normal result. Offline/verification failure returns exit 4;
-there is no arbitrary feed or preview switch. `status` stays offline and returns
-the fixed target path and bounded local `lastAttempt`, or null when unavailable.
-That record can be stale and does not prove the current EXE's identity.
-
-Only after deciding to install, run from an elevated terminal:
+Read [portable updates and live Beta acceptance](APPLICATION-UPDATES.md). Published
+RC8 has no updater. Substitute the exact version-named EXE being used:
 
 ```powershell
-.\Windows-Upgrade-Assistant-By-PcNinja.exe app-update install --yes --json
+.\Windows-Upgrade-Assistant-By-PcNinja-V1.1-Beta1.exe help app-update
+.\Windows-Upgrade-Assistant-By-PcNinja-V1.1-Beta1.exe app-update check --json
+.\Windows-Upgrade-Assistant-By-PcNinja-V1.1-Beta1.exe app-update status --json
+# Explicit elevated consent to download/verify and stage a later version:
+.\Windows-Upgrade-Assistant-By-PcNinja-V1.1-Beta1.exe app-update run --yes --json
 ```
 
-The exact verified EXE is saved to
-`%ProgramFiles%\PcNinja\WindowsUpgradeAssistant\Windows-Upgrade-Assistant-By-PcNinja.exe`.
-An original outside that protected folder is untouched. Running from ISO/network/
-removable/non-NTFS/reparse paths is refused; first copy the app to ordinary fixed
-local NTFS. Missing `--yes` or elevation fails before the network/install action.
-Concurrent PcNinja preparation/Setup, external Windows Setup, pending Windows
-restart or unavailable safety state blocks installation; there is no force switch.
+check is metadata only, status is offline. Beta discovers Beta only; stable/RC
+discovers stable only. Returned release metadata includes importance, message and
+the exact GitHub release-notes URL. Critical does not imply download consent.
 
-`APP_UPDATE_HANDOFF_STARTED` means only that the verified helper is ready to wait
-for this exact process to exit and apply the update. It is **not installed-success
-proof**. The CLI neither relaunches a GUI nor replays commands/upgrade arguments.
-After helper completion, inspect `app-update status --json` and verify the actual
-protected copy with its `--version`; a missing/stale helper result is not success.
+New version-named files stay beside the RUNNING EXE, not the caller's CWD.
+The old file is unchanged. There is no Program Files fallback, overwrite/rename
+or Copy N. Existing exact files are verified for reuse, not replaced on mismatch.
+run needs Administrator and --yes, never UAC-relaunches or opens a GUI/browser.
+The unreleased install verb remains an alias only.
 
-All `app-update` JSON results use the existing schema/result fields and add
-`command=app-update`, `applicationUpdated=false` and `setupStarted=false`.
-`readyForRestart` is always false, including exit 0/handoff. A nested last-attempt
-success is helper evidence, not an OS-upgrade or restart authorization.
+APP_UPDATE_HANDOFF_STARTED means verified helper handoff, not completed running.
+Inspect later local status, operationId and the new EXE version. Every app-update
+result keeps applicationUpdated=false/setupStarted=false/readyForRestart=false.
+No EXE's update result authorizes restarting Windows.
 
-| Exit | resultCode | Meaning |
-| ---: | --- | --- |
-| 0 | APP_UPDATE_AVAILABLE | Newer stable discovered; nothing installed |
-| 0 | APP_UPDATE_CURRENT / APP_UPDATE_NO_STABLE_RELEASE | No candidate to install |
-| 0 | APP_UPDATE_STATUS | Offline local status only |
-| 0 | APP_UPDATE_HANDOFF_STARTED | Staged/helper handoff; later apply not yet confirmed |
-| 2 | INVALID_ARGUMENTS | Correct command/subcommand/options |
-| 3 | APP_UPDATE_BLOCKED | Resolve operation/Setup/restart/target blocker |
-| 4 | APP_UPDATE_CHECK_UNAVAILABLE / APP_UPDATE_FAILED | Check, transfer, verification or helper failure |
-| 5 | ADMINISTRATOR_REQUIRED / APP_UPDATE_PERMISSION_DENIED | Explicit elevated installation required |
-| 6 | APP_UPDATE_CONSENT_REQUIRED / APP_UPDATE_CANCELLED | No consent, or cancellation |
+| Exit | Result codes |
+| ---: | --- |
+| 0 | APP_UPDATE_AVAILABLE, APP_UPDATE_CURRENT, APP_UPDATE_NO_STABLE_RELEASE, APP_UPDATE_NO_BETA_RELEASE, APP_UPDATE_STATUS, APP_UPDATE_HANDOFF_STARTED |
+| 2 | INVALID_ARGUMENTS |
+| 3 | APP_UPDATE_BLOCKED |
+| 4 | APP_UPDATE_CHECK_UNAVAILABLE, APP_UPDATE_FAILED |
+| 5 | ADMINISTRATOR_REQUIRED, APP_UPDATE_PERMISSION_DENIED |
+| 6 | APP_UPDATE_CONSENT_REQUIRED, APP_UPDATE_CANCELLED |
 
-Current released binaries are unsigned. Pinned URLs and SHA-256 provide integrity
-against the manifest, not protection from compromise of its publishing account.
-Signed current/installed apps require the same trusted certificate in a successor.
-See [trust, private staging/recovery and pending VM acceptance](APPLICATION-UPDATES.md).
-Neither these commands nor their test fixtures publish stable releases or start
-Windows Setup/reboot. Do not add OS-upgrade flags to this command.
+No arbitrary feed/destination switches, Setup/restart bypass or unsigned-publisher
+guarantee is offered. See the guide for local NTFS/staging/signing limitations.
 
 ## Inspect the computer and available sources
 

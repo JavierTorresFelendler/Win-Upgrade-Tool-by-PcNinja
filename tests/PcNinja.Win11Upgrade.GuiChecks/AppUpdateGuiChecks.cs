@@ -31,6 +31,7 @@ internal static class AppUpdateGuiChecks
             var windowsConfirmations = 0;
             var installs = 0;
             Set("_automaticAppUpdateCheck", false);
+            Set("_offerAppUpdates", false);
             Set("_confirmUpgrade", new Func<string, string, bool>((_, _) => { windowsConfirmations++; return false; }));
             Set("_showAppUpdateFailure", new Action<string>(failures.Add));
             Set("_confirmAppUpdate", new Func<string, bool>(message => { confirmations.Add(message); return false; }));
@@ -74,10 +75,12 @@ internal static class AppUpdateGuiChecks
             Set("_lastErrorDetails", mediaDetails);
             var restart = Field<CheckBox>("_autoRestart").Checked;
             var quiet = Field<CheckBox>("_quietSetup").Checked;
+            var assetName = AppUpdateIdentity.AssetNameFor("9.9.9");
             var release = new AppUpdateManifest(1, AppUpdateIdentity.Product, AppUpdateIdentity.Repository, "stable",
-                "9.9.9", "v9.9.9", AppUpdateIdentity.AssetName,
-                $"https://github.com/{AppUpdateIdentity.Repository}/releases/download/v9.9.9/{AppUpdateIdentity.AssetName}",
+                "9.9.9", "v9.9.9", assetName,
+                $"https://github.com/{AppUpdateIdentity.Repository}/releases/download/v9.9.9/{assetName}",
                 123456, new string('a', 64), $"https://github.com/{AppUpdateIdentity.Repository}/releases/tag/v9.9.9");
+            CheckOfferDialogs(release);
 
             void AssertMediaPreserved()
             {
@@ -115,6 +118,12 @@ internal static class AppUpdateGuiChecks
                 !confirmations[0].Contains("original portable copy", StringComparison.OrdinalIgnoreCase))
                 throw new Exception("Declined app-update consent entered installation or omitted its app-only destination contract.");
             AssertIdle();
+
+            Set("_offerAppUpdates", true);
+            Available();
+            if (confirmations.Count != 2 || installs != 0)
+                throw new Exception("New-version offer did not require consent before any download action.");
+            Set("_offerAppUpdates", false);
 
             foreach (var state in new[] { AppUpdateCheckState.UpToDate, AppUpdateCheckState.NoStableRelease, AppUpdateCheckState.Unavailable })
             {
@@ -206,7 +215,7 @@ internal static class AppUpdateGuiChecks
             {
                 token.ThrowIfCancellationRequested();
                 if (!ReferenceEquals(candidate, release)) throw new Exception("Handoff lost the discovered candidate.");
-                return Task.FromResult(new AppUpdateHandoffResult(release.Version, @"C:\Fixture-only\" + AppUpdateIdentity.AssetName,
+                return Task.FromResult(new AppUpdateHandoffResult(release.Version, @"C:\Fixture-only\" + assetName,
                     Guid.NewGuid().ToString("N"), 12345, "Fixture handoff only; no helper process started."));
             }));
             Pump(Begin("InstallAppUpdateAsync"));
@@ -232,6 +241,30 @@ internal static class AppUpdateGuiChecks
         }
         task.GetAwaiter().GetResult();
         Application.DoEvents();
+    }
+
+    private static void CheckOfferDialogs(AppUpdateManifest release)
+    {
+        foreach (var critical in new[] { false, true })
+        {
+            var pages = new List<string>();
+            var candidate = release with { Importance = critical ? "critical" : "normal", Message = "Publisher summary fixture" };
+            using var offer = MainForm.CreateAppUpdateOffer(candidate, candidate.Message, pages.Add);
+            IEnumerable<Control> Children(Control owner) => owner.Controls.Cast<Control>()
+                .SelectMany(child => new[] { child }.Concat(Children(child)));
+            var controls = Children(offer).ToArray();
+            var badge = controls.OfType<Label>().Single(label => label is not LinkLabel);
+            if (!badge.Text.StartsWith(critical ? "CRITICAL UPDATE" : "REGULAR UPDATE") ||
+                !controls.OfType<TextBox>().Single().Text.Contains(candidate.Message) ||
+                !controls.OfType<Button>().Any(button => button.Text == "Download and run the new version") ||
+                ((Button)offer.CancelButton!).Text != "Not now" || !ReferenceEquals(offer.AcceptButton, offer.CancelButton))
+                throw new Exception("Regular/critical offer lost its badge, summary, wording or safe default.");
+            var notes = controls.OfType<LinkLabel>().Single();
+            typeof(LinkLabel).GetMethod("OnLinkClicked", BindingFlags.Instance | BindingFlags.NonPublic)!
+                .Invoke(notes, [new LinkLabelLinkClickedEventArgs(notes.Links[0])]);
+            if (!pages.SequenceEqual(new[] { candidate.ReleaseNotesUrl }) || offer.DialogResult != DialogResult.None)
+                throw new Exception("Release notes did not open the exact GitHub release or implied download consent.");
+        }
     }
 
     private sealed class FormPumpContext(Control owner) : SynchronizationContext

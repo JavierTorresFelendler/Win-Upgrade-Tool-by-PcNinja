@@ -20,7 +20,7 @@ function New-FixtureArtifacts($Identity) {
     foreach ($name in @($Identity.AssetName, 'SHA256SUMS.txt', 'BUILD-INFO.txt')) {
         [IO.File]::WriteAllText((Join-Path $directory $name), "ordinary harmless fixture bytes for $name", $encoding)
     }
-    if ($Identity.IsStable) {
+    if ($Identity.HasManifest) {
         $exe = Get-Item -LiteralPath (Join-Path $directory $Identity.AssetName)
         $hash = (Get-FileHash -LiteralPath $exe.FullName -Algorithm SHA256).Hash
         $manifest = New-PcNinjaAppUpdateManifest $Identity $exe.Length $hash
@@ -102,9 +102,11 @@ function Invoke-PublicationFixture($Identity, [string]$Mode = 'Good') {
 try {
     $rc = Get-PcNinjaVersionIdentity '1.1.0-rc.8'
     $stable = Get-PcNinjaVersionIdentity '1.1.0'
+    $beta = Get-PcNinjaVersionIdentity '1.1.0-beta.1'
+    Require ($beta.Channel -ceq 'beta' -and $beta.AssetName -ceq 'Windows-Upgrade-Assistant-By-PcNinja-V1.1-Beta1.exe') 'Beta filename/channel mismatch.'
     Require (-not $rc.IsStable -and $rc.NotesPath -ceq 'docs/RELEASE-RC8.md' -and $rc.FileVersion -ceq '1.1.0.8') 'RC identity/notes contract changed.'
     Require ($stable.IsStable -and $stable.NotesPath -ceq 'docs/RELEASE-1.1.0.md' -and $stable.FileVersion -ceq '1.1.0.0') 'Stable identity/notes contract changed.'
-    foreach ($identity in @($rc, $stable)) {
+    foreach ($identity in @($rc, $stable, $beta)) {
         Assert-PcNinjaExecutableIdentity $identity $identity.Product $identity.FileVersion "$($identity.Version)+$fixtureCommit" 42 $fixtureCommit
         MustReject { Assert-PcNinjaExecutableIdentity $identity $identity.Product $identity.FileVersion "$($identity.Version)+$('b' * 40)" 42 $fixtureCommit } 'Stale same-version EXE source commit was accepted.'
         MustReject { Assert-PcNinjaExecutableIdentity $identity $identity.Product $identity.FileVersion $identity.Version 42 $fixtureCommit } 'Missing EXE source-commit metadata was accepted.'
@@ -112,7 +114,7 @@ try {
         MustReject { Assert-PcNinjaExecutableIdentity $identity 'Other product' $identity.FileVersion "$($identity.Version)+$fixtureCommit" 42 $fixtureCommit } 'Wrong EXE product was accepted.'
         MustReject { Assert-PcNinjaExecutableIdentity $identity $identity.Product $identity.FileVersion "$($identity.Version)+$fixtureCommit" 100000001 $fixtureCommit } 'Oversize actual EXE metadata was accepted.'
     }
-    foreach ($invalid in @('v1.1.0', '1.1', '1.1.0.0', '01.1.0', '1.1.0-beta.1', '1.1.0+metadata', '1.1.0-rc.08', "1.1.0`n", '70000.1.0')) {
+    foreach ($invalid in @('v1.1.0', '1.1', '1.1.0.0', '01.1.0', '1.1.0-beta.01', '1.1.0-beta.0', '1.1.0+metadata', '1.1.0-rc.08', "1.1.0`n", '70000.1.0')) {
         MustReject { Get-PcNinjaVersionIdentity $invalid } 'Malformed release identity was accepted.'
     }
     $props = Join-Path $fixtureRoot 'Directory.Build.props'
@@ -125,11 +127,15 @@ try {
     $hash = 'A' * 64
     $manifest = New-PcNinjaAppUpdateManifest $stable 42 $hash
     $json = $manifest | ConvertTo-Json -Depth 4
-    $keys = @('schemaVersion', 'product', 'repository', 'channel', 'version', 'tag', 'assetName', 'assetUrl', 'sizeBytes', 'sha256', 'releaseNotesUrl')
-    Require ($manifest.Count -eq 11 -and @($manifest.Keys | Where-Object { $_ -cnotin $keys }).Count -eq 0) 'Manifest fields differ from AppUpdateManifest schema.'
+    $keys = @('schemaVersion', 'product', 'repository', 'channel', 'version', 'tag', 'assetName', 'assetUrl', 'sizeBytes', 'sha256', 'releaseNotesUrl', 'importance', 'message')
+    Require ($manifest.Count -eq 13 -and @($manifest.Keys | Where-Object { $_ -cnotin $keys }).Count -eq 0) 'Manifest fields differ from AppUpdateManifest schema.'
     Require ($manifest.assetUrl -ceq "https://github.com/$($stable.Repository)/releases/download/v1.1.0/$($stable.AssetName)" -and
         $manifest.releaseNotesUrl -ceq "https://github.com/$($stable.Repository)/releases/tag/v1.1.0" -and $manifest.sha256 -ceq $hash.ToLowerInvariant()) 'Manifest URLs/hash are not pinned/canonical.'
     Assert-PcNinjaManifestDocument $stable $json 42 $hash
+    $critical = New-PcNinjaAppUpdateManifest $beta 42 $hash -Importance critical -Message 'Security correction: please download the new version.'
+    Assert-PcNinjaManifestDocument $beta ($critical | ConvertTo-Json) 42 $hash
+    MustReject { New-PcNinjaAppUpdateManifest $beta 42 $hash -Importance urgent } 'Unknown importance accepted.'
+    MustReject { New-PcNinjaAppUpdateManifest $beta 42 $hash -Message ('x' * 1201) } 'Unbounded publisher message accepted.'
     MustReject { New-PcNinjaAppUpdateManifest $rc 42 $hash } 'RC created a stable manifest.'
     MustReject { New-PcNinjaAppUpdateManifest $stable 100000001 $hash } 'Oversize EXE entered manifest.'
     MustReject { New-PcNinjaAppUpdateManifest $stable 0 $hash } 'Empty EXE entered manifest.'
@@ -140,10 +146,10 @@ try {
         $json.Replace('releases/download/v1.1.0', 'releases/latest/download'), $json.Replace('"sizeBytes": 42', '"sizeBytes": 43'))) {
         MustReject { Assert-PcNinjaManifestDocument $stable $invalidJson 42 $hash } 'Malformed/unbound manifest document was accepted.'
     }
-    foreach ($identity in @($rc, $stable)) {
+    foreach ($identity in @($rc, $stable, $beta)) {
         $good = Invoke-PublicationFixture $identity
         if ($null -ne $good.Failure) { throw $good.Failure }
-        Require ($good.State.PublishCount -eq 1 -and $good.Result.AssetsVerified -eq $(if ($identity.IsStable) { 4 } else { 3 })) 'Publication asset count/channel changed.'
+        Require ($good.State.PublishCount -eq 1 -and $good.Result.AssetsVerified -eq $(if ($identity.HasManifest) { 4 } else { 3 })) 'Publication asset count/channel changed.'
         $expectedCalls = if ($identity.IsStable) { 'GetRelease,GetLatest,CreateDraft,UploadAssets,GetRelease,GetLatest,Publish,GetRelease,GetLatest' }
             else { 'GetRelease,CreateDraft,UploadAssets,GetRelease,Publish,GetRelease' }
         Require (($good.State.Calls -join ',') -ceq $expectedCalls) 'Publication was not draft/upload/verify/publish-last.'

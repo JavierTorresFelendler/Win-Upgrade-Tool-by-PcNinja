@@ -2,14 +2,14 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $script:Repository = 'JavierTorresFelendler/Windows-Upgrade-Assistant-by-PcNinja'
 $script:Product = 'Windows Upgrade Assistant By PcNinja'
-$script:AssetName = 'Windows-Upgrade-Assistant-By-PcNinja.exe'
+$script:BuildExecutableName = 'Windows-Upgrade-Assistant-By-PcNinja.exe'
 $script:ManifestName = 'update-manifest.json'
 $script:MaximumBytes = 100000000L
 
 function Get-PcNinjaVersionIdentity {
     param([Parameter(Mandatory)][string]$Version)
     $number = '(0|[1-9][0-9]*)'
-    $match = [regex]::Match($Version, "\A$number\.$number\.$number(?:-rc\.$number)?\z")
+    $match = [regex]::Match($Version, "\A$number\.$number\.$number(?:-(?:rc|beta)\.$number)?\z")
     if (-not $match.Success) { throw 'Release identity must be literal x.y.z or x.y.z-rc.N, without build metadata.' }
     $parts = $Version.Split('-')[0].Split('.')
     foreach ($part in $parts) {
@@ -19,15 +19,19 @@ function Get-PcNinjaVersionIdentity {
     $stable = -not $Version.Contains('-')
     $revision = if ($stable) { '0' } else { $Version.Split('.')[-1] }
     $revisionNumber = 0
-    if (-not [int]::TryParse($revision, [ref]$revisionNumber) -or $revisionNumber -gt 65534) { throw 'RC revision exceeds binary metadata limits.' }
-    $label = if ($stable) { $Version } else { "RC$revision" }
+    if (-not [int]::TryParse($revision, [ref]$revisionNumber) -or $revisionNumber -gt 65534 -or (-not $stable -and $revisionNumber -le 0)) { throw 'Prerelease revision exceeds binary metadata limits.' }
+    $beta = $Version.Contains('-beta.')
+    $label = if ($stable) { $Version } elseif ($beta) { "Beta$revision" } else { "RC$revision" }
+    $display = "$($parts[0]).$($parts[1])" + $(if ($parts[2] -eq '0') { '' } else { ".$($parts[2])" })
+    if (-not $stable) { $display += "-$label" }
+    $asset = "Windows-Upgrade-Assistant-By-PcNinja-V$display.exe"
     [pscustomobject]@{
-        Version = $Version; Tag = "v$Version"; IsStable = $stable
-        Channel = $(if ($stable) { 'stable' } else { 'preview' })
+        Version = $Version; Tag = "v$Version"; IsStable = $stable; IsBeta = $beta; HasManifest = ($stable -or $beta)
+        Channel = $(if ($stable) { 'stable' } elseif ($beta) { 'beta' } else { 'preview' })
         Label = $label; NotesPath = "docs/RELEASE-$label.md"
         FileVersion = "$($parts -join '.').$revision"
         Product = $script:Product; Repository = $script:Repository
-        AssetName = $script:AssetName; ManifestName = $script:ManifestName; MaximumBytes = $script:MaximumBytes
+        AssetName = $asset; BuildExecutableName = $script:BuildExecutableName; ManifestName = $script:ManifestName; MaximumBytes = $script:MaximumBytes
     }
 }
 
@@ -40,18 +44,22 @@ function Get-PcNinjaReleaseIdentity {
 }
 
 function New-PcNinjaAppUpdateManifest {
-    param([Parameter(Mandatory)]$Identity, [Parameter(Mandatory)][long]$SizeBytes, [Parameter(Mandatory)][string]$Sha256)
+    param([Parameter(Mandatory)]$Identity, [Parameter(Mandatory)][long]$SizeBytes, [Parameter(Mandatory)][string]$Sha256,
+        [ValidateSet('normal','critical')][string]$Importance = 'normal',
+        [string]$Message = 'A new version of Windows Upgrade Assistant By PcNinja is available.')
     $checked = Get-PcNinjaVersionIdentity $Identity.Version
-    if (-not $checked.IsStable) { throw 'RC releases must not publish a stable application-update manifest.' }
+    if (-not $checked.HasManifest) { throw 'RC releases must not publish an application-update manifest.' }
+    if ([string]::IsNullOrWhiteSpace($Message) -or $Message.Length -gt 1200 -or $Message -match '[\x00-\x09\x0B\x0C\x0E-\x1F\x7F-\x9F\u202A-\u202E\u2066-\u2069]') { throw 'Update message must be bounded plain text without control or direction overrides.' }
     if ($SizeBytes -le 0 -or $SizeBytes -gt $script:MaximumBytes -or $Sha256 -cnotmatch '\A[A-Fa-f0-9]{64}\z') {
         throw 'Stable manifest requires final bounded EXE bytes and a SHA-256 digest.'
     }
     [ordered]@{
-        schemaVersion = 1; product = $script:Product; repository = $script:Repository; channel = 'stable'
-        version = $checked.Version; tag = $checked.Tag; assetName = $script:AssetName
-        assetUrl = "https://github.com/$script:Repository/releases/download/$($checked.Tag)/$script:AssetName"
+        schemaVersion = 1; product = $script:Product; repository = $script:Repository; channel = $checked.Channel
+        version = $checked.Version; tag = $checked.Tag; assetName = $checked.AssetName
+        assetUrl = "https://github.com/$script:Repository/releases/download/$($checked.Tag)/$($checked.AssetName)"
         sizeBytes = $SizeBytes; sha256 = $Sha256.ToLowerInvariant()
         releaseNotesUrl = "https://github.com/$script:Repository/releases/tag/$($checked.Tag)"
+        importance = $Importance; message = $Message
     }
 }
 
@@ -71,8 +79,8 @@ function Get-PcNinjaLocalAssetEvidence {
     param([Parameter(Mandatory)]$Identity, [Parameter(Mandatory)][string]$ArtifactDirectory)
     $checked = Get-PcNinjaVersionIdentity $Identity.Version
     $directory = (Get-Item -LiteralPath $ArtifactDirectory).FullName
-    $names = @($script:AssetName, 'SHA256SUMS.txt', 'BUILD-INFO.txt')
-    if ($checked.IsStable) { $names += $script:ManifestName }
+    $names = @($checked.AssetName, 'SHA256SUMS.txt', 'BUILD-INFO.txt')
+    if ($checked.HasManifest) { $names += $script:ManifestName }
     elseif (Test-Path -LiteralPath (Join-Path $directory $script:ManifestName)) { throw 'An RC artifact directory contains a stable manifest.' }
     $evidence = [Collections.Generic.List[object]]::new()
     foreach ($name in $names) {
@@ -80,7 +88,7 @@ function Get-PcNinjaLocalAssetEvidence {
         if ($file.PSIsContainer -or ($file.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0 -or $file.Length -le 0) {
             throw 'Release assets must be nonempty regular files, never reparse points.'
         }
-        if ($name -eq $script:AssetName -and $file.Length -gt $script:MaximumBytes) { throw 'Portable EXE exceeds 100,000,000 bytes.' }
+        if ($name -eq $checked.AssetName -and $file.Length -gt $script:MaximumBytes) { throw 'Portable EXE exceeds 100,000,000 bytes.' }
         if ($name -eq $script:ManifestName -and $file.Length -gt 131072) { throw 'Stable manifest exceeds its client JSON limit.' }
         $evidence.Add([pscustomobject]@{
             Name = $name; Path = $file.FullName; Size = [long]$file.Length
@@ -88,7 +96,7 @@ function Get-PcNinjaLocalAssetEvidence {
             Url = "https://github.com/$script:Repository/releases/download/$($checked.Tag)/$name"
         })
     }
-    if ($checked.IsStable) {
+    if ($checked.HasManifest) {
         Assert-PcNinjaManifestDocument $checked (Get-Content -LiteralPath (Join-Path $directory $script:ManifestName) -Raw) $evidence[0].Size $evidence[0].Sha256
     }
     $evidence.ToArray()
@@ -97,12 +105,14 @@ function Get-PcNinjaLocalAssetEvidence {
 function Assert-PcNinjaManifestDocument {
     param([Parameter(Mandatory)]$Identity, [Parameter(Mandatory)][string]$ManifestText,
         [Parameter(Mandatory)][long]$SizeBytes, [Parameter(Mandatory)][string]$Sha256)
-    $expected = New-PcNinjaAppUpdateManifest $Identity $SizeBytes $Sha256
     $options = [System.Text.Json.JsonDocumentOptions]::new()
     $options.MaxDepth = 16
     $document = [System.Text.Json.JsonDocument]::Parse($ManifestText, $options)
     try {
         if ($document.RootElement.ValueKind -ne [System.Text.Json.JsonValueKind]::Object) { throw 'Manifest root must be an object.' }
+        $importance = $document.RootElement.GetProperty('importance').GetString()
+        $message = $document.RootElement.GetProperty('message').GetString()
+        $expected = New-PcNinjaAppUpdateManifest $Identity $SizeBytes $Sha256 -Importance $importance -Message $message
         $properties = @($document.RootElement.EnumerateObject())
         if ($properties.Count -ne $expected.Count) { throw 'Stable manifest fields differ from the client schema.' }
         $seen = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
@@ -130,7 +140,7 @@ function Assert-PcNinjaUploadedAssets {
         throw 'GitHub release identity/channel/draft state changed.'
     }
     $assets = @($Release.assets)
-    $wanted = if ($Identity.IsStable) { 4 } else { 3 }
+    $wanted = if ($Identity.HasManifest) { 4 } else { 3 }
     if ($assets.Count -ne $wanted -or $ExpectedAssets.Count -ne $wanted) { throw 'Release asset count differs from its channel contract.' }
     $ids = [Collections.Generic.HashSet[long]]::new()
     foreach ($expected in $ExpectedAssets) {

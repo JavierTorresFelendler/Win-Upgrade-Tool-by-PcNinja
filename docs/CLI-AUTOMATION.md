@@ -100,28 +100,25 @@ first reboot; Windows can restart again during subsequent installation phases.
 Windows 11 retains `/eula accept`; Windows 10 does not gain that unsupported flag.
 All edition/language/index/space/signature/unsafe-media checks remain in Core.
 
-## Application-update automation (development only)
+## Application-update automation (Beta trial)
 
-Use the separate `app-update` subcommands, never `upgrade`, to check/install an
-assistant release. `check --json` needs no elevation and reads only pinned stable
-GitHub metadata/manifest; `status --json` is offline. Installation explicitly
-requires elevation and `app-update install --yes --json`. It never UAC-relaunches,
-opens a GUI/browser prompt, runs Setup or requests a reboot. No hidden input or
-original-command replay occurs. See the [CLI result table](CLI.md#application-updates-development-only).
+Use app-update check/status/run, never upgrade, to update the portable tool.
+check reads metadata only; status stays offline. Explicit elevated
+`app-update run --yes --json` consents to transfer/staging, not Windows actions.
+The unreleased install verb remains an alias. CLI never opens a GUI/browser,
+replays upgrade arguments or asks for hidden input.
 
-Capture stdout and `$LASTEXITCODE` through a pipeline as in the invocation above.
-An exit-0 `APP_UPDATE_HANDOFF_STARTED` is not completed installation: the helper
-applies only after this parent exits. A controller must inspect subsequent local
-`app-update status` evidence and the protected EXE's actual `--version`; missing,
-stale, timeout or unparsable evidence remains unconfirmed. CLI never reopens the
-new GUI. The original portable file outside the Program Files target is untouched.
+New version-named EXEs stay beside the current EXE; no Program Files relocation,
+original overwrite/rename or numbered copies. An existing exact file is verified
+for reuse; unsafe/mismatched locations fail rather than silently relocating.
+Beta and stable channels remain isolated. JSON release includes importance,
+message and exact GitHub notes URL. Critical never grants implicit consent.
 
-Every updater result has `applicationUpdated=false`, `setupStarted=false` and
-`readyForRestart=false`. Do not treat app-update exit 0 or nested helper success
-as an OS success/restart permission; retain the exact upgrade-only readiness
-predicate above. Busy PcNinja work, external Setup and recognized pending-restart
-state block installation rather than force-close or bypass safety. Live remote
-agent use and two-stable-version disposable-VM acceptance remain separate tests;
-no stable release is published by this development work.
+Capture stdout and process exit through a pipeline. APP_UPDATE_HANDOFF_STARTED
+means helper handoff, not successful run: correlate subsequent operationId/local
+status and actual new EXE --version. Every updater result retains
+applicationUpdated=false, setupStarted=false and readyForRestart=false. An
+updater result never authorizes an OS restart. Agent/live helper acceptance is
+distinct from mocks/CI. See [application updates](APPLICATION-UPDATES.md).
 
 Reference: [Microsoft Windows Setup options: Quiet, NoReboot and EULA](https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/windows-setup-command-line-options).

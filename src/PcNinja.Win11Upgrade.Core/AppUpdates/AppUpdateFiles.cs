@@ -43,29 +43,27 @@ public sealed class AppUpdateWorkspace : IDisposable
     private bool _cleanupAllowed;
     private bool _disposed;
 
-    public static string InstallDirectory => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "PcNinja", "WindowsUpgradeAssistant");
-    public static string InstalledExecutablePath => Path.Combine(InstallDirectory, AppUpdateIdentity.AssetName);
+    public const string StateDirectoryName = ".pcninja-updates";
+    public string SourceDirectory { get; }
+    public string StateDirectory => Path.Combine(SourceDirectory, StateDirectoryName);
     public string DirectoryPath { get; }
     public string CandidatePath => Path.Combine(DirectoryPath, "candidate.exe");
     public string HelperPath => Path.Combine(DirectoryPath, "UpdateHelper.exe");
     public string RequestPath => Path.Combine(DirectoryPath, "request.json");
-    public string BackupPath => Path.Combine(DirectoryPath, "previous.exe");
-    public string TargetPath { get; }
 
-    private AppUpdateWorkspace(string installDirectory, string operationId, DirectoryAnchors anchors, bool cleanupAllowed)
+    private AppUpdateWorkspace(string sourceDirectory, string operationId, DirectoryAnchors anchors, bool cleanupAllowed)
     {
-        DirectoryPath = Path.Combine(installDirectory, ".updates", operationId);
-        TargetPath = Path.Combine(installDirectory, AppUpdateIdentity.AssetName);
+        SourceDirectory = sourceDirectory;
+        DirectoryPath = Path.Combine(StateDirectory, operationId);
         _anchors = anchors;
         _cleanupAllowed = cleanupAllowed;
     }
 
-    public static AppUpdateWorkspace Create(string operationId, long candidateBytes, long helperBytes) =>
-        OpenCore(operationId, candidateBytes, helperBytes, create: true, fixtureParent: null);
+    public static AppUpdateWorkspace Create(string sourceDirectory, string operationId, long candidateBytes, long helperBytes) =>
+        OpenCore(operationId, candidateBytes, helperBytes, create: true, sourceDirectory);
 
-    public static AppUpdateWorkspace Open(string operationId) =>
-        OpenCore(operationId, 0, 0, create: false, fixtureParent: null);
+    public static AppUpdateWorkspace Open(string sourceDirectory, string operationId) =>
+        OpenCore(operationId, 0, 0, create: false, sourceDirectory);
 
     // Test-only API: one explicitly named random child of the current temp folder.
     // Never exposed by application arguments or by the production Create/Open path.
@@ -74,28 +72,22 @@ public sealed class AppUpdateWorkspace : IDisposable
     internal static AppUpdateWorkspace OpenFixture(string parent, string operationId) =>
         OpenCore(operationId, 0, 0, false, ValidateFixtureParent(parent));
 
-    private static AppUpdateWorkspace OpenCore(string operationId, long candidateBytes, long helperBytes, bool create, string? fixtureParent)
+    private static AppUpdateWorkspace OpenCore(string operationId, long candidateBytes, long helperBytes, bool create, string sourceDirectory)
     {
         operationId = NormalizeOperationId(operationId);
         var required = create ? RequiredFreeBytes(candidateBytes, helperBytes) : 0;
-        var parent = fixtureParent ?? Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+        var parent = NormalizeLocalPath(sourceDirectory);
         var anchors = AnchorLocalChain(parent);
         try
         {
-            if (fixtureParent is null) ValidateTrustedAncestorDescriptor(ReadDescriptor(anchors.Last));
             if (create && new DriveInfo(Path.GetPathRoot(parent)!).AvailableFreeSpace < required)
                 throw new IOException("There is not enough free space for the application candidate, helper and update safety margin. Windows upgrade workspace is checked separately.");
-            var productParent = fixtureParent is null ? Path.Combine(parent, "PcNinja") : parent;
-            if (fixtureParent is null) anchors.Add(OpenSharedProductParent(productParent, create));
-            var install = Path.Combine(productParent, "WindowsUpgradeAssistant");
-            anchors.Add(OpenControlledDirectory(install, false, create));
-            var staging = Path.Combine(install, ".updates");
+            var staging = Path.Combine(parent, StateDirectoryName);
             anchors.Add(OpenControlledDirectory(staging, true, create));
+            if (create) File.SetAttributes(staging, File.GetAttributes(staging) | FileAttributes.Hidden);
             var operation = Path.Combine(staging, operationId);
             anchors.Add(OpenControlledDirectory(operation, true, create, requireNew: create));
-            var workspace = new AppUpdateWorkspace(install, operationId, anchors, cleanupAllowed: create);
-            workspace.ValidateTargetSecurity();
-            return workspace;
+            return new AppUpdateWorkspace(parent, operationId, anchors, cleanupAllowed: create);
         }
         catch { anchors.Dispose(); throw; }
     }
@@ -149,7 +141,7 @@ public sealed class AppUpdateWorkspace : IDisposable
     public void CleanupUncommitted()
     {
         EnsureAlive();
-        if (!_cleanupAllowed || ExistsExactly(BackupPath))
+        if (!_cleanupAllowed)
             throw new InvalidOperationException("Update recovery or helper handoff is present; staging is retained.");
         var files = new List<SafeFileHandle>();
         try
@@ -163,7 +155,6 @@ public sealed class AppUpdateWorkspace : IDisposable
                 files.Add(handle);
                 ValidateControlledDescriptor(ReadDescriptor(handle), privateScope: true, requireProtected: false);
             }
-            if (ExistsExactly(BackupPath)) throw new InvalidOperationException("An update backup appeared; recovery files were retained.");
             foreach (var file in files)
             {
                 var disposition = new FileDisposition { DeleteFile = true };
@@ -174,27 +165,93 @@ public sealed class AppUpdateWorkspace : IDisposable
         finally { foreach (var file in files) file.Dispose(); }
     }
 
-    /// <summary>A same-volume move retains staging ACLs; explicitly make the final app readable/executable.</summary>
-    public void SetTargetReadable()
+    /// <summary>Final versioned files are readable; staging and request remain private.</summary>
+    private static void SetFileAcl(string path, bool publicRead)
     {
-        EnsureAlive();
-        using var file = OpenRegularFile(TargetPath, ReadControl | ReadAttributes | 0x00040000 | 0x00080000, 1);
-        using var security = new NativeSecurity(PublicFileSddl);
+        using var file = OpenRegularFile(path, ReadControl | ReadAttributes | 0x00040000 | 0x00080000, 1);
+        using var security = new NativeSecurity(publicRead ? PublicFileSddl : PrivateFileSddl);
         if (!GetSecurityDescriptorOwner(security.Pointer, out var owner, out _) ||
             !GetSecurityDescriptorDacl(security.Pointer, out var present, out var dacl, out _) || !present)
             throw NativeFailure("Could not prepare the application file ACL.");
         var result = SetSecurityInfo(file, 1, OwnerAndDacl | 0x80000000, owner, IntPtr.Zero, dacl, IntPtr.Zero);
         if (result != 0) throw NativeFailure("Could not secure the installed application file.", (int)result);
-        ValidateControlledDescriptor(ReadDescriptor(file), privateScope: false, requireProtected: true);
+        ValidateControlledDescriptor(ReadDescriptor(file), privateScope: !publicRead, requireProtected: true);
     }
 
-    public void ValidateTargetSecurity()
+    public string TargetPath(AppUpdateManifest release)
     {
         EnsureAlive();
-        if (!ExistsExactly(TargetPath)) return;
-        using var file = OpenRegularFile(TargetPath, ReadControl | ReadAttributes, 1);
-        ValidateControlledDescriptor(ReadDescriptor(file), privateScope: false, requireProtected: false);
+        AppUpdateClient.ValidateManifest(release);
+        return Path.Combine(SourceDirectory, release.AssetName);
     }
+
+    public void CopyExistingCandidate(AppUpdateManifest release, string? signer)
+    {
+        using var guard = HoldVerifiedCandidate(TargetPath(release), release, signer);
+        File.Copy(TargetPath(release), CandidatePath, overwrite: false);
+        SetFileAcl(CandidatePath, publicRead: false); // CopyFile may preserve a user-writable source ACL.
+    }
+
+    public void PrepareHelper(AppUpdateManifest release, string? signer)
+    {
+        EnsureAlive();
+        SetFileAcl(CandidatePath, publicRead: false);
+        VerifyCandidate(CandidatePath, release, signer);
+        File.Copy(CandidatePath, HelperPath, overwrite: false);
+        SetFileAcl(HelperPath, publicRead: false);
+        VerifyCandidate(HelperPath, release, signer);
+    }
+
+    /// <summary>Never overwrite. Keep exact bytes and ancestors locked through CreateProcess.</summary>
+    public IDisposable PublishAndHold(AppUpdateManifest release, string? signer)
+    {
+        EnsureAlive();
+        var target = TargetPath(release);
+        if (!ExistsExactly(target))
+        {
+            VerifyCandidate(CandidatePath, release, signer);
+            SetFileAcl(CandidatePath, publicRead: true);
+            try { File.Move(CandidatePath, target, overwrite: false); }
+            catch (IOException) when (ExistsExactly(target)) { /* Validate the exact raced/existing file; never overwrite it. */ }
+        }
+        return HoldVerifiedCandidate(target, release, signer);
+    }
+
+    public static IDisposable HoldVerifiedCandidate(string path, AppUpdateManifest release, string? signer) =>
+        HoldExecutable(path, info => VerifyExecutableInfo(info, release, signer));
+
+    public static IDisposable HoldOriginal(string path, string expectedHash) => HoldExecutable(path, info =>
+    {
+        if (!info.Sha256.Equals(expectedHash, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("The original executable changed; the new tool was not launched.");
+    });
+
+    private static IDisposable HoldExecutable(string path, Action<AppExecutableInfo> verify)
+    {
+        var full = NormalizeLocalPath(path);
+        var anchors = AnchorLocalChain(Path.GetDirectoryName(full)!);
+        SafeFileHandle? file = null;
+        try
+        {
+            file = OpenRegularFile(full, GenericRead | ReadControl | ReadAttributes, 1);
+            verify(InspectExecutable(full));
+            return new ExecutableGuard(anchors, file);
+        }
+        catch { file?.Dispose(); anchors.Dispose(); throw; }
+    }
+
+    public void WriteResult<T>(T result)
+    {
+        EnsureAlive();
+        var temporary = Path.Combine(DirectoryPath, "result.tmp");
+        using (var file = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+            JsonSerializer.Serialize(file, result, RequestJson);
+        SetFileAcl(temporary, publicRead: true);
+        File.Move(temporary, Path.Combine(StateDirectory, "Last-AppUpdate.json"), overwrite: true);
+    }
+
+    private sealed class ExecutableGuard(DirectoryAnchors parents, SafeFileHandle file) : IDisposable
+    { public void Dispose() { file.Dispose(); parents.Dispose(); } }
 
     public static AppExecutableInfo InspectExecutable(string path)
     {
@@ -316,38 +373,13 @@ public sealed class AppUpdateWorkspace : IDisposable
         catch { handle.Dispose(); throw; }
     }
 
-    private static SafeFileHandle OpenSharedProductParent(string path, bool create)
-    {
-        if (create)
-        {
-            using var security = new NativeSecurity(PublicDirectorySddl);
-            var attributes = security.Attributes;
-            if (!CreateDirectoryW(path, ref attributes))
-            {
-                var error = Marshal.GetLastWin32Error();
-                if (error != 183) throw NativeFailure("The shared product folder could not be created.", error);
-            }
-        }
-        var handle = OpenDirectory(path);
-        try
-        {
-            // Other products can have created this shared parent with safe inherited
-            // Program Files permissions. Do not harden it or require our leaf template.
-            // Untrusted DELETE_CHILD is still forbidden: handles cannot protect an idle
-            // installed product after the parent/helper workspaces have been disposed.
-            ValidateTrustedAncestorDescriptor(ReadDescriptor(handle));
-            return handle;
-        }
-        catch { handle.Dispose(); throw; }
-    }
-
     private static DirectoryAnchors AnchorLocalChain(string path)
     {
         path = NormalizeLocalPath(path);
         var root = Path.GetPathRoot(path)!;
         var drive = new DriveInfo(root);
         if (drive.DriveType != DriveType.Fixed || !drive.IsReady || !drive.DriveFormat.Equals("NTFS", StringComparison.OrdinalIgnoreCase))
-            throw new IOException("Application update installation needs an ordinary fixed local NTFS path. Use a protected local copy; the original portable/network/ISO source is not replaced.");
+            throw new IOException("Download and run needs a writable ordinary fixed local NTFS folder beside this tool. Copy the tool off network/ISO/removable/reparse media first; no alternate folder is chosen.");
         var anchors = new DirectoryAnchors();
         try
         {
@@ -416,23 +448,6 @@ public sealed class AppUpdateWorkspace : IDisposable
             return new RawSecurityDescriptor(bytes, 0);
         }
         finally { LocalFree(descriptor); }
-    }
-
-    internal static void ValidateTrustedAncestorDescriptor(RawSecurityDescriptor descriptor)
-    {
-        const string trustedInstaller = "S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464";
-        if ((!IsAdministratorOrSystem(descriptor.Owner) && descriptor.Owner?.Value != trustedInstaller) || descriptor.DiscretionaryAcl is null ||
-            (descriptor.ControlFlags & ControlFlags.DiscretionaryAclPresent) == 0)
-            throw new UnauthorizedAccessException("An application-update ancestor is not a trusted Program Files/product anchor.");
-        foreach (GenericAce entry in descriptor.DiscretionaryAcl)
-        {
-            if (entry is not CommonAce ace || ace.IsCallback)
-                throw new UnauthorizedAccessException("An application-update ancestor has an unsupported access-control rule.");
-            if (ace.AceQualifier != AceQualifier.AccessAllowed || (ace.AceFlags & AceFlags.InheritOnly) != 0) continue;
-            if (!IsAdministratorOrSystem(ace.SecurityIdentifier) && ace.SecurityIdentifier.Value != trustedInstaller &&
-                ((uint)ace.AccessMask & 0x500d0156U) != 0)
-                throw new UnauthorizedAccessException("An application-update ancestor grants non-administrative modification; automatic installation was refused.");
-        }
     }
 
     private static string NormalizeLocalPath(string path)

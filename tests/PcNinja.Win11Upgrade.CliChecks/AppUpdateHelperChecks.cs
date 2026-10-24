@@ -7,13 +7,14 @@ internal static class AppUpdateHelperChecks
     {
         var now = DateTimeOffset.UtcNow;
         var id = Guid.NewGuid().ToString("N");
+        var assetName = AppUpdateIdentity.AssetNameFor("9.9.9");
         var manifest = new AppUpdateManifest(1, AppUpdateIdentity.Product, AppUpdateIdentity.Repository,
-            "stable", "9.9.9", "v9.9.9", AppUpdateIdentity.AssetName,
-            $"https://github.com/{AppUpdateIdentity.Repository}/releases/download/v9.9.9/{AppUpdateIdentity.AssetName}",
+            "stable", "9.9.9", "v9.9.9", assetName,
+            $"https://github.com/{AppUpdateIdentity.Repository}/releases/download/v9.9.9/{assetName}",
             10, new string('a', 64), $"https://github.com/{AppUpdateIdentity.Repository}/releases/tag/v9.9.9");
-        var request = new AppUpdateRequest(1, id, now, Environment.ProcessId + 10000,
+        var request = new AppUpdateRequest(2, id, now, Environment.ProcessId + 10000,
             now.AddMinutes(-1).UtcDateTime.Ticks, @"C:\Fixture\app.exe", new string('a', 64),
-            null, null, manifest, false);
+            null, manifest, false);
         AppUpdateInstaller.ValidateRequest(request, id);
         // Read the built product host, not this test runner; never execute it.
         // This proves that the negative PE fixtures did not create an always-reject verifier.
@@ -21,9 +22,10 @@ internal static class AppUpdateHelperChecks
         var builtInfo = AppUpdateWorkspace.InspectExecutable(builtHost);
         Require(builtInfo.Version == ProductIdentity.Version && builtInfo.SizeBytes == new FileInfo(builtHost).Length &&
             builtInfo.Sha256.Length == 64, "The real built product host failed read-only executable inspection.");
+        PortablePublishChecks.Run(builtHost, builtInfo);
         foreach (var invalid in new[]
         {
-            request with { SchemaVersion = 2 }, request with { OperationId = Guid.NewGuid().ToString("N") },
+            request with { SchemaVersion = 1 }, request with { OperationId = Guid.NewGuid().ToString("N") },
             request with { ParentProcessId = 0 }, request with { ParentProcessId = Environment.ProcessId },
             request with { ParentStartUtcTicks = 0 }, request with { ParentStartUtcTicks = long.MaxValue },
             request with { ParentStartUtcTicks = now.AddMinutes(1).UtcDateTime.Ticks },
@@ -31,7 +33,7 @@ internal static class AppUpdateHelperChecks
             request with { ParentPath = "relative.exe" }, request with { ParentPath = @"\\server\share\app.exe" },
             request with { ParentPath = @"\\?\C:\app.exe" }, request with { ParentPath = @"C:\app.exe:ads" },
             request with { ParentPath = @"C:\app*.exe" }, request with { ParentPath = "C:\\bad\nname.exe" },
-            request with { ParentHash = "" }, request with { TargetHash = new string('z', 64) },
+            request with { ParentHash = "" },
             request with { RequiredSigner = new string('a', 39) }, request with { RequiredSigner = new string('z', 40) },
             request with { Release = manifest with { Repository = "other/project" } }
         }) Reject(() => AppUpdateInstaller.ValidateRequest(invalid, id));
@@ -51,89 +53,7 @@ internal static class AppUpdateHelperChecks
             catch (OperationCanceledException) { }
         }
 
-        Fixture((candidate, target, backup, failed) =>
-        {
-            var events = new List<string>();
-            AppUpdateInstaller.CommitReplacement(candidate, target, backup, failed, false,
-                () => events.Add("acl"), () => { Require(File.ReadAllText(target) == "new", "New copy changed."); events.Add("verify"); },
-                () => false, () => events.Add("launch"));
-            Require(events.SequenceEqual(new[] { "acl", "verify", "launch" }) && !File.Exists(candidate) && !File.Exists(backup),
-                "New-copy commit order/recovery state changed.");
-        });
-        Fixture((candidate, target, backup, failed) =>
-        {
-            File.WriteAllText(target, "old");
-            AppUpdateInstaller.CommitReplacement(candidate, target, backup, failed, true, () => { }, () => { },
-                () => File.ReadAllText(backup) == "old", () => { });
-            Require(File.ReadAllText(target) == "new" && File.ReadAllText(backup) == "old" && !File.Exists(failed),
-                "Existing-copy replacement did not preserve the exact old bytes.");
-        });
-        foreach (var failAtLaunch in new[] { false, true })
-            Fixture((candidate, target, backup, failed) =>
-            {
-                File.WriteAllText(target, "old");
-                Reject(() => AppUpdateInstaller.CommitReplacement(candidate, target, backup, failed, true,
-                    () => { }, () => { if (!failAtLaunch) throw new IOException("Verification fixture"); },
-                    () => File.ReadAllText(backup) == "old", () => throw new IOException("Launch fixture")));
-                Require(File.ReadAllText(target) == "old" && File.ReadAllText(failed) == "new" && !File.Exists(backup),
-                    "Failed verification/relaunch did not atomically restore the old target.");
-            });
-        Fixture((candidate, target, backup, failed) =>
-        {
-            Reject(() => AppUpdateInstaller.CommitReplacement(candidate, target, backup, failed, false,
-                () => { }, () => throw new IOException("Verification fixture"), () => false, () => { }));
-            Require(!File.Exists(target) && File.ReadAllText(failed) == "new", "Failed first install remained active.");
-        });
-        Fixture((candidate, target, backup, failed) =>
-        {
-            File.WriteAllText(target, "old");
-            Reject(() => AppUpdateInstaller.CommitReplacement(candidate, target, backup, failed, true,
-                () => { }, () => throw new IOException("Verification fixture"), () => false, () => { }));
-            Require(File.ReadAllText(target) == "new" && File.ReadAllText(backup) == "old" && !File.Exists(failed),
-                "Unverified recovery bytes were moved into the target.");
-        });
-        Fixture((candidate, target, backup, failed) =>
-        {
-            File.WriteAllText(target, "old");
-            File.WriteAllText(backup, "existing recovery");
-            Reject(() => AppUpdateInstaller.CommitReplacement(candidate, target, backup, failed, true,
-                () => { }, () => { }, () => true, () => { }));
-            Require(File.ReadAllText(target) == "old" && File.ReadAllText(candidate) == "new" &&
-                File.ReadAllText(backup) == "existing recovery", "Existing recovery state was overwritten.");
-        });
-        Fixture((candidate, target, backup, failed) =>
-        {
-            File.WriteAllText(target, "old");
-            using (var locked = new FileStream(target, FileMode.Open, FileAccess.Read, FileShare.None))
-                Reject(() => AppUpdateInstaller.CommitReplacement(candidate, target, backup, failed, true,
-                    () => { }, () => { }, () => true, () => { }));
-            Require(File.ReadAllText(target) == "old" && File.ReadAllText(candidate) == "new" && !File.Exists(backup),
-                "Locked target did not fail without changing either copy.");
-        });
-        Console.WriteLine("PASS: Helper request identity/expiry/local-path validation and real atomic file move/replace/restore, launch/verification/lock/recovery-failure fixtures. Opaque temporary bytes only; no executable/helper/Program Files/network/Setup/reboot.");
-    }
-
-    private static void Fixture(Action<string, string, string, string> check)
-    {
-        var parent = Path.GetFullPath(Path.GetTempPath()).TrimEnd(Path.DirectorySeparatorChar);
-        var name = "PcNinja.AppUpdateAtomic.Tests." + Guid.NewGuid().ToString("N");
-        var folder = Path.GetFullPath(Path.Combine(parent, name));
-        if (Path.GetDirectoryName(folder) != parent || Path.GetFileName(folder) != name)
-            throw new Exception("Unsafe temporary fixture path.");
-        Directory.CreateDirectory(folder);
-        try
-        {
-            var candidate = Path.Combine(folder, "candidate.bin");
-            File.WriteAllText(candidate, "new");
-            check(candidate, Path.Combine(folder, "target.bin"), Path.Combine(folder, "backup.bin"), Path.Combine(folder, "failed.bin"));
-        }
-        finally
-        {
-            // Exact validated random fixture child only, never a product/workspace tree.
-            if (Path.GetDirectoryName(Path.GetFullPath(folder)) != parent || Path.GetFileName(folder) != name)
-                throw new Exception("Unsafe fixture cleanup path.");
-            Directory.Delete(folder, recursive: true);
-        }
+        Console.WriteLine("PASS: Parent-bound protocol-v2 request identity, expiry, local paths, real product-host inspection and bounded handshake. No app replacement, helper, network, Setup or reboot.");
     }
 
     private static void Reject(Action action)

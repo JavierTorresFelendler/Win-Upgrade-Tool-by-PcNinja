@@ -14,7 +14,7 @@ internal static class AppUpdateFileChecks
         CheckRequests();
         CheckInvalidExecutables();
         CheckNativeFixture();
-        Console.WriteLine("PASS: App-update fixed target/nonce/space, protected ACL allowlist, bounded private JSON, candidate version/hash/size/signer continuity and invalid PE/product refusal. No Program Files writes, executable launch or network used.");
+        Console.WriteLine("PASS: App-update portable root/nonce/space, protected ACL allowlist, bounded private JSON, candidate version/hash/size/signer continuity and invalid PE/product refusal. No Program Files writes, executable launch or network used.");
     }
 
     private static void CheckIdentifiersAndSpace()
@@ -28,12 +28,10 @@ internal static class AppUpdateFileChecks
             Reject(() => AppUpdateWorkspace.RequiredFreeBytes(invalid, 1));
             Reject(() => AppUpdateWorkspace.RequiredFreeBytes(1, invalid));
             // Invalid sizes must fail before public Create can inspect/create any directory.
-            Reject(() => AppUpdateWorkspace.Create(nonce, invalid, 1));
+            Reject(() => AppUpdateWorkspace.Create(Path.GetTempPath(), nonce, invalid, 1));
         }
         Require(AppUpdateWorkspace.RequiredFreeBytes(1, 2) == 3 + 64L * 1024 * 1024, "Updater space reserve was lost or confused with ISO workspace.");
-        var expected = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "PcNinja", "WindowsUpgradeAssistant");
-        Require(AppUpdateWorkspace.InstallDirectory == expected &&
-            AppUpdateWorkspace.InstalledExecutablePath == Path.Combine(expected, AppUpdateIdentity.AssetName), "The installed target is not product pinned.");
+        Require(AppUpdateWorkspace.StateDirectoryName == ".pcninja-updates", "Portable staging namespace changed.");
         Reject(() => AppUpdateWorkspace.CreateFixture(Path.GetTempPath(), nonce, 1, 1));
     }
 
@@ -62,16 +60,7 @@ internal static class AppUpdateFileChecks
         var inherited = new RawSecurityDescriptor(AppUpdateWorkspace.PrivateDirectorySddl.Replace("D:P", "D:", StringComparison.Ordinal));
         Reject(() => AppUpdateWorkspace.ValidateControlledDescriptor(inherited, true, true));
         AppUpdateWorkspace.ValidateControlledDescriptor(inherited, true, false); // Safe file inheritance from the held private parent.
-        var sharedParent = new RawSecurityDescriptor("O:BAG:BAD:(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;FRFX;;;BU)(A;OICIIO;FA;;;CO)");
-        AppUpdateWorkspace.ValidateTrustedAncestorDescriptor(sharedParent); // Normal safe inherited shared PcNinja parent.
-        foreach (var sddl in new[]
-        {
-            "O:BUG:BAD:(A;;FA;;;BA)(A;;FRFX;;;BU)",
-            "O:BAG:BAD:(A;;FA;;;BA)(A;;0x40;;;BU)", // DELETE_CHILD can defeat a protected child at idle.
-            "O:BAG:BAD:(A;;FA;;;BA)(A;;FW;;;AU)",
-            "O:BAG:BAD:(A;;FA;;;BA)(A;;WD;;;BU)",
-            "O:BAG:BAD:NO_ACCESS_CONTROL"
-        }) Reject(() => AppUpdateWorkspace.ValidateTrustedAncestorDescriptor(new RawSecurityDescriptor(sddl)));
+
     }
 
     private static void CheckCandidateIdentity()
@@ -133,7 +122,7 @@ internal static class AppUpdateFileChecks
         using var identity = WindowsIdentity.GetCurrent();
         if (identity.User?.Value != "S-1-5-18" && !new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator))
         {
-            Console.WriteLine("SKIP: Protected updater filesystem creation needs an elevated fixture token; no Program Files or positive ACL/replacement claim.");
+            Console.WriteLine("SKIP: Protected updater filesystem creation needs an elevated fixture token; native private-folder tests were not executed.");
             return;
         }
         var parent = NewFixtureParent();
@@ -143,9 +132,7 @@ internal static class AppUpdateFileChecks
             var nonce = Guid.NewGuid().ToString("N");
             using (var workspace = AppUpdateWorkspace.CreateFixture(parent, nonce, 4096, 4096))
             {
-                Require(workspace.DirectoryPath.StartsWith(parent + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) &&
-                    workspace.TargetPath.StartsWith(parent + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) &&
-                    workspace.TargetPath != AppUpdateWorkspace.InstalledExecutablePath, "A fixture escaped into the installed product root.");
+                Require(workspace.SourceDirectory == Path.GetFullPath(parent) && workspace.DirectoryPath.StartsWith(parent + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase), "Fixture escaped its portable parent.");
                 workspace.WriteRequest(new FixtureRequest(1, nonce));
                 Require(workspace.ReadRequest<FixtureRequest>() == new FixtureRequest(1, nonce), "Private request did not survive protected native file I/O.");
                 Reject(() => workspace.WriteRequest(new FixtureRequest(2, nonce))); // CreateNew only.
@@ -160,23 +147,16 @@ internal static class AppUpdateFileChecks
                 using (var helper = new FileStream(workspace.HelperPath, FileMode.CreateNew, FileAccess.Write)) helper.Write([4, 5, 6]);
                 var unknown = Path.Combine(workspace.DirectoryPath, "unrelated.keep");
                 File.WriteAllText(unknown, "leave this file alone");
-                File.WriteAllBytes(workspace.BackupPath, [7]);
-                Reject(workspace.CleanupUncommitted);
-                Require(File.Exists(workspace.CandidatePath) && File.Exists(workspace.HelperPath), "A backup did not preserve recovery staging.");
-                File.Delete(workspace.BackupPath);
                 using (var active = new FileStream(workspace.HelperPath, FileMode.Open, FileAccess.Read, FileShare.Read))
                     Reject(workspace.CleanupUncommitted);
                 Require(File.Exists(workspace.CandidatePath) && File.Exists(workspace.HelperPath), "A locked helper allowed partial cleanup.");
                 workspace.CleanupUncommitted();
                 Require(!File.Exists(workspace.CandidatePath) && !File.Exists(workspace.HelperPath) &&
                     !File.Exists(workspace.RequestPath) && File.Exists(unknown), "Cleanup was broad or failed to remove exact uncommitted files.");
-                File.WriteAllBytes(workspace.TargetPath, [8, 9]);
-                workspace.SetTargetReadable();
-                workspace.ValidateTargetSecurity();
                 workspace.MarkHandoffStarted();
                 Reject(workspace.CleanupUncommitted);
             }
-            Console.WriteLine("PASS: Elevated protected temp-only workspace creation, handoff/request binding, held-ancestor rename refusal, exact cleanup/backup/lock guards and final ACL. No executable launched.");
+            Console.WriteLine("PASS: Elevated protected temp-only workspace creation, handoff/request binding, held-ancestor rename refusal, exact cleanup/lock guards. No executable launched.");
         }
         finally { RemoveFixtureParent(parent); }
 
@@ -184,7 +164,7 @@ internal static class AppUpdateFileChecks
         Directory.CreateDirectory(existingParent);
         try
         {
-            var existing = Directory.CreateDirectory(Path.Combine(existingParent, "WindowsUpgradeAssistant"));
+            var existing = Directory.CreateDirectory(Path.Combine(existingParent, AppUpdateWorkspace.StateDirectoryName));
             var before = FileSystemAclExtensions.GetAccessControl(existing).GetSecurityDescriptorSddlForm(AccessControlSections.Owner | AccessControlSections.Access);
             Reject(() => AppUpdateWorkspace.CreateFixture(existingParent, Guid.NewGuid().ToString("N"), 1, 1));
             var after = FileSystemAclExtensions.GetAccessControl(existing).GetSecurityDescriptorSddlForm(AccessControlSections.Owner | AccessControlSections.Access);
@@ -194,8 +174,8 @@ internal static class AppUpdateFileChecks
     }
 
     private static AppUpdateManifest Manifest(string hash, long size) => new(1, AppUpdateIdentity.Product,
-        AppUpdateIdentity.Repository, "stable", "1.1.0", "v1.1.0", AppUpdateIdentity.AssetName,
-        $"https://github.com/{AppUpdateIdentity.Repository}/releases/download/v1.1.0/{AppUpdateIdentity.AssetName}", size, hash,
+        AppUpdateIdentity.Repository, "stable", "1.1.0", "v1.1.0", AppUpdateIdentity.AssetNameFor("1.1.0"),
+        $"https://github.com/{AppUpdateIdentity.Repository}/releases/download/v1.1.0/{AppUpdateIdentity.AssetNameFor("1.1.0")}", size, hash,
         $"https://github.com/{AppUpdateIdentity.Repository}/releases/tag/v1.1.0");
     private static string NewFixtureParent() => Path.Combine(Path.GetTempPath(), "PcNinja-AppUpdate-Fixture-" + Guid.NewGuid().ToString("N"));
     private static void RemoveFixtureParent(string parent)

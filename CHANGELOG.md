@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.1.0-beta.1 — application update trial
+
+- Replace the unshipped Program Files/in-place updater design with version-named
+  EXEs beside the running tool. Preserve the original; never overwrite a collision
+  or create Copy N. Reuse only an exact verified existing version.
+- Isolate numbered Beta discovery from stable/RC. Metadata checks do not download
+  an EXE; GUI Download and run the new version / Not now and CLI run --yes govern it.
+- Add Regular/Critical badges, bounded publisher messages and exact GitHub notes.
+  Critical is advisory, not forced download. Release notice is version-controlled.
+- Keep private same-folder staging, signed-publisher continuity, parent-bound
+  protocol-v2 helper, machine-wide Windows-operation exclusion and launch byte locks.
+- Publish only Beta 1 after exact CI verification. Beta 2 waits for owner testing;
+  RC8/main/older releases remain unchanged. No stable publication or live Windows
+  upgrade is part of this trial.
+
 ## Unreleased - application updates (Draft PR #13)
 
 - Add stable-only, product/repository-pinned GitHub application-update discovery,

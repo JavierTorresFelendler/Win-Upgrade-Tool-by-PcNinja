@@ -7,7 +7,7 @@ namespace PcNinja.Win11UpgradeAssistant;
 
 internal sealed record AppUpdateRequest(int SchemaVersion, string OperationId, DateTimeOffset CreatedUtc,
     int ParentProcessId, long ParentStartUtcTicks, string ParentPath, string ParentHash,
-    string? RequiredSigner, string? TargetHash, AppUpdateManifest Release, bool RelaunchGui);
+    string? RequiredSigner, AppUpdateManifest Release, bool RelaunchGui);
 
 internal sealed record AppUpdateHandoffResult(string Version, string TargetPath, string OperationId,
     int HelperProcessId, string Message);
@@ -16,9 +16,11 @@ internal sealed record AppUpdateHandoffResult(string Version, string TargetPath,
 internal static class AppUpdateInstaller
 {
     internal const string HelperArgument = "--internal-app-update";
-    private const string Ready = "PCNINJA_APP_UPDATE_READY_V1";
-    private const string Go = "PCNINJA_APP_UPDATE_GO_V1";
-    internal static string Destination => AppUpdateWorkspace.InstalledExecutablePath;
+    private const string Ready = "PCNINJA_APP_UPDATE_READY_V2";
+    private const string Go = "PCNINJA_APP_UPDATE_GO_V2";
+    internal static string DestinationDirectory => Path.GetDirectoryName(Environment.ProcessPath
+        ?? throw new InvalidOperationException("Application path is unavailable."))!;
+    internal static string DestinationFor(AppUpdateManifest release) => Path.Combine(DestinationDirectory, release.AssetName);
 
     internal static async Task<AppUpdateHandoffResult> InstallAsync(AppUpdateClient client,
         AppUpdateManifest release, bool relaunchGui, IProgress<AppUpdateProgress>? progress, CancellationToken token)
@@ -26,7 +28,9 @@ internal static class AppUpdateInstaller
         AppUpdateClient.ValidateManifest(release);
         if (!Program.IsAdministrator()) throw new UnauthorizedAccessException("Run app update installation as administrator.");
         if (ReleaseVersion.Parse(release.Version).CompareTo(ReleaseVersion.Parse(ProductIdentity.Version)) <= 0)
-            throw new InvalidOperationException("Only a newer stable application version can be installed.");
+            throw new InvalidOperationException("Only a newer application version can be downloaded and run.");
+        if (release.Channel != AppUpdateIdentity.Channel)
+            throw new InvalidDataException("The release is outside this application's update channel.");
         using var gate = AppOperationGate.EnterUpdate();
         using var parent = Process.GetCurrentProcess();
         var parentPath = Environment.ProcessPath ?? throw new InvalidOperationException("Application path is unavailable.");
@@ -34,38 +38,26 @@ internal static class AppUpdateInstaller
         if (ReleaseVersion.Parse(current.Version).CompareTo(ReleaseVersion.Parse(ProductIdentity.Version)) != 0)
             throw new InvalidDataException("The running application's file identity changed.");
         var id = Guid.NewGuid().ToString("N");
-        using var workspace = AppUpdateWorkspace.Create(id, release.SizeBytes, release.SizeBytes);
+        using var workspace = AppUpdateWorkspace.Create(Path.GetDirectoryName(parentPath)!, id, release.SizeBytes, release.SizeBytes);
         var requiredSigner = current.SignerThumbprint;
-        string? targetHash = null;
-        if (File.Exists(workspace.TargetPath))
-        {
-            var installed = AppUpdateWorkspace.InspectExecutable(workspace.TargetPath);
-            if (ReleaseVersion.Parse(installed.Version).CompareTo(ReleaseVersion.Parse(release.Version)) >= 0)
-                throw new InvalidOperationException($"This version or a newer app is already saved at {workspace.TargetPath}. Open that copy instead.");
-            if (installed.SignerThumbprint is not null)
-            {
-                if (requiredSigner is not null && !requiredSigner.Equals(installed.SignerThumbprint, StringComparison.OrdinalIgnoreCase))
-                    throw new InvalidDataException("The installed app publisher differs; update manually.");
-                requiredSigner = installed.SignerThumbprint;
-            }
-            targetHash = installed.Sha256;
-        }
+        var target = workspace.TargetPath(release);
         var handedOff = false;
         try
         {
-            await using (var candidate = new FileStream(workspace.CandidatePath, FileMode.CreateNew,
-                FileAccess.Write, FileShare.None, 64 * 1024, FileOptions.Asynchronous))
+            if (File.Exists(target) || Directory.Exists(target)) workspace.CopyExistingCandidate(release, requiredSigner);
+            else
             {
+                await using var candidate = new FileStream(workspace.CandidatePath, FileMode.CreateNew,
+                    FileAccess.Write, FileShare.None, 64 * 1024, FileOptions.Asynchronous);
                 await client.DownloadAsync(release, candidate, progress, token);
                 await candidate.FlushAsync(token);
             }
             AppUpdateWorkspace.VerifyCandidate(workspace.CandidatePath, release, requiredSigner);
-            // Run the verified successor's protocol-v1 helper, not a mutable source-path copy.
-            File.Copy(workspace.CandidatePath, workspace.HelperPath, overwrite: false);
-            AppUpdateWorkspace.VerifyCandidate(workspace.HelperPath, release, requiredSigner);
-            var request = new AppUpdateRequest(1, id, DateTimeOffset.UtcNow, parent.Id,
+            // Run the verified successor's protocol-v2 helper, not a mutable source-path copy.
+            workspace.PrepareHelper(release, requiredSigner);
+            var request = new AppUpdateRequest(2, id, DateTimeOffset.UtcNow, parent.Id,
                 parent.StartTime.ToUniversalTime().Ticks, Path.GetFullPath(parentPath), current.Sha256,
-                requiredSigner, targetHash, release, relaunchGui);
+                requiredSigner, release, relaunchGui);
             workspace.WriteRequest(request);
             token.ThrowIfCancellationRequested();
             AppOperationGate.EnsureUpdateAllowed();
@@ -95,9 +87,9 @@ internal static class AppUpdateInstaller
             await helper.StandardInput.FlushAsync(CancellationToken.None);
             helper.StandardInput.Close();
             handedOff = true;
-            AppLog.Info($"App update handoff {id}: {ProductIdentity.Version} -> {release.Version}; target {workspace.TargetPath}.");
-            return new(release.Version, workspace.TargetPath, id, helper.Id,
-                "Application update handoff started. Exit this process so the helper can apply the verified app update. No Windows upgrade or restart was requested.");
+            AppLog.Info($"App update handoff {id}: {ProductIdentity.Version} -> {release.Version}; target {target}.");
+            return new(release.Version, target, id, helper.Id,
+                "Application run handoff started. The previous file stays unchanged. No Windows upgrade or restart was requested.");
         }
         finally
         {
@@ -121,11 +113,17 @@ internal static class AppUpdateInstaller
             if (Path.GetFileName(self) != "UpdateHelper.exe") throw new InvalidDataException("Invalid helper executable.");
             var folder = Path.GetDirectoryName(self)!;
             var id = Path.GetFileName(folder);
-            using var workspace = AppUpdateWorkspace.Open(id);
+            var stateFolder = Path.GetDirectoryName(folder)!;
+            if (Path.GetFileName(stateFolder) != AppUpdateWorkspace.StateDirectoryName)
+                throw new InvalidDataException("Invalid portable update workspace.");
+            using var workspace = AppUpdateWorkspace.Open(Path.GetDirectoryName(stateFolder)!, id);
             if (!SamePath(folder, workspace.DirectoryPath) || !SamePath(self, workspace.HelperPath))
                 throw new InvalidDataException("The helper is outside its protected workspace.");
             request = workspace.ReadRequest<AppUpdateRequest>();
             ValidateRequest(request, id);
+            if (!SamePath(Path.GetDirectoryName(request.ParentPath)!, workspace.SourceDirectory) ||
+                SamePath(request.ParentPath, workspace.TargetPath(request.Release)))
+                throw new InvalidDataException("The new version must be beside, not replace, the original executable.");
             AppUpdateWorkspace.VerifyCandidate(self, request.Release, request.RequiredSigner);
             AppUpdateWorkspace.VerifyCandidate(workspace.CandidatePath, request.Release, request.RequiredSigner);
             using var parent = Process.GetProcessById(request.ParentProcessId);
@@ -141,6 +139,9 @@ internal static class AppUpdateInstaller
                 throw new InvalidDataException("The app update cannot drop the original publisher policy.");
             if (ReleaseVersion.Parse(parentFile.Version).CompareTo(ReleaseVersion.Parse(request.Release.Version)) >= 0)
                 throw new InvalidDataException("The successor is not newer than the original app.");
+            if (AppUpdateIdentity.ChannelFor(parentFile.Version) != request.Release.Channel)
+                throw new InvalidDataException("The successor changed the parent's update channel.");
+            using var originalGuard = AppUpdateWorkspace.HoldOriginal(request.ParentPath, request.ParentHash);
             using var gate = AppOperationGate.OpenHandoff();
             Console.WriteLine(Ready);
             Console.Out.Flush();
@@ -154,7 +155,7 @@ internal static class AppUpdateInstaller
             ValidateRequest(request, id);
             AppOperationGate.EnsureUpdateAllowed();
             ApplyVerified(workspace, request, LaunchGui);
-            try { WriteResult(workspace.TargetPath, request, true, "Application update applied."); }
+            try { WriteResult(workspace, request, true, "New portable version is ready."); }
             catch (Exception statusError)
             {
                 // Replacement/relaunch already succeeded. A diagnostic write failure
@@ -168,7 +169,12 @@ internal static class AppUpdateInstaller
             AppLog.Error($"Application update helper failed: {ex}");
             if (request is not null)
             {
-                try { WriteResult(Destination, request, false, "Application update failed. The previous executable was retained or restored. See the app log."); } catch { }
+                try
+                {
+                    using var workspace = AppUpdateWorkspace.Open(Path.GetDirectoryName(request.ParentPath)!, request.OperationId);
+                    WriteResult(workspace, request, false, "The new version could not be run. The original executable is unchanged.");
+                }
+                catch { }
                 if (parentExited && request.RelaunchGui)
                     MessageBox.Show("The app update could not be completed. Your previous copy was not removed. Open it again and check View log.",
                         "Application update", MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -180,7 +186,7 @@ internal static class AppUpdateInstaller
     internal static void ValidateRequest(AppUpdateRequest request, string id)
     {
         var now = DateTimeOffset.UtcNow;
-        if (request is null || request.SchemaVersion != 1 || request.OperationId != id ||
+        if (request is null || request.SchemaVersion != 2 || request.OperationId != id ||
             id is not { Length: 32 } || !id.All(char.IsAsciiHexDigit) ||
             !Guid.TryParseExact(id, "N", out var operation) || operation == Guid.Empty || request.ParentProcessId <= 0 ||
             request.ParentProcessId == Environment.ProcessId || request.ParentStartUtcTicks <= 0 ||
@@ -189,7 +195,7 @@ internal static class AppUpdateInstaller
             request.ParentStartUtcTicks > now.UtcDateTime.Ticks ||
             request.CreatedUtc > now.AddSeconds(30) || now - request.CreatedUtc > TimeSpan.FromMinutes(5) ||
             !IsOrdinaryLocalPath(request.ParentPath) ||
-            !IsHash(request.ParentHash) || request.TargetHash is not null && !IsHash(request.TargetHash) ||
+            !IsHash(request.ParentHash) ||
             request.RequiredSigner is not null && (request.RequiredSigner.Length != 40 || !request.RequiredSigner.All(Uri.IsHexDigit)))
             throw new InvalidDataException("The app update handoff is invalid or expired.");
         AppUpdateClient.ValidateManifest(request.Release);
@@ -197,53 +203,13 @@ internal static class AppUpdateInstaller
 
     internal static void ApplyVerified(AppUpdateWorkspace workspace, AppUpdateRequest request, Action<string> launch)
     {
-        workspace.ValidateTargetSecurity();
+        if (!SamePath(workspace.SourceDirectory, Path.GetDirectoryName(request.ParentPath)!))
+            throw new InvalidDataException("The update destination differs from the original application folder.");
         AppUpdateWorkspace.VerifyCandidate(workspace.CandidatePath, request.Release, request.RequiredSigner);
-        var hadTarget = request.TargetHash is not null;
-        if (File.Exists(workspace.TargetPath) != hadTarget || File.Exists(workspace.BackupPath))
-            throw new InvalidDataException("The app update target or recovery state changed.");
-        if (hadTarget && !AppUpdateWorkspace.InspectExecutable(workspace.TargetPath).Sha256.Equals(request.TargetHash, StringComparison.OrdinalIgnoreCase))
-            throw new InvalidDataException("The installed app changed after staging.");
-        // Hash/signature verification above can take seconds. Recheck external Setup
-        // and restart state at the actual replacement boundary, not only on entry.
         AppOperationGate.EnsureUpdateAllowed();
-        CommitReplacement(workspace.CandidatePath, workspace.TargetPath, workspace.BackupPath,
-            Path.Combine(workspace.DirectoryPath, "failed.exe"), hadTarget, workspace.SetTargetReadable,
-            () => AppUpdateWorkspace.VerifyCandidate(workspace.TargetPath, request.Release, request.RequiredSigner),
-            () => AppUpdateWorkspace.InspectExecutable(workspace.BackupPath).Sha256.Equals(request.TargetHash, StringComparison.OrdinalIgnoreCase),
-            () => { if (request.RelaunchGui) launch(workspace.TargetPath); });
-    }
-
-    // Production supplies only the fixed, protected workspace paths above. This
-    // internal strategy seam also allows harmless opaque-byte recovery fixtures;
-    // it is never exposed as a CLI file-copy or arbitrary-path replacement command.
-    internal static void CommitReplacement(string candidatePath, string targetPath, string backupPath,
-        string failedPath, bool hadTarget, Action setTargetReadable, Action verifyInstalled,
-        Func<bool> verifyBackup, Action launch)
-    {
-        if (File.Exists(backupPath) || File.Exists(failedPath))
-            throw new InvalidDataException("Existing application recovery files must not be overwritten.");
-        var replaced = false;
-        try
-        {
-            if (hadTarget) File.Replace(candidatePath, targetPath, backupPath);
-            else File.Move(candidatePath, targetPath);
-            replaced = true;
-            setTargetReadable();
-            verifyInstalled();
-            launch(); // Production callback passes a fixed executable path and no arguments.
-        }
-        catch
-        {
-            if (replaced && hadTarget && File.Exists(backupPath) && verifyBackup())
-            {
-                File.Replace(backupPath, targetPath, failedPath);
-                setTargetReadable();
-            }
-            else if (replaced && !hadTarget && File.Exists(targetPath))
-                File.Move(targetPath, failedPath);
-            throw;
-        }
+        using var candidateGuard = workspace.PublishAndHold(request.Release, request.RequiredSigner);
+        AppOperationGate.EnsureUpdateAllowed();
+        if (request.RelaunchGui) launch(workspace.TargetPath(request.Release));
     }
 
     private static void LaunchGui(string target)
@@ -255,14 +221,11 @@ internal static class AppUpdateInstaller
         }) ?? throw new IOException("The updated app could not be reopened.");
     }
 
-    private static void WriteResult(string target, AppUpdateRequest request, bool success, string message)
+    private static void WriteResult(AppUpdateWorkspace workspace, AppUpdateRequest request, bool success, string message)
     {
-        var path = Path.Combine(Path.GetDirectoryName(target)!, "Last-AppUpdate.json");
-        var temp = path + "." + request.OperationId + ".tmp";
-        using (var file = new FileStream(temp, FileMode.CreateNew, FileAccess.Write, FileShare.None))
-            JsonSerializer.Serialize(file, new { schemaVersion = 1, timestamp = DateTimeOffset.UtcNow,
-                operationId = request.OperationId, success, version = request.Release.Version, targetPath = target, message });
-        File.Move(temp, path, overwrite: true);
+        workspace.WriteResult(new { schemaVersion = 1, timestamp = DateTimeOffset.UtcNow,
+            operationId = request.OperationId, success, version = request.Release.Version,
+            targetPath = workspace.TargetPath(request.Release), originalPath = request.ParentPath, message });
     }
 
     // Console.In can implement ReadAsync with a synchronous underlying pipe read.

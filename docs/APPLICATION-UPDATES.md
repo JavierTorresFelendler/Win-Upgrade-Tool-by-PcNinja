@@ -1,100 +1,105 @@
-# Application updates (development only)
+# Portable application updates — Beta trial
 
-Implemented in development Draft PR #13, not published. The unchanged RC8
-release and older binaries do not have this feature. Development builds retaining
-the RC8 version string are not replacement RC8 releases. No stable version/tag
-or live update acceptance is authorized by this guide.
+This feature is developed in Draft PR #13. Published RC8 and all older assets
+stay unchanged. The owner approved a live Beta 1 -> Beta 2 demonstration before
+RC9 or a stable V1.1. Beta 2 waits until the owner has opened/tested Beta 1.
+No main merge, RC9/stable publication or developer-machine Windows upgrade is
+authorized by the Beta trial.
 
-This updates **Windows Upgrade Assistant By PcNinja**, not Windows. It never
-downloads an ISO, runs Windows Setup, upgrades the OS or restarts the computer.
-There is no background service, scheduled updater or silent installation.
+## User flow
 
-## Check and consent
+1. Check this project's GitHub release metadata at startup or via Check app updates.
+   This check downloads metadata only, never an EXE.
+2. A newer version opens an offer with target version, **REGULAR UPDATE** or
+   **CRITICAL UPDATE**, a short publisher message and **View release notes on GitHub**.
+3. **Not now**, Escape or closing the offer keeps the current tool. Opening notes
+   opens the exact GitHub release page, not a download and not update consent.
+4. Only **Download and run the new version** starts transfer/verification.
+5. Save the version-named EXE beside the running tool, not the shell's working
+   directory. A private hidden `.pcninja-updates/<operation-id>` staging directory
+   is below that same folder. There is no Program Files destination or fallback.
+6. Verify bytes/hash/size/product/version/publisher continuity. A verified helper
+   waits for the exact old process to exit, then GUI opens the new EXE with NO
+   arguments. The previous EXE stays unchanged as the usable old version.
 
-The development GUI makes one bounded stable-release check after opening and
-offers **Check app updates** for retry. Offline/rate-limit/verification failures
-do not prevent normal tool use. An available link shows the version; clicking
-it asks before download/handoff and displays the destination. Choose No to keep
-using the current app. RCs, drafts and equal/older versions are not offered.
-Only this project's pinned GitHub repository is checked; there is no alternate
-feed/preview channel. A repository containing RCs only normally reports no stable
-release yet.
+No installer, original replacement, old-file rename, numbered Copy N, service,
+scheduled task, Windows Setup or forced restart is involved. Cancellation/failure
+before handoff keeps the old window open. A helper/launch failure does not remove
+the old EXE; open it again. A correctly verified existing exact-version file is
+reused; a mismatch is not overwritten/deleted and causes an actionable refusal.
+Readonly/unsupported locations fail, never relocate silently.
 
-CLI checking needs no administrator permission; installation requires an
-elevated terminal and explicit `--yes`. See the [CLI guide](CLI.md#application-updates-development-only)
-for commands, result identifiers and exit codes. CLI installation does not open
-a GUI, prompt for hidden input or relaunch a successor process.
+## Version names and channels
 
-## Protected portable copy
+Binary/product identity is authoritative, not a guessed filename. Internal build
+output remains Windows-Upgrade-Assistant-By-PcNinja.exe; published assets are:
 
-The updated standalone EXE is saved at the fixed Windows Program Files location:
+| Product version | Published filename | Update discovery |
+| --- | --- | --- |
+| 1.1.0-beta.1 | Windows-Upgrade-Assistant-By-PcNinja-V1.1-Beta1.exe | Beta only |
+| 1.1.0-beta.2 | Windows-Upgrade-Assistant-By-PcNinja-V1.1-Beta2.exe | Beta only |
+| 1.1.0 | Windows-Upgrade-Assistant-By-PcNinja-V1.1.exe | Stable only |
+| 1.1.1 | Windows-Upgrade-Assistant-By-PcNinja-V1.1.1.exe | Stable only |
 
-```text
-%ProgramFiles%\PcNinja\WindowsUpgradeAssistant\Windows-Upgrade-Assistant-By-PcNinja.exe
-```
+Beta discovery checks up to three pages of five recent release records, bounded
+by metadata/time limits, and selects the highest numbered published Beta. It
+does not accept drafts, RCs or stable releases. Stable/RC binaries use only latest
+stable; they never request the Beta list. Missing Beta/stable releases are normal
+results. An offline/rate-limited/invalid check does not block normal tool use.
 
-If the current portable EXE is elsewhere, **that original stays untouched**.
-Use the new protected copy afterward; an old desktop shortcut to the original
-still opens the old version. If the current app already occupies the protected
-destination, it is replaced only after its exact process exits. GUI handoff
-closes the old window and reopens the protected copy without arguments. The CLI
-returns a handoff result and exits; it does not reopen a GUI or repeat commands.
+## Publisher-controlled regular/critical notices
 
-Installation requires ordinary fixed local NTFS paths, including the running
-EXE. When running from an ISO, network/removable drive, non-NTFS volume or
-reparse-point path, copy the app to an ordinary fixed local NTFS folder first.
-The updater does not alter that source or offer an arbitrary target override.
-Unsafe existing folder permissions, changed/locked files or insufficient staging
-space cause refusal rather than permission takeover or forced replacement.
+Each published stable/Beta manifest includes `importance` (`normal` or `critical`)
+and `message` (1-1200 plain-text characters). Source configuration is
+`docs/updates/{version}.json`. The release workflow validates the fields and binds
+them, version, exact EXE URL, size and SHA-256 to that release's manifest.
 
-App staging space is separate from Windows upgrade workspace. Each attempt uses
-a private `.updates\<operation-id>` folder beneath the protected product folder
-for the candidate, verified helper and request. Administrators/SYSTEM control
-that staging; ordinary users can run/read the final protected EXE, not modify it.
-The helper revalidates identity and bytes immediately before applying the update.
+Critical gets a prominent colored badge and recommendation, not automatic or
+mandatory download. The default button remains Not now. Do not invent a security
+claim: explain the actual fix accurately; label critical-style trial notices as
+demonstrations if used in Beta. Full details belong in that version's release
+notes. The GUI renders plain text, not HTML/scripts.
 
-## Busy state, trust and recovery
+Published manifests/assets are immutable. To change the notice or binary, publish
+a new version; never replace an old asset. Stable/latest is never advanced by Beta.
 
-A machine-wide gate excludes concurrent PcNinja preparation/Setup and app-update
-operations across instances. External Windows Setup, recognized pending-restart
-conditions or unreadable safety state also block installation, with fresh checks
-before handoff/apply. Resolve the Windows condition separately and retry; the
-updater does not force-close processes, bypass the gate or force a restart.
-Historical `PreparationCompleted` alone is not a permanent update blocker.
+## Safety, status and trust
 
-The download must match the exact stable release's pinned URL, size, SHA-256 and
-AMD64 GUI/product/version identity. These are integrity/identity checks, not a
-digital signature. Current released binaries are unsigned: trust rests on this
-project's GitHub account, release and manifest. An attacker controlling publication
-could change both the EXE and hash. A trusted signed running/installed app instead
-requires the same signing certificate in its successor; signing/key rotation is
-a separate release-policy decision.
+Only ordinary fixed local NTFS paths are currently accepted. Copy off network,
+ISO/removable/reparse/unsupported folders first. Administrator elevation does
+not make readonly media writable. Staging directories are created atomically
+with Administrators/SYSTEM ACLs; unsafe existing staging is refused, not taken over.
+Reused files are copied into private staging and their ACLs revalidated/hardened;
+CopyFile's source permissions must not leak into the privileged helper.
+Exact candidate/ancestor read/no-write/no-delete handles remain held through
+launch. Existing files are never overwritten. Private handoff files are retained
+for diagnosis; do not broadly clean the staging root or replay helper requests.
 
-Cancellation before committed handoff leaves the current app unchanged. The
-helper waits for the exact parent process; a locked or changed target fails
-closed. Replacing an existing protected copy retains `previous.exe` in that
-operation's private folder, with verified restoration on handled apply/relaunch
-failure. This is not a guarantee against every power-loss/storage failure.
-Handoff/recovery files are deliberately retained rather than broadly deleted;
-do not recursively clean `.updates` or manually replay helper requests.
+The machine-wide gate excludes app updating from Core ISO preparation/Setup
+across instances; fresh external Setup/pending-restart checks also apply. The
+updater never force-closes Windows work, replays upgrade arguments or reboots.
+SHA-256 and fixed GitHub URLs bind bytes to the manifest, not an independent
+publisher identity. EXEs are currently unsigned; a compromised publishing account
+could change both manifest and binary. A signed current app requires the same
+trusted signing certificate in its successor. Consent/critical styling does not
+replace code signing or prevent all supply-chain compromise.
 
-`app-update install` success means **handoff started, not installation proved**.
-After the helper finishes, run `app-update status --json` to inspect the bounded
-local `Last-AppUpdate.json` result and run the protected EXE's `--version` to
-confirm the actual version. Match its `operationId` to the returned handoff.
-A missing/stale result is not success. Keep the
-original portable copy available; if a helper fails, inspect the app log and
-retained recovery state before retrying. Every updater CLI result has
-`applicationUpdated=false`, `setupStarted=false` and `readyForRestart=false`:
-the already-returned parent cannot certify later replacement or authorize reboot.
+CLI: `app-update check --json`, `app-update status --json`,
+`app-update run --yes --json`. The unreleased install verb is an alias, not an
+installer. run needs explicit elevated --yes; CLI never opens a GUI, browser or
+hidden prompt. APP_UPDATE_HANDOFF_STARTED is not proof the new process ran.
+After helper completion, correlate `operationId` in local
+`.pcninja-updates/Last-AppUpdate.json` and run the new EXE's --version. Status is
+bounded/read-only and may be null/unavailable without folder access.
+Every updater result has setupStarted=false and readyForRestart=false.
 
-## Acceptance still pending
+## Live Beta acceptance
 
-Offline/synthetic checks do not establish end-to-end Internet updating. Final
-acceptance requires a disposable VM with two separately approved stable versions:
-the first already contains the updater; the second has a higher exact binary,
-tag and manifest version. Verify discovery/consent, verified bytes, parent/helper
-handoff, actual protected-copy version and GUI reopen, no repeated offer, original
-outside copy preserved and failure/recovery cases. Confirm no Setup, OS upgrade,
-reboot or argument replay. Neither stable publication nor this final VM acceptance
-is part of the current development PR. See the [implementation contract](design/APPLICATION-UPDATES.md).
+Use a disposable Windows 10/11 VM/snapshot. Manually open Beta 1 first; no Beta 2
+is published yet. After owner confirmation, publish a separately verified Beta 2
+with increased binary/tag/manifest version. Test decline/notes with no EXE
+transfer, explicit download, exact same-folder files, new version relaunch with
+no arguments, original preserved, no repeated offer from Beta 2, existing-file
+reuse, cancellation/offline/mismatch and regular/critical notices. No Windows
+upgrade is required for this experiment. CI/fake callbacks do not prove the live
+helper/elevation/relaunch sequence or signed-binary acceptance.

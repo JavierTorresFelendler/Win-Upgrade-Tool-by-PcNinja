@@ -6,7 +6,36 @@ Reusable architecture, diagnosis and verification know-how lives in
 [AI maintenance playbook](AI-MAINTENANCE-PLAYBOOK.md), independently of any
 assistant's personal memory or skills installation.
 
-## RC8 release baseline (owner approved 2026-10-24)
+## Current authorized work: portable Beta update demonstration
+
+The owner approved Beta 1 then Beta 2 testing BEFORE any official release.
+Keep RC8/main and all existing assets unchanged. Continue in Draft PR #13.
+This scope supersedes the Program Files/replacement design below; it does not
+authorize merging, stable/RC9 publication or publishing Beta 2 before Beta 1 is
+opened/tested by the owner.
+
+- Versioned EXEs saved beside the running tool; no original overwrite, old-name
+  rename, numbered copies or Program Files fallback. Private anchored staging
+  stays below that same folder. Existing exact-version files must pass validation.
+- Metadata-only discovery may run at startup. EXE transfer needs explicit GUI
+  **Download and run the new version** consent or CLI **app-update run --yes**.
+  Keep the unreleased install verb only as an alias; no installer is involved.
+- Explicit Beta channel selects only numbered Beta releases; stable/RC selects
+  stable only. Current source version is 1.1.0-beta.1, not a replacement RC8.
+- Offer includes Regular/Critical badge, bounded plain-text publisher message
+  and exact version's GitHub notes link. Critical remains optional, never forced.
+  Release notice is source-controlled in docs/updates/{version}.json.
+- Preparing first Beta prerelease from the exact CI-passed PR commit is authorized.
+  Beta tags may remain unmerged, but require matching successful PR CI; stable/RC
+  still require main ancestry. All publication remains draft/upload/verify-first;
+  Beta never changes stable/latest. No Windows Setup/reboot/live app update on
+  the development machine.
+- Core and packaging fixtures pass locally. CLI and client GUI tests are being
+  finalized, including preview isolation, critical notice/link/consent, same-folder
+  publication/reuse and locked launch bytes. Elevated native/live VM acceptance
+  is distinct; record CI/artifact evidence before handing off.
+
+## Historical RC8-era updater checkpoint (superseded destination design)
 
 ### Current development: application updates (Draft PR #13)
 

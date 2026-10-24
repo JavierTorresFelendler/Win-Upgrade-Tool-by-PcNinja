@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write
+  actions: read
 
 concurrency:
   group: release-publication
@@ -32,6 +33,7 @@ jobs:
         env:
           REF_NAME: ${{ github.ref_name }}
           IS_TAG: ${{ startsWith(github.ref, 'refs/tags/') }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           & ./.github/scripts/Resolve-ReleaseIdentity.ps1
 
@@ -74,9 +76,9 @@ jobs:
       - name: Prepare and verify release assets
         shell: pwsh
         run: |
+          & ./.github/scripts/Prepare-ReleaseAssets.ps1 -Commit $env:GITHUB_SHA
           $exe = Join-Path artifacts $env:ASSET_NAME
           & ./tests/Verify-Cli.ps1 -ExePath $exe -ExpectedVersion $env:PRODUCT_VERSION
-          & ./.github/scripts/Prepare-ReleaseAssets.ps1 -Commit $env:GITHUB_SHA
           Get-Content artifacts/BUILD-INFO.txt | Add-Content $env:GITHUB_STEP_SUMMARY
 
       - name: Upload build artifact
@@ -88,7 +90,7 @@ jobs:
             artifacts/${{ env.ASSET_NAME }}
             artifacts/SHA256SUMS.txt
             artifacts/BUILD-INFO.txt
-            ${{ env.RELEASE_CHANNEL == 'stable' && 'artifacts/update-manifest.json' || '' }}
+            ${{ env.RELEASE_CHANNEL != 'preview' && 'artifacts/update-manifest.json' || '' }}
 
       - name: Publish verified GitHub release (draft assets first; stable latest last)
         if: startsWith(github.ref, 'refs/tags/')

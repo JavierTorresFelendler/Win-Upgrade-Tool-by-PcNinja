@@ -12,9 +12,10 @@ internal static class AppUpdateCliChecks
             if (help.Code != 0 || !help.Output.Contains("COMMAND: app-update"))
                 throw new Exception("Real CLI routing rejected updater subcommand help.");
         }
+        var assetName = AppUpdateIdentity.AssetNameFor("9.9.9");
         var release = new AppUpdateManifest(1, AppUpdateIdentity.Product, AppUpdateIdentity.Repository, "stable",
-            "9.9.9", "v9.9.9", AppUpdateIdentity.AssetName,
-            $"https://github.com/{AppUpdateIdentity.Repository}/releases/download/v9.9.9/{AppUpdateIdentity.AssetName}",
+            "9.9.9", "v9.9.9", assetName,
+            $"https://github.com/{AppUpdateIdentity.Repository}/releases/download/v9.9.9/{assetName}",
             123456, new string('a', 64), $"https://github.com/{AppUpdateIdentity.Repository}/releases/tag/v9.9.9");
         var checks = 0;
         var installs = 0;
@@ -58,6 +59,7 @@ internal static class AppUpdateCliChecks
                 AppUpdateCheckState.Available => "APP_UPDATE_AVAILABLE",
                 AppUpdateCheckState.UpToDate => "APP_UPDATE_CURRENT",
                 AppUpdateCheckState.NoStableRelease => "APP_UPDATE_NO_STABLE_RELEASE",
+                AppUpdateCheckState.NoBetaRelease => "APP_UPDATE_NO_BETA_RELEASE",
                 _ => "APP_UPDATE_CHECK_UNAVAILABLE"
             };
             AssertEnvelope(result, identifier, code);
@@ -89,7 +91,7 @@ internal static class AppUpdateCliChecks
         using var cancellation = new CancellationTokenSource();
         var calls = new List<string>();
         var operationId = Guid.NewGuid().ToString("N");
-        var target = @"C:\Program Files\PcNinja\WindowsUpgradeAssistant\" + AppUpdateIdentity.AssetName;
+        var target = @"C:\Program Files\PcNinja\WindowsUpgradeAssistant\" + assetName;
         var handedOff = await CaptureAsync(() => CliAppUpdates.RunAsync(["install", "--yes", "--json"], cancellation.Token,
             token =>
             {

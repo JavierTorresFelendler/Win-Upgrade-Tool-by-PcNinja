@@ -4,15 +4,23 @@ $ErrorActionPreference = 'Stop'
 Import-Module (Join-Path $PSScriptRoot 'AppUpdateRelease.psm1') -Force
 $identity = Get-PcNinjaReleaseIdentity $PropsPath
 if ($Commit -cnotmatch '\A[a-f0-9]{40}\z') { throw 'A full source commit is required.' }
-$exe = Get-Item -LiteralPath (Join-Path $ArtifactDirectory $identity.AssetName)
+$built = Join-Path $ArtifactDirectory $identity.BuildExecutableName
+$versioned = Join-Path $ArtifactDirectory $identity.AssetName
+if (Test-Path -LiteralPath $built) {
+    if (Test-Path -LiteralPath $versioned) { throw 'Versioned asset already exists; do not overwrite it.' }
+    Move-Item -LiteralPath $built -Destination $versioned -ErrorAction Stop
+}
+$exe = Get-Item -LiteralPath $versioned
 if ($exe.PSIsContainer -or ($exe.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0) { throw 'Final EXE must be a regular non-reparse file.' }
 Assert-PcNinjaExecutableIdentity $identity $exe.VersionInfo.ProductName $exe.VersionInfo.FileVersion $exe.VersionInfo.ProductVersion $exe.Length $Commit
 $hash = (Get-FileHash -LiteralPath $exe.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
 $encoding = [Text.UTF8Encoding]::new($false)
 $sums = @("$hash  $($identity.AssetName)")
 $manifestPath = Join-Path $ArtifactDirectory $identity.ManifestName
-if ($identity.IsStable) {
-    $manifest = New-PcNinjaAppUpdateManifest $identity $exe.Length $hash
+if ($identity.HasManifest) {
+    $noticePath = Join-Path 'docs/updates' "$($identity.Version).json"
+    $notice = Get-Content -LiteralPath $noticePath -Raw | ConvertFrom-Json
+    $manifest = New-PcNinjaAppUpdateManifest $identity $exe.Length $hash -Importance $notice.importance -Message $notice.message
     [IO.File]::WriteAllText($manifestPath, ($manifest | ConvertTo-Json -Depth 4), $encoding)
     $manifestHash = (Get-FileHash -LiteralPath $manifestPath -Algorithm SHA256).Hash.ToLowerInvariant()
     $sums += "$manifestHash  $($identity.ManifestName)"
