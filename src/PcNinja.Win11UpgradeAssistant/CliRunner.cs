@@ -211,9 +211,8 @@ internal static class CliRunner
             else if (options.IsoPath is not null)
             {
                 exactIsoPath = Path.GetFullPath(options.IsoPath.Trim('"'));
-                engine.ValidateIsoFile(exactIsoPath);
-                await UpgradeEngine.VerifyIsoHashAsync(exactIsoPath, options.Sha256 ?? UpgradeEngine.ConfiguredIsoSha256, token);
-                source = await engine.MountAndValidateAsync(exactIsoPath, token);
+                source = (await engine.PrepareIsoAsync(exactIsoPath,
+                    options.Sha256 ?? UpgradeEngine.ConfiguredIsoSha256, token)).Source;
             }
             else
             {

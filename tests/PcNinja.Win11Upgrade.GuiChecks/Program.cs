@@ -118,6 +118,37 @@ internal static class Program
         }));
         object? Call(string name, params object?[] values) => type.GetMethod(name,
             BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(form, values);
+        // Only the current, non-cancelled preparation may update status. No media work.
+        // Unlike production Application.Run, this fixture uses DoEvents: explicitly
+        // supply its UI context so Progress<T> cannot choose the ThreadPool fallback.
+        var priorContext = SynchronizationContext.Current;
+        using var preparationContext = new WindowsFormsSynchronizationContext();
+        SynchronizationContext.SetSynchronizationContext(preparationContext);
+        try
+        {
+        using (var preparation = new CancellationTokenSource())
+        using (var replacement = new CancellationTokenSource())
+        {
+            SetField("_operation", preparation);
+            var progress = (IProgress<string>)Call("CreatePreparationProgress", preparation)!;
+            var status = (Label)Field("_status");
+            progress.Report("Reading Windows image 1 of 2...");
+            Application.DoEvents();
+            if (status.Text != "Reading Windows image 1 of 2...")
+                throw new Exception("Active preparation progress was not displayed.");
+            preparation.Cancel();
+            status.Text = "Operation cancelled.";
+            progress.Report("late cancelled progress");
+            Application.DoEvents();
+            if (status.Text != "Operation cancelled.") throw new Exception("Cancelled progress overwrote the outcome.");
+            SetField("_operation", replacement);
+            progress.Report("late previous operation");
+            Application.DoEvents();
+            if (status.Text != "Operation cancelled.") throw new Exception("An old operation overwrote current status.");
+            SetField("_operation", null);
+        }
+        }
+        finally { SynchronizationContext.SetSynchronizationContext(priorContext); }
         var consentImage = new InstallationImage(6, "Windows 11 Pro", "Professional", "x64", "10.0.26300", "Client", "en-US");
         var consentSource = new MountedSource("X:\\", "X:\\setup.exe", "X:\\sources\\install.wim", [consentImage]);
         foreach (var restart in new[] { true, false })

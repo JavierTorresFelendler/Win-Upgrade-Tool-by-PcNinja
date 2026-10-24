@@ -1,5 +1,16 @@
 # User-message catalog
 
+## Development PR: ISO preparation progress
+
+- Checksum stage: `Checking the ISO checksum... N%`.
+- Image metadata: `Reading Windows image X of Y...`.
+- Proven same-session reuse: `Reusing the unchanged ISO; rechecking signature and media safety...`.
+- These update the existing status area, not a new popup. Cancelled/previous
+  operation progress cannot replace the outcome. Final prelaunch revalidation,
+  independent error details and existing image-selector cues remain unchanged.
+- Unsupported or missing unchanged-file proof silently uses full checks; this is
+  not an incompatible-media or corrupt-download error. See `ISO-VALIDATION-REUSE.md`.
+
 ## Post-RC7 follow-up: installation-image guidance
 
 | Image-selector state | Empty-row cue |

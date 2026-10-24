@@ -6,7 +6,30 @@ Reusable architecture, diagnosis and verification know-how lives in
 [AI maintenance playbook](AI-MAINTENANCE-PLAYBOOK.md), independently of any
 assistant's personal memory or skills installation.
 
-## Current follow-up: state-aware installation-image guidance
+## Current development: session-scoped exact ISO validation reuse
+
+- Owner approved a separate implementation/test-EXE PR on
+  `feature/iso-validation-reuse`, based on main `0e738b5` (merged #18). #19's OEM
+  browser routing remains a separate unmerged PR awaiting owner acceptance.
+- Share Core preparation between GUI manual ISO, Automatic existing-file reuse
+  and CLI. Reuse only after fixed-NTFS unchanged-file journal/CLOSE proof and
+  exact device/volume/path mount binding; no size/time-only shortcuts or idle
+  handles. Fresh signature/answer-file checks and final Setup gates remain.
+- Add clear checksum/image-reading progress and already-mounted versus newly
+  mounted logs. Source/index selection, consent, restart/quiet/results, actual
+  links, logos and existing release files remain unchanged.
+- Local warnings-as-errors Release builds and full Core, headless CLI, client GUI
+  and actual-EXE read-only CLI checks passed. This includes stale-progress rejection,
+  consent/quiet/restart/image cues and logo/public links. The optional real tiny-file
+  native proof reported SKIP on this non-admin client: journal/CLOSE evidence was
+  unavailable; operation lock/release and synthetic cases passed. Do not describe
+  this as a confirmed native cache hit. CI/artifact evidence follows in the PR;
+  real ISO/VM acceptance remains the owner's next gate.
+- See [design, limits and tests](ISO-VALIDATION-REUSE.md). No real provider transfer,
+  ISO mount/detach, Windows Setup or reboot was invoked during development.
+  No merge, RC/tag, Release or replacement of any existing EXE is approved.
+
+## Merged #18 follow-up: state-aware installation-image guidance
 
 - Owner approved replacing an empty image-selector display with a cue that
   complements, rather than overwrites, existing incompatibility/error messages.

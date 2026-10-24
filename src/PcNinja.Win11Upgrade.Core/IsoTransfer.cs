@@ -17,7 +17,8 @@ internal static class IsoTransfer
     internal static async Task<DownloadResult> DownloadAsync(HttpClient http, Uri endpoint, string directory,
         Action<long?> checkStorage, IProgress<DownloadProgress>? progress, CancellationToken token,
         string? expectedSha256, long minimumBytes = UpgradeEngine.MinimumIsoBytes,
-        Func<string, CancellationToken, Task>? validateMedia = null)
+        Func<string, CancellationToken, Task>? validateMedia = null,
+        Func<string, string?, CancellationToken, Task<string>>? validateExistingIso = null)
     {
         directory = Path.GetFullPath(directory);
         Directory.CreateDirectory(directory);
@@ -43,8 +44,8 @@ internal static class IsoTransfer
                     progress?.Report(new(cachedPath, 0, cached.Bytes, null, "Validating the existing ISO..."));
                     if (new FileInfo(cachedPath).Length != cached.Bytes || cached.Bytes < minimumBytes)
                         throw new CorruptDownloadException("The recorded ISO size has changed.");
-                    var hash = await CheckedHashAsync(cachedPath, expectedSha256 ?? cached.Sha256, token);
-                    if (validateMedia is not null) await validateMedia(cachedPath, token);
+                    var hash = await ValidateExistingAsync(cachedPath, expectedSha256 ?? cached.Sha256, token,
+                        validateExistingIso, validateMedia);
                     AppLog.Info($"Reusing exact recorded download without contacting the provider: {cachedPath}. SHA256: {hash}.");
                     return new(cachedPath, cached.Bytes, cached.Bytes, hash, Reused: true);
                 }
@@ -89,8 +90,8 @@ internal static class IsoTransfer
                 var length = new FileInfo(destination).Length;
                 if (length < minimumBytes || (total.HasValue && length != total))
                     throw new CorruptDownloadException("The existing ISO size does not match the download.");
-                var hash = await CheckedHashAsync(destination, expectedSha256 ?? (ownedFinal ? completed!.Sha256 : null), token);
-                if (validateMedia is not null) await validateMedia(destination, token);
+                var hash = await ValidateExistingAsync(destination, expectedSha256 ?? (ownedFinal ? completed!.Sha256 : null),
+                    token, validateExistingIso, validateMedia);
                 await SaveCompletedAsync(completedPath, new(endpoint.AbsoluteUri, name, length, hash), token);
                 await SaveCompletedAsync(pointerPath, new(endpoint.AbsoluteUri, name, length, hash), token);
                 AppLog.Info($"Reusing exact validated download: {destination}. SHA256: {hash}.");
@@ -216,6 +217,26 @@ internal static class IsoTransfer
             throw;
         }
         finally { resumedResponse?.Dispose(); }
+    }
+
+    private static async Task<string> ValidateExistingAsync(string path, string? expected, CancellationToken token,
+        Func<string, string?, CancellationToken, Task<string>>? validateExistingIso,
+        Func<string, CancellationToken, Task>? validateMedia)
+    {
+        if (validateExistingIso is null)
+        {
+            var hash = await CheckedHashAsync(path, expected, token);
+            if (validateMedia is not null) await validateMedia(path, token);
+            return hash;
+        }
+        try
+        {
+            var hash = UpgradeEngine.NormalizeSha256(await validateExistingIso(path, expected, token));
+            if (expected is not null && !hash.Equals(UpgradeEngine.NormalizeSha256(expected), StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException("The ISO checksum does not match. Download a fresh copy before upgrading.");
+            return hash;
+        }
+        catch (InvalidDataException ex) { throw new CorruptDownloadException(ex.Message); }
     }
 
     private static async Task<string> CheckedHashAsync(string path, string? expected, CancellationToken token)

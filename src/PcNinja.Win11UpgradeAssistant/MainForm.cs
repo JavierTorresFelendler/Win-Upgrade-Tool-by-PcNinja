@@ -724,14 +724,14 @@ internal sealed class MainForm : Form
             _progress.Visible = true;
             _progress.Style = ProgressBarStyle.Marquee;
             _status.Text = "Validating the selected installation media and images...";
+            var preparationProgress = CreatePreparationProgress(_operation);
             if (automaticSource is not null) source = automaticSource;
             else if (path.EndsWith(".iso", StringComparison.OrdinalIgnoreCase))
             {
-                _engine.ValidateIsoFile(path);
-                await UpgradeEngine.VerifyIsoHashAsync(path, UpgradeEngine.ConfiguredIsoSha256, _operation.Token);
-                source = await _engine.MountAndValidateAsync(path, _operation.Token);
+                source = (await _engine.PrepareIsoAsync(path, UpgradeEngine.ConfiguredIsoSha256,
+                    _operation.Token, preparationProgress)).Source;
             }
-            else source = await _engine.ValidateMountedSourceAsync(path, _operation.Token);
+            else source = await _engine.ValidateMountedSourceAsync(path, _operation.Token, progress: preparationProgress);
 
             var sameSource = previousSource is not null && previousKey == path &&
                 source.ImagePath == previousSource.ImagePath &&
@@ -773,8 +773,8 @@ internal sealed class MainForm : Form
                 () => { _setupHasStarted = true; SetBusy(true); }, quiet: _quietSetup.Checked);
             PresentSetupResult(result, automaticRestart);
         }
-        catch (OperationCanceledException) { _status.Text = "Operation cancelled."; }
-        catch (Exception ex) { ShowIssue(ex); }
+        catch (OperationCanceledException) { _engine.InvalidateIsoValidation(); _status.Text = "Operation cancelled."; }
+        catch (Exception ex) { _engine.InvalidateIsoValidation(); ShowIssue(ex); }
         finally
         {
             _operation?.Dispose();
@@ -788,6 +788,13 @@ internal sealed class MainForm : Form
             _status.Text = outcome;
         }
     }
+
+    private IProgress<string> CreatePreparationProgress(CancellationTokenSource operation) =>
+        new Progress<string>(stage =>
+        {
+            if (!ReferenceEquals(_operation, operation) || operation.IsCancellationRequested) return;
+            _status.Text = stage;
+        });
 
     private void PresentSetupResult(UpgradeResult result, bool automaticRestart)
     {

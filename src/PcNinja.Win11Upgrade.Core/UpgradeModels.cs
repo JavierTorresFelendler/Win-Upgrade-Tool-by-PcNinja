@@ -3,6 +3,8 @@ namespace PcNinja.Win11Upgrade.Core;
 public sealed record MountedSource(string Root, string SetupPath, string? ImagePath = null,
     IReadOnlyList<InstallationImage>? Images = null);
 
+public sealed record IsoPreparationResult(MountedSource Source, string Sha256, bool ReusedValidation = false);
+
 public sealed record UpgradeResult(int ExitCode, string SetupPath)
 {
     public const string ManualRestartMessage =
