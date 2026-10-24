@@ -55,9 +55,28 @@ not the hold on merging, publishing or changing RC8. Refreshed the existing
   help route, retain rejection of unrelated extra arguments, and add real
   `CliRunner` regression coverage before rebuilding the final artifact.
 
-Next: provide the final separate CI test EXE. Do not merge, mark ready, publish a new
-release, replace RC8 or run an actual updater installation on the development PC.
-Media preparation #9 stays deferred. See [application updates](APPLICATION-UPDATES.md).
+- Final runtime candidate `cf84c864d8111b20400b0577761fe15f0abb5d24` is pushed and
+  remote-SHA verified. CI [40111065195](https://github.com/JavierTorresFelendler/Windows-Upgrade-Assistant-by-PcNinja/actions/runs/40111065195)
+  passed all steps, including the real updater help route and elevated temporary
+  native filesystem fixtures. Local client GUI tests also passed independently.
+- Downloaded [test artifact 12566014956](https://github.com/JavierTorresFelendler/Windows-Upgrade-Assistant-by-PcNinja/actions/runs/40111065195/artifacts/12566014956)
+  separately; verified three files, source, tested merge
+  `c20376ce9c9544be5fe42fb24438bd5ff03fafad`, product informational version,
+  exact SHA256SUMS and 73,080,239-byte EXE size. SHA-256:
+  `b052a1f55e61215bfa97aafe21fc0a2475c8784af9dd8e618d001d5775e36da8`.
+  Authenticode is `NotSigned`, not a signed-publication claim. Downloaded EXE
+  passes actual read-only CLI/help/consent/completion checks. A real metadata-only
+  GitHub check returned normal `APP_UPDATE_NO_STABLE_RELEASE`, with no executable
+  transfer, app installation, Windows Setup or restart. This does not prove the
+  future stable download/helper/elevation/relaunch integration.
+- RC8 main/tag, local release EXE and all three remote release asset IDs/digests
+  remain unchanged. This final handoff is documentation only; the linked runtime
+  candidate remains the test reference, not a rebuilt or republished RC8.
+
+Await owner review and separately authorized disposable-VM/two-stable-version
+acceptance. Do not merge, mark ready, publish a release, replace RC8 or run an
+actual updater installation on the development PC. Media preparation #9 stays
+deferred. See [application updates](APPLICATION-UPDATES.md).
 
 ### Published baseline (unchanged)
 
