@@ -1,7 +1,7 @@
 # Quiet Setup and remote automation results
 
-Development feature after RC7, not part of the published RC7 EXE. Use the test
-artifact from the feature PR until a separate release is approved.
+Included in RC8. This documents the shared quiet Setup and remote result contract;
+it does not implement application self-update or agent-controlled restart code.
 
 ## Invocation
 

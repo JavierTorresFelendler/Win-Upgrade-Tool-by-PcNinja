@@ -1,7 +1,7 @@
 # Command-line guide
 
-Development follow-up: [quiet Setup and remote automation results](CLI-AUTOMATION.md)
-documents the feature-PR contract. It is not in the published RC7 EXE yet.
+RC8 includes [quiet Setup and remote automation results](CLI-AUTOMATION.md),
+with explicit consent, machine-readable outcomes and independent restart control.
 
 The graphical interface opens when the EXE is started without arguments. The
 same standalone EXE becomes a command-line tool when a command is supplied.
@@ -82,12 +82,12 @@ Test-Path E:\setup.exe
 
 ## Recommend a matching download page
 
-Development correction in PR #21: matching manually supplied x64 client LTSC media
+RC8 includes the PR #21 correction: matching manually supplied x64 client LTSC media
 can use `validate --iso <path>` and `upgrade --iso <path>` (or `--mounted` for an
 explicit drive/folder). Inspect the actual image list and use `--image-index` when
 needed. Exact edition/N/IoT and system UI language must match. No edition/channel
 conversion is performed. Automatic `--download` stays unavailable for LTSC;
-Server execution stays blocked. This is not in the published RC7 binary.
+Server execution stays blocked.
 See [manual LTSC constraints](MATCHED-ISO-DOWNLOADS.md#manual-ltsc-correction).
 
 Request manual-download guidance for the detected system profile:

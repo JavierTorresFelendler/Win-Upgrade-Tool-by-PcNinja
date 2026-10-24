@@ -45,7 +45,7 @@ public sealed class UpgradeEngine
             CookieContainer = new CookieContainer()
         };
         var http = new HttpClient(handler) { Timeout = Timeout.InfiniteTimeSpan };
-        http.DefaultRequestHeaders.UserAgent.ParseAdd("PcNinja-Win11-Upgrade-Assistant/1.1.0-rc.7");
+        http.DefaultRequestHeaders.UserAgent.ParseAdd("PcNinja-Win11-Upgrade-Assistant/1.1.0-rc.8");
         return http;
     }
 
