@@ -285,6 +285,7 @@ internal static class Program
         finally { Directory.Delete(folder); }
 
         ImageSelectionChecks.Run(form);
+        DownloadGuidanceChecks.Run();
 
         if (args.Length > 0)
         {
@@ -315,6 +316,24 @@ internal static class Program
             Save("Cancel.png");
             SetField("_operation", null);
             Invoke("SetBusy", false);
+            SetField("_lastErrorDetails", null);
+            choices[1].Checked = true;
+            Save("Manual-browse.png");
+            sources.Text = @"X:\Preview-only\Windows.iso";
+            Save("Manual-validate.png");
+            var previewCurrent = CurrentWindows.Read();
+            var previewImage = new InstallationImage(1, "Preview-only matching Windows image", previewCurrent.Edition,
+                "x64", $"10.0.{Math.Max(22000, previewCurrent.Build)}", "Client", previewCurrent.Language);
+            var previewSource = new MountedSource(@"X:\Preview-only", @"X:\Preview-only\setup.exe",
+                @"X:\Preview-only\sources\install.wim", [previewImage, previewImage with { Index = 2 }]);
+            SetField("_preparedSource", previewSource);
+            SetField("_preparedKey", sources.Text);
+            var previewImages = (ComboBox)Field("_installationImages");
+            foreach (var item in previewSource.Images!) previewImages.Items.Add(item);
+            Invoke("UpdateImageInfo");
+            Save("Manual-choose-image.png");
+            previewImages.SelectedIndex = 0;
+            Save("Manual-start.png");
             void Save(string name)
             {
                 form.PerformLayout();

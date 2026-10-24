@@ -1,12 +1,104 @@
 # Development handoff
 
-Updated: 2026-10-23. This is sanitized project context, not a backup of Codex chats.
+Updated: 2026-10-24. This is sanitized project context, not a backup of Codex chats.
 
 Reusable architecture, diagnosis and verification know-how lives in
 [AI maintenance playbook](AI-MAINTENANCE-PLAYBOOK.md), independently of any
 assistant's personal memory or skills installation.
 
-## Current development: session-scoped exact ISO validation reuse
+## Current development: matched ISO downloads and manual Server guidance
+
+### Owner-approved automatic preflight and GUI next-action follow-up
+
+- Reviewed actual download/launch order before editing. Full-profile automatic
+  preflight already precedes HTTP/destination creation; retained the configured
+  owner URL, all eleven edition IDs, transport/cookies/TLS/provider fallback,
+  exact-name reuse and automatic consent/download/validation/upgrade sequence.
+  Added real-entry synthetic no-HTTP/no-destination regressions and GUI pre-consent
+  recheck. This does not assert remote bytes match configuration before download.
+- Add registered Downloads-first ISO picker with unchanged exact-file checks,
+  safe fallback and CWD restoration. Manual source stages get exclusive browse,
+  Validate, image-frame and Start cues; idle cues never override red Cancel or
+  running Setup. Auto retains Start with no added manual Validate. Clear displayed
+  prepared state before rechecking media; failed/cancelled checks cannot imply Ready.
+- Complete #19's missing CLI error fallback-page text without changing its
+  no-browser quiet/JSON rule. #19 is not merged/closed here. Update Unreleased
+  changelog for #20/#21; no new version or release approval is implied.
+- Verification: synthetic unsupported preflight, all existing Core/transfer/mount
+  contracts and new GUI/CLI fixtures. External effects are fake; no real provider
+  ISO transfer, ISO attach/detach, Setup or reboot during development. Current
+  branch remains Draft #21 stacked on #20; existing test EXEs remain immutable.
+
+### Scope and owner field update (2026-10-24)
+
+- Owner ran the corrected `0b1e0f2` test EXE on the previously blocked LTSC VM,
+  selected the ISO and reported successful preparation checks/start. This confirms
+  the readiness blocker is no longer reproduced in that trial; it is not a final
+  completed migration/apps-and-files preservation claim. Windows 10 Pro in Spanish
+  is under owner test, with outcome pending.
+- Freeze new feature scope around stability and safety. Media preparation design
+  #9 remains deferred. Application self-update through GitHub is the only planned
+  next new capability, using the design in #13 after it is refreshed. That PR is
+  still design only, not a merged/working updater. See [current roadmap](ROADMAP.md).
+- Documentation-only follow-up adds explicit Massgrave catalog/website/project
+  credits. Main-site GitHub link and catalog source repository were verified;
+  current WinUpdate V2 and Smart Office update manifests were inspected as
+  references. Do not copy their host-specific updater/replacement code blindly.
+- This follow-up changes no application code, provider URL, version, compiled
+  active test EXE or published artifact. No merge, RC/stable tag or Release.
+
+### Owner-approved LTSC correction (same Draft PR #21)
+
+- Owner reproduced an inconsistent readiness state on Windows 10 Enterprise LTSC
+  21H2/build 19044.1288 using Hebrew Windows 11 Enterprise LTSC 2024 media: image
+  inspection succeeded and advertised Start, but a separate LTSC host ban disabled
+  Start; Core and CLI also contained a blanket LTSC host ban. Manual Windows Setup
+  offered to retain apps/files and was progressing when reported. Final migration
+  and data-preservation acceptance are still pending, not claimed as passed.
+- Replace divergent host gates with shared `ManualUpgradePolicy`: x64 Windows
+  10/11 Client, including LTSC, can use matching manually supplied media. Exact
+  edition/N/IoT, language, architecture and image profile checks remain; no channel
+  conversion, Server execution, automatic LTSC transfer or guessed LTSC catalog
+  match is enabled. Windows 10 target POC build-order policy stays unchanged.
+- GUI uses one detected profile for host policy and image guidance. Unsupported
+  hosts show their Core blocker instead of Start instructions; host eligibility
+  is logged for diagnosis. CLI status/preflight and final Core launch share the
+  same policy. Consent, storage, signature, answer-file, restart and final-media
+  revalidation remain unchanged. No real Setup/ISO/mount/reboot is run in tests.
+- Added regression first failed on the old implementation's disabled LTSC Start.
+  New Core/GUI tests cover Hebrew LTSC, edition/language rejection, automatic
+  exclusion, unsupported-host guidance, Server/architecture/type blocking and
+  unchanged command/restart/quiet profiles. New test artifact evidence follows
+  in the PR; original PR21 and RC files remain untouched.
+
+### Original matched-download implementation
+
+- Approved separate Draft PR on `feature/matched-iso-downloads`, stacked on
+  `feature/iso-validation-reuse` (#20). It includes the eleven-edition OEM routing
+  policy requested in #19 without changing #19, #20 or main. CI includes the
+  stacked base branch; no merge, ready-for-review, RC/tag, Release or replacement
+  of published/tested assets is authorized.
+- Full-profile matching prefers configured PcNinja media; unmatched systems get
+  on-demand exact public landing guidance from Client/Server catalogs. Browser
+  download requires manual exact-ISO selection and validation; no host challenge
+  bypass or automatic continuation. `downloads [--json]` is read-only. `status`
+  stays offline; automatic transfer is full-profile gated in GUI and CLI.
+- Server has download/inspect guidance and explicit, freshly checked manual CMD
+  copy only. Start/quiet/restart remain disabled, Core execution guard unchanged.
+  No real Server command is run or implicitly authorized by a recommendation.
+- Implementation plan, release-family/26H1 handling, safe probe, fixture matrix,
+  extension rules and remaining owner VM gates: [matched ISO downloads](MATCHED-ISO-DOWNLOADS.md).
+- Local warnings-as-errors Release builds and Core/headless CLI/client GUI suites
+  passed, including the existing regression suites. The GUI suite passed twice
+  with fake external effects. The non-admin native journal proof still reports
+  SKIP; do not describe a synthetic ISO cache hit as a real media test.
+- A bounded live HTML-only probe matched es-ES Pro, es-MX Pro N and en-US Enterprise
+  to the expected Consumer/Business 26H2 catalogs, and es-ES Server Standard to
+  Server 2025. It did not follow landing links or download media. CI/artifact
+  evidence is recorded in the Draft PR; actual provider transfer, ISO attach/detach
+  and upgrade acceptance remain unproven by this development work.
+
+## Previous development: session-scoped exact ISO validation reuse
 
 - Owner approved a separate implementation/test-EXE PR on
   `feature/iso-validation-reuse`, based on main `0e738b5` (merged #18). #19's OEM

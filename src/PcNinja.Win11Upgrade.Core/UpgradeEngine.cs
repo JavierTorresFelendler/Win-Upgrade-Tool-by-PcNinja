@@ -22,8 +22,20 @@ public sealed class UpgradeEngine
     private const long DownloadSafetyMarginBytes = 1L * 1024 * 1024 * 1024;
     private readonly HttpClient _http;
     private readonly IsoValidationSession _isoValidation;
+    private readonly Func<DownloadSystem> _readDownloadSystem;
 
-    public UpgradeEngine()
+    public UpgradeEngine() : this(DownloadSystem.Read, CreateDownloadHttp()) { }
+
+    internal UpgradeEngine(Func<DownloadSystem> readDownloadSystem, HttpClient http)
+    {
+        _readDownloadSystem = readDownloadSystem;
+        _http = http;
+        _isoValidation = new(IsoFileProof.TryOpen, ResolveIsoMountAsync, HashIsoStreamAsync,
+            (root, token, progress) => ValidateMountedSourceAsync(root, token, progress: progress),
+            (root, token) => Task.Run(() => ValidateMountedSource(root, removeSelectedAnswerFiles: false), token));
+    }
+
+    private static HttpClient CreateDownloadHttp()
     {
         var handler = new HttpClientHandler
         {
@@ -32,11 +44,9 @@ public sealed class UpgradeEngine
             UseCookies = true,
             CookieContainer = new CookieContainer()
         };
-        _http = new HttpClient(handler) { Timeout = Timeout.InfiniteTimeSpan };
-        _http.DefaultRequestHeaders.UserAgent.ParseAdd("PcNinja-Win11-Upgrade-Assistant/1.1.0-rc.7");
-        _isoValidation = new(IsoFileProof.TryOpen, ResolveIsoMountAsync, HashIsoStreamAsync,
-            (root, token, progress) => ValidateMountedSourceAsync(root, token, progress: progress),
-            (root, token) => Task.Run(() => ValidateMountedSource(root, removeSelectedAnswerFiles: false), token));
+        var http = new HttpClient(handler) { Timeout = Timeout.InfiniteTimeSpan };
+        http.DefaultRequestHeaders.UserAgent.ParseAdd("PcNinja-Win11-Upgrade-Assistant/1.1.0-rc.7");
+        return http;
     }
 
     public string GetOperatingSystemDescription()
@@ -69,21 +79,7 @@ public sealed class UpgradeEngine
         return $"{family}{(string.IsNullOrWhiteSpace(edition) ? "" : $" {edition}")}{version} (build {build}, {architecture})";
     }
 
-    public void ValidateSupportedComputer()
-    {
-        if (RuntimeInformation.OSArchitecture != Architecture.X64)
-            throw new InvalidOperationException("This release supports x64 computers only.");
-
-        using var key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion");
-        var installationType = key?.GetValue("InstallationType")?.ToString() ?? "";
-        var productName = key?.GetValue("ProductName")?.ToString() ?? "";
-        if (installationType.Contains("Server", StringComparison.OrdinalIgnoreCase) ||
-            productName.Contains("Server", StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException("Windows Server and LTSC are not supported by this release.");
-        if (productName.Contains("LTSC", StringComparison.OrdinalIgnoreCase) ||
-            productName.Contains("LTSB", StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException("Windows Server and LTSC are not supported by this release.");
-    }
+    public void ValidateSupportedComputer() => ManualUpgradePolicy.EnsureAvailable(DownloadSystem.Read());
 
     public IReadOnlyList<string> FindLocalIsos()
     {
@@ -272,10 +268,38 @@ public sealed class UpgradeEngine
 
     public void InvalidateIsoValidation() => _isoValidation.Invalidate();
 
+    public async Task<DownloadRecommendation> GetDownloadRecommendationAsync(CancellationToken token)
+    {
+        // Catalog requests must not inherit the download provider's cookies or
+        // follow a changed catalog URL to another host before it is checked.
+        using var handler = new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false };
+        using var catalog = new HttpClient(handler) { Timeout = Timeout.InfiniteTimeSpan };
+        return await IsoDownloadCatalog.ResolveAsync(catalog, DownloadSystem.Read(), token);
+    }
+
+    public async Task<string> GetManualServerCommandAsync(MountedSource selectedSource, int imageIndex,
+        CancellationToken token)
+    {
+        var system = DownloadSystem.Read();
+        if (!system.IsServer) throw new InvalidOperationException("Manual Server guidance is only available on Windows Server.");
+        var source = await ValidateMountedSourceAsync(selectedSource.Root, token, removeSelectedAnswerFiles: false);
+        if (!string.Equals(source.ImagePath, selectedSource.ImagePath, StringComparison.OrdinalIgnoreCase) ||
+            !(source.Images ?? []).SequenceEqual(selectedSource.Images ?? []))
+            throw new InvalidOperationException("Installation media changed. Validate and select the image again.");
+        var image = (source.Images ?? []).SingleOrDefault(item => item.Index == imageIndex)
+            ?? throw new InvalidOperationException("Select a validated Windows Server image first.");
+        var command = ManualServerUpgrade.BuildCommand(source, image, system);
+        InstallationSafety.EnsureSafe(source.Root, removeSelectedAnswerFiles: false);
+        token.ThrowIfCancellationRequested();
+        return command;
+    }
+
     public async Task<DownloadResult> DownloadIsoAsync(string destinationDirectory,
         IProgress<DownloadProgress>? progress, CancellationToken cancellationToken, string? expectedSha256 = null)
     {
-        AutomaticDownloadPolicy.EnsureAvailable(CurrentWindows.Read().Language);
+        var system = _readDownloadSystem();
+        AutomaticDownloadPolicy.EnsureAvailable(system);
+        var configuredSource = DownloadSourcePolicy.GetAutomaticSource(system)!;
         InstallationSafety.EnsureSafe(AppContext.BaseDirectory, removeSelectedAnswerFiles: false);
         MountedSource? validatedSource = null;
         var result = await DownloadWithTransportFallbackAsync(endpoint => IsoTransfer.DownloadAsync(_http, endpoint, Path.GetFullPath(destinationDirectory),
@@ -297,16 +321,19 @@ public sealed class UpgradeEngine
                 InstallationImages.EnsureAutomaticWindows11Source(prepared.Source);
                 validatedSource = prepared.Source;
                 return prepared.Sha256;
-            }));
+            }), new Uri(configuredSource.BrowserPage));
         // Reuse only this operation's exact completed validation, never a path/time-based cache.
         return result with { ValidatedSource = validatedSource
             ?? throw new InvalidOperationException("The downloaded ISO did not complete media validation.") };
     }
 
-    internal static async Task<DownloadResult> DownloadWithTransportFallbackAsync(Func<Uri, Task<DownloadResult>> transfer)
+    internal static async Task<DownloadResult> DownloadWithTransportFallbackAsync(Func<Uri, Task<DownloadResult>> transfer,
+        Uri? endpoint = null)
     {
-        try { return await transfer(new Uri(DownloadEndpoint)); }
-        catch (DownloadTransferException ex) when (ex.InnerException is HttpRequestException)
+        endpoint ??= new Uri(DownloadEndpoint);
+        try { return await transfer(endpoint); }
+        catch (DownloadTransferException ex) when (ex.InnerException is HttpRequestException &&
+            endpoint.Host.Equals(new Uri(DownloadEndpoint).Host, StringComparison.OrdinalIgnoreCase))
         {
             // The short-link host may require TLS 1.3. Windows 10 can securely use the
             // provider route directly with OS-default TLS and normal certificate checks.
@@ -491,7 +518,7 @@ public sealed class UpgradeEngine
     public static void OpenPcNinjaDownloadPage() => Process.Start(new ProcessStartInfo
     {
         // Manual language/version selection is separate from the internal automatic route.
-        FileName = PcNinjaBrowserFallbackPage,
+        FileName = DownloadSourcePolicy.GetPcNinjaBrowserPage(DownloadSystem.Read()),
         UseShellExecute = true
     });
 

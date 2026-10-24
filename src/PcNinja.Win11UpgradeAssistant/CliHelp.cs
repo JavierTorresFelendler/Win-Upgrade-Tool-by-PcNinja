@@ -5,7 +5,7 @@ internal static class CliHelp
     internal static string Version => ProductIdentity.Version;
 
     private static readonly string[] Topics =
-        ["status", "scan", "validate", "upgrade", "log-path", "completion"];
+        ["status", "downloads", "scan", "validate", "upgrade", "log-path", "completion"];
 
     public static bool TryGetRequestedTopic(string[] args, out string? topic)
     {
@@ -64,6 +64,7 @@ internal static class CliHelp
     private static string? GetTopic(string topic) => topic switch
     {
         "status" => Status,
+        "downloads" => Downloads,
         "scan" or "refresh" or "rescan" => Scan,
         "validate" => Validate,
         "upgrade" => Upgrade,
@@ -85,6 +86,7 @@ Usage:
 
 Commands:
   status       Show Windows, storage, administrator, and log information.
+  downloads    Recommend a matching download page without downloading an ISO.
   scan         Find local ISO files, mounted Windows media, and download drives.
   validate     Validate one exact ISO file or mounted Windows source.
   upgrade      Validate a source and start Windows Setup after confirmation.
@@ -99,6 +101,7 @@ Global options:
 
 Learn more:
   Windows-Upgrade-Assistant-By-PcNinja.exe help validate
+  Windows-Upgrade-Assistant-By-PcNinja.exe help downloads
   Windows-Upgrade-Assistant-By-PcNinja.exe help upgrade
   Windows-Upgrade-Assistant-By-PcNinja.exe help completion
   Windows-Upgrade-Assistant-By-PcNinja.exe help all
@@ -128,7 +131,10 @@ Show the detected Windows version, whether upgrades are supported, available
 space on the Windows drive, administrator state, log path, and the previous
 upgrade attempt. TargetWindowsObserved confirms only the running build/edition,
 not preservation of personal files or applications.
-Also reports the system UI language and automatic-download availability/reason.
+Also reports the detected edition, language, architecture, build/revision and
+client/Server/LTSC profile, automatic-download availability/reason and its PcNinja
+browser route. Existing language/status fields are retained. Status stays offline;
+it does not query the external download catalog. Use downloads for a recommendation.
 JSON includes the complete build identity. RollbackObserved and SetupFailure
 report a correlated completed Windows Setup rollback, including its result and
 extended codes. Missing, stale or incomplete logs do not prove success/failure.
@@ -138,7 +144,40 @@ Usage:
   Windows-Upgrade-Assistant-By-PcNinja.exe status --json
 
 This command does not require Administrator permission and can report an
-unsupported Windows Server or LTSC host without attempting an upgrade.
+unsupported Windows Server/architecture/type without attempting an upgrade.
+Matching LTSC client media can use the manual upgrade path; automatic download
+remains unavailable for LTSC. Host eligibility is not image or Setup compatibility.
+""";
+
+    private const string Downloads = """
+COMMAND: downloads
+
+Recommend a download page for the detected edition, language, architecture and
+build/revision without downloading an ISO or starting Windows Setup.
+
+Usage:
+  Windows-Upgrade-Assistant-By-PcNinja.exe downloads
+  Windows-Upgrade-Assistant-By-PcNinja.exe downloads --json
+
+Matching PcNinja automatic-source profiles use their configured browser page
+without contacting an external catalog. Other profiles can query the online
+catalog for matching manual-download guidance. A recommendation is not proof
+of ISO contents or upgrade compatibility: validate the actual downloaded media.
+The command never opens a browser, changes the clipboard, mounts media or
+starts a transfer/Setup, and does not require Administrator permission.
+
+JSON includes recommendation (Source, PageUrl, FileName, TargetRelease,
+TargetVersion, ExactMatch and Message), automaticTransferStarted=false and
+setupStarted=false. Result: DOWNLOAD_RECOMMENDATION, exit 0, readyForRestart=false.
+Unavailable/changed catalogs return manual guidance, exit 0 and ExactMatch=false.
+Unrecoverable resolution errors return DOWNLOAD_FAILED (exit 4); cancellation
+returns CANCELLED (exit 6). None authorizes a restart.
+
+After downloading matching media manually:
+  Windows-Upgrade-Assistant-By-PcNinja.exe validate --iso "D:\ISO\Matching.iso"
+  Windows-Upgrade-Assistant-By-PcNinja.exe upgrade --iso "D:\ISO\Matching.iso"
+
+This does not broaden the standalone upgrader's supported system/target rules.
 """;
 
     private const string Scan = """
@@ -274,6 +313,7 @@ signed setupExitCode and setupExitCodeHex. Result identifiers:
   SETUP_FAILED                      Exit 7; native Setup error; do not restart.
   SETUP_OUTCOME_UNCONFIRMED          Exit 8; uncertain transition; do not auto-restart.
   VALIDATION_PASSED / DRY_RUN_COMPLETED / STATUS_REPORTED / SOURCES_SCANNED
+  DOWNLOAD_RECOMMENDATION
                                     Exit 0, but readyForRestart=false.
 Other failures retain exit codes 1-6 and return readyForRestart=false.
 Only authorize a controller-managed restart after the actual upgrade returns
@@ -293,9 +333,14 @@ cancellation, media safety and environmental errors preserve the existing ISO.
 The original filename is required; files are never guessed by a wildcard.
 A short-link TLS connection failure triggers a secure direct-provider attempt;
 provider blocks may still require the normal browser fallback.
-Automatic download currently provides en-US media and requires system UI
-language en-US. Other languages (including en-GB) must use matching manual
-media with --iso or --mounted; --download is rejected with exit code 3.
+Automatic transfer is available only when the full detected system profile
+matches a configured PcNinja source: edition, language, architecture, client
+family, LTSC status and build eligibility all matter, not language alone.
+The configured Windows 11 source is en-US; other profiles (including en-GB)
+must use matching manual media with --iso or --mounted. --download is rejected
+with exit code 3 rather than downloading a mismatched ISO. Run downloads or
+downloads --json for matching manual-download guidance. This command does not
+silently change the automatic source or start a different Windows-family upgrade.
 Manual downloads: https://iso.pcninja.pro or
 https://www.microsoft.com/software-download/windows11
 For standard Microsoft Windows media, prefer Microsoft's download page.
@@ -371,16 +416,17 @@ Register-ArgumentCompleter -Native -CommandName '__EXE_NAME__', 'Windows-Upgrade
         return
     }
 
-    $commands = @('status', 'scan', 'validate', 'upgrade', 'log-path', 'completion', 'help', '--help', '--version')
+    $commands = @('status', 'downloads', 'scan', 'validate', 'upgrade', 'log-path', 'completion', 'help', '--help', '--version')
     $options = switch ($command) {
         'status'     { @('--json', '--help') }
+        'downloads'  { @('--json', '--help') }
         'scan'       { @('--json', '--help') }
         'refresh'    { @('--json', '--help') }
         'rescan'     { @('--json', '--help') }
         'validate'   { @('--iso', '--mounted', '--sha256', '--image-index', '--json', '--help') }
         'upgrade'    { @('--iso', '--mounted', '--download', '--destination', '--sha256', '--image-index', '--no-restart', '--quiet', '--dry-run', '--yes', '--json', '--help') }
         'completion' { @('powershell', '--help') }
-        'help'       { @('status', 'scan', 'validate', 'upgrade', 'log-path', 'completion', 'all') }
+        'help'       { @('status', 'downloads', 'scan', 'validate', 'upgrade', 'log-path', 'completion', 'all') }
         default      { $commands }
     }
 

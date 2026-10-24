@@ -121,6 +121,23 @@ All paths below are relative to the repository root.
 
 - Put operational safety in Core and call it from both interfaces. Add tests for
   both presentation modes when availability, selection or exit behavior changes.
+- Prove automatic eligibility at the real download entry with a fail-if-called
+  fake HTTP handler and no destination creation, not only by testing a predicate.
+  Keep positive own-edition coverage and original transport behavior. Eligibility
+  trusts configured media coverage; actual downloaded bytes still need validation.
+- Visual next-action cues are state presentation, never operational authorization.
+  Clear the previous cue and stale displayed preparation on recheck/source change;
+  preserve automatic mode and red Cancel/Setup lockout. Resolve Downloads via the
+  user's Windows known folder, not a hardcoded English or C: path. Restore CWD
+  after browsing; do not probe network paths on every edit or add a polling timer.
+- Host eligibility, configured-download eligibility and actual image compatibility
+  are three separate decisions. Shared `ManualUpgradePolicy` permits exact manual
+  client LTSC media without enabling consumer downloads or Server execution. A
+  passed image inspection must not advertise Start on a blocked host. Use one
+  detected GUI profile for both host and image guidance, preserve mismatch details
+  and repeat actual host/media checks at final Core launch. Test both a valid LTSC
+  case and invalid architecture/type/edition/language cases; screenshot evidence
+  that Setup offers Keep apps/files is not a completed migration result.
 - A successful Core download already hashes and validates its mounted media.
   Hand that exact result to GUI/CLI rather than immediately repeating it. This
   bounded handoff is not a general cache: retain final prelaunch revalidation,
@@ -235,6 +252,30 @@ Real upgrades require a disposable VM/snapshot and owner authorization. Test an
 app-downloaded ISO separately from a manually supplied known-good ISO. Record
 actual source/index, build/edition/language, failure stage and preservation of
 files/apps. Sanitize evidence; never commit raw customer logs or screenshots.
+
+## Source recommendation is not media or upgrade validation
+
+Keep an installed-system profile (edition, native architecture, system-default UI
+language, installation type and build/revision) separate from actual WIM metadata.
+Own-source eligibility and browser fallback must share the full profile across
+GUI/CLI, not just an en-US test. Keep general Consumer coverage independent of
+the ordered owner-source list, so adding a future source cannot change package
+classification. Do not order unrelated release families by numeric build alone.
+
+Treat an external HTML catalog as untrusted, changing input. Bound size/time,
+cross-check per-table heading/build and exact filename/culture/package, allowlist
+public landing URLs, and fail to manual guidance on ambiguity. Omitted HTML table
+closing tags occur in the current catalog; test them. Use a separate no-redirect,
+no-cookie client: checking only the final URL cannot prevent an earlier redirected
+request. Do not reuse the ISO transport's cookies or disable certificate validation.
+Never automate a host challenge or guess a downloaded file after browser fallback.
+
+Server guidance must not weaken client execution guards. Manual command copy is
+an explicit user effect, not an execution step: freshly revalidate exact selected
+source/index and answer-file safety, quote/reject unsafe CMD paths, label the shell,
+explain supported-path/licensing limits, and keep clipboard untouched on failure
+or cancellation. Use fake browser/clipboard/preparation callbacks in GUI fixtures.
+No recommendation or synthetic command proves a supported real Server upgrade.
 
 ## Maintain the knowledge, not just the patch
 

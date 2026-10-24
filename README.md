@@ -38,6 +38,12 @@ warning/details area and CLI status. See [outcome diagnostics](docs/SETUP-OUTCOM
 
 ## One-screen graphical workflow
 
+Development only: [matched ISO download guidance](docs/MATCHED-ISO-DOWNLOADS.md)
+adds full-profile own-source priority, public browser recommendations and manual
+Server guidance in a separate Draft PR test build. This is **not in published RC7**.
+The same development PR allows matching manual x64 client LTSC media, without
+enabling automatic LTSC download, edition/channel conversion or Server execution.
+
 > **New in RC7:** Simpler main-window wording and full dashboard-card redraw
 > during resize. Original branding, public links and upgrade behavior are preserved.
 > Includes RC6's language-aware download, upfront automatic consent, diagnostics
@@ -250,6 +256,23 @@ This boundary is intentional. The standalone product remains independent while
 the Core project can later be integrated into PcNinja WinUpdate Tool without
 copying the standalone interface.
 
+## ISO sources and acknowledgements
+
+Thank you to the [Massgrave](https://massgrave.dev/) contributors for maintaining
+the public Windows ISO catalogs used by our [development download fallback](docs/MATCHED-ISO-DOWNLOADS.md).
+PcNinja sources remain the preferred configured option; the external catalog
+helps users find matching media in other languages and editions. This fallback
+is a development feature, not part of the published RC7 binary.
+
+- [Massgrave website and ISO catalogs](https://massgrave.dev/)
+- [Catalog and website source on GitHub](https://github.com/massgravel/massgrave.dev)
+- [Massgrave's main project on GitHub](https://github.com/massgravel/Microsoft-Activation-Scripts)
+
+Our integration references ISO download catalogs only; it does not include or run
+activation scripts or modify licensing. Microsoft's official download alternative
+remains available. Source recommendations do not replace PcNinja's actual-media
+compatibility, signature and safety checks.
+
 ## Development workflow
 
 Work is tracked through issues, feature branches and Draft PRs under the owner's
@@ -276,7 +299,8 @@ when a `v*` tag is pushed.
 - x64 only
 - Consumer Windows 11 x64 ISO media
 - In-place upgrade only
-- No Windows Server or LTSC support
+- No Windows Server or LTSC upgrade execution in published RC7; see the development
+  PR note above for manual client LTSC and Server guidance-only behavior
 - English interface and CLI
 - Unsigned prerelease binary
 

@@ -1,5 +1,30 @@
 # Roadmap
 
+## Current owner scope: stability, then application updates
+
+The owner reaffirmed this scope on 2026-10-24:
+
+- Stabilize and test the existing upgrade/download/media-validation paths. Accept
+  focused fixes found by real client/VM tests; avoid unrelated feature expansion.
+- Keep media extraction/copy/sanitization preparation (design PR #9) outside this
+  delivery. Existing answer-file safety blocks and narrowly scoped selected-source
+  cleanup remain; this deferral is not permission to weaken those safeguards.
+- The next new capability is **application self-update through GitHub**, separate
+  from downloading a Windows ISO or upgrading the operating system. Design PR #13
+  already describes the proposed manifest/release pattern used in WinUpdate V2
+  and Smart Office Installer. It is design only and needs refreshing against the
+  current code before implementation; do not merge it merely to claim an updater.
+- Plan one first stable version that already contains the updater, followed by a
+  higher stable version to test discovery, consent, download verification,
+  recoverable replacement/relaunch and failure recovery. The second version may
+  have no functional changes beyond correct release/binary version identity.
+  Stable tags/releases require separate explicit approval. Never update the app
+  during ISO work or active Windows Setup, and never let app updates start Setup.
+- Credit Massgrave's alternative ISO catalogs in the README and source docs.
+  Credits do not change source priority, validation or the product's licensing scope.
+
+Historical sections below retain their original version-specific context.
+
 ## RC5 implemented requirements - owner field testing pending
 
 The owner authorized implementation, protected-PR merge and RC5 prerelease
