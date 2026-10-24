@@ -164,7 +164,7 @@ internal sealed class MainForm : Form
         _installationImages.SelectedIndexChanged += (_, _) => { _serverCommandPreview.Clear(); UpdateImageInfo(); };
         _downloadLocations.SelectedIndexChanged += (_, _) => UpdateReadinessSummary();
 
-        ApplyDownloadLanguagePolicy(CurrentWindows.Read().Language);
+        ApplyDownloadSystem(_readDownloadSystem());
         UpdateSourceControls();
         UpdateReadinessSummary();
         UpdateImageInfo();
@@ -555,6 +555,10 @@ internal sealed class MainForm : Form
         try
         {
             ApplyDownloadSystem(_readDownloadSystem());
+            AppLog.Info($"Host eligibility: {_downloadSystem.Edition}, {_downloadSystem.Language}, {_downloadSystem.Architecture}, " +
+                $"{_downloadSystem.InstallationType}, build {_downloadSystem.Build}.{_downloadSystem.Revision}, LTSC: {_downloadSystem.IsLtsc}; " +
+                $"manual upgrade: {_upgradeAllowed}; automatic download: {_automaticDownloadAvailable}; " +
+                $"blocker: {ManualUpgradePolicy.GetUnavailableReason(_downloadSystem) ?? "none"}.");
             _systemValue.Text = _engine.GetOperatingSystemDescription();
             _processorValue.Text = GetProcessorDescription();
             _memoryValue.Text = GetMemoryDescription();
@@ -600,6 +604,8 @@ internal sealed class MainForm : Form
             if (_downloadSystem.IsServer)
                 ShowOperationNotice("Windows Server: download and manual command guidance only. This assistant will not run Setup. " +
                     ManualServerUpgrade.Advisory);
+            else if (ManualUpgradePolicy.GetUnavailableReason(_downloadSystem) is { } blocked)
+                ShowOperationNotice(blocked);
         }
         catch (Exception ex) { ShowIssue(ex); _start.Enabled = false; }
         ExistingPathChanged();
@@ -701,7 +707,7 @@ internal sealed class MainForm : Form
         try
         {
             if (startSetup && !_upgradeAllowed)
-                throw new InvalidOperationException("Automatic upgrade is not supported on this system. Use the download guidance instead.");
+                ManualUpgradePolicy.EnsureAvailable(_downloadSystem);
             if (startSetup)
             {
                 var storage = _engine.CheckSystemDriveSpace();
@@ -782,7 +788,7 @@ internal sealed class MainForm : Form
             _preparedKey = path;
             _installationImages.Items.Clear();
             foreach (var image in source.Images ?? []) _installationImages.Items.Add(image);
-            var current = CurrentWindows.Read();
+            var current = new CurrentWindows(_downloadSystem.Edition, _downloadSystem.Language, _downloadSystem.Build);
             IReadOnlyList<InstallationImage> compatible = _downloadSystem.IsServer
                 ? (source.Images ?? []).Where(item => ManualServerUpgrade.GetIncompatibility(item, _downloadSystem) is null).ToArray()
                 : InstallationImages.Compatible(source, current);
@@ -909,6 +915,8 @@ internal sealed class MainForm : Form
             _installationImages.Items.Clear();
             UpdateImageInfo();
             _imageInfo.Text = _downloadSystem.IsServer ? "Source changed. Click Validate to check this Server media."
+                : ManualUpgradePolicy.GetUnavailableReason(_downloadSystem) is { } blocked
+                ? "Source changed. " + blocked
                 : "Source changed. Click Validate or START UPGRADE to check this media.";
         }
         if (_operation is null && !string.IsNullOrWhiteSpace(_sources.Text)) _downloadNotice.Visible = false;
@@ -919,13 +927,14 @@ internal sealed class MainForm : Form
     private void UpdateImageInfo()
     {
         if (_downloadSystem.IsServer) { UpdateServerImageInfo(); return; }
-        var current = CurrentWindows.Read();
+        var current = new CurrentWindows(_downloadSystem.Edition, _downloadSystem.Language, _downloadSystem.Build);
         var noCompatibleImage = _preparedSource is not null && InstallationImages.Compatible(_preparedSource, current).Count == 0;
         _installationImagePrompt = _preparedSource is null ? "Validate a source first"
             : noCompatibleImage ? "No compatible Windows image" : "Choose a Windows image…";
         _installationImages.Invalidate();
         var incompatibility = _installationImages.SelectedItem is InstallationImage selected
             ? InstallationImages.GetIncompatibility(selected, current) : null;
+        var hostBlock = ManualUpgradePolicy.GetUnavailableReason(_downloadSystem);
         _imageInfo.ForeColor = noCompatibleImage || incompatibility is not null ||
             _installationImages.SelectedItem is InstallationImage selectedImage &&
             InstallationImages.GetSetupProfile(selectedImage) == WindowsSetupProfile.Windows10 ? Warning : Muted;
@@ -937,7 +946,8 @@ internal sealed class MainForm : Form
             : $"This PC: {current.Edition}, {current.Language}. " +
                 (_preparedSource is null ? "Validate a source to read its Windows images."
                 : noCompatibleImage ? "No compatible Windows image. Choose matching Windows media."
-                : "Choose a Windows image from the list, then click START UPGRADE.");
+                : hostBlock is null ? "Choose a Windows image from the list, then click START UPGRADE."
+                : "Choose matching media for inspection.");
         if (noCompatibleImage && _installationImages.SelectedItem is not InstallationImage)
         {
             // Reuse Core's existing reasons; readable media is not necessarily compatible.
@@ -946,6 +956,11 @@ internal sealed class MainForm : Form
                 .Where(reason => reason is not null).Distinct(StringComparer.Ordinal);
             _imageInfo.Text += Environment.NewLine + string.Join(Environment.NewLine, reasons);
         }
+        if (hostBlock is not null)
+        {
+            _imageInfo.Text += Environment.NewLine + hostBlock;
+            _imageInfo.ForeColor = Warning;
+        }
         _installationImages.AccessibleDescription = _installationImages.SelectedItem is InstallationImage
             ? _imageInfo.Text : _installationImagePrompt;
     }
@@ -953,7 +968,13 @@ internal sealed class MainForm : Form
     private void PresentImageInspection()
     {
         if (_preparedSource is null) return;
-        var current = CurrentWindows.Read();
+        if (ManualUpgradePolicy.GetUnavailableReason(_downloadSystem) is not null)
+        {
+            _status.Text = "Media inspected, but upgrade is blocked on this computer.";
+            ShowOperationNotice(_imageInfo.Text);
+            return;
+        }
+        var current = new CurrentWindows(_downloadSystem.Edition, _downloadSystem.Language, _downloadSystem.Build);
         var compatible = InstallationImages.Compatible(_preparedSource, current);
         var selected = _installationImages.SelectedItem as InstallationImage;
         if (compatible.Count == 0 || selected is not null && InstallationImages.GetIncompatibility(selected, current) is not null)
@@ -1167,8 +1188,7 @@ internal sealed class MainForm : Form
     {
         _downloadSystem = system;
         // Download-route discovery must not silently change the existing manual client upgrade policy.
-        _upgradeAllowed = system.InstallationType.Equals("Client", StringComparison.OrdinalIgnoreCase) &&
-            system.IsX64 && !system.IsLtsc;
+        _upgradeAllowed = ManualUpgradePolicy.GetUnavailableReason(system) is null;
         _automaticDownloadAvailable = AutomaticDownloadPolicy.IsAvailable(system);
         _automaticDownloadInfo.Text = _automaticDownloadAvailable
             ? $"English ({system.Language}). The ISO is checked before the upgrade starts."

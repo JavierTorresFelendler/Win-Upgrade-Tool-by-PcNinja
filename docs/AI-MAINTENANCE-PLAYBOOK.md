@@ -121,6 +121,14 @@ All paths below are relative to the repository root.
 
 - Put operational safety in Core and call it from both interfaces. Add tests for
   both presentation modes when availability, selection or exit behavior changes.
+- Host eligibility, configured-download eligibility and actual image compatibility
+  are three separate decisions. Shared `ManualUpgradePolicy` permits exact manual
+  client LTSC media without enabling consumer downloads or Server execution. A
+  passed image inspection must not advertise Start on a blocked host. Use one
+  detected GUI profile for both host and image guidance, preserve mismatch details
+  and repeat actual host/media checks at final Core launch. Test both a valid LTSC
+  case and invalid architecture/type/edition/language cases; screenshot evidence
+  that Setup offers Keep apps/files is not a completed migration result.
 - A successful Core download already hashes and validates its mounted media.
   Hand that exact result to GUI/CLI rather than immediately repeating it. This
   bounded handoff is not a general cache: retain final prelaunch revalidation,

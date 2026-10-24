@@ -57,6 +57,36 @@ existing explicit browser fallback and invalidate unattended consent.
 - These source-selection rules do not remove the existing owner-approved manual
   Windows 10 POC behavior or alter the final Core client-upgrade gates.
 
+## Manual LTSC correction
+
+Manual x64 Windows 10/11 **client** LTSC media is now eligible under the shared
+`ManualUpgradePolicy`; automatic transfer is still unavailable for LTSC. The
+external catalog adapter still falls back for LTSC rather than inventing an exact
+LTSC ISO match. The user supplies the exact appropriate file/drive/folder.
+
+Actual image edition (including EnterpriseS/N/IoT variants), system UI language,
+architecture, client type and existing target-profile/build rules remain strict.
+No LTSC/General Availability edition conversion or product-key injection is added.
+The existing Windows 10 POC still delegates intra-Windows-10 build order to Setup;
+Windows 11 targets retain equal-or-newer checks and Windows 11 -> 10 stays blocked.
+The Windows 11 image retains the experimental `/product server` command profile;
+this is not a claim that Microsoft supports every possible LTSC upgrade.
+
+GUI Start/inspection messages, CLI host preflight/status and final Core launch use
+the same host gate. Readable images on an unsupported host show the blocker, not
+an invitation to click disabled Start. Keep independent image mismatch/error
+details. Host eligibility is not proof of an allowed migration or data preservation.
+Storage, signature, answer-file, exact selected image, consent and final-media
+checks are unchanged. Require Setup to preserve apps/files or stop.
+
+Regression tests first reproduced the disabled LTSC Start on the old code, then
+exercise Hebrew Enterprise LTSC, full edition/language rejection, blocked hosts,
+automatic exclusion and unchanged command/restart/quiet behavior with fake media.
+The owner's manual Setup screenshot showed Keep apps/files, but final acceptance
+was pending when this correction was implemented. Do not call it a completed
+successful upgrade. See [Microsoft upgrade-path constraints](https://learn.microsoft.com/en-us/windows/deployment/upgrade/windows-upgrade-paths)
+before making supported-path claims.
+
 ## Server: guidance and user-click command copy only
 
 Server never enables automatic transfer, client Start, quiet mode or restart

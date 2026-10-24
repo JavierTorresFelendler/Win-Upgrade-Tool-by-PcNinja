@@ -86,6 +86,41 @@ internal static class DownloadGuidanceChecks
                 AssertNoSetup();
             }
 
+            // Regression: readable matching LTSC media must not advertise START
+            // while an unrelated download-profile gate silently disables it.
+            var ltsc = new DownloadSystem("EnterpriseS", "he-IL", 19044, 1288, "x64", "Client", true);
+            Set("_readDownloadSystem", new Func<DownloadSystem>(() => ltsc));
+            Call("ApplyDownloadSystem", ltsc);
+            Call("SetBusy", true);
+            Call("SetBusy", false);
+            if (!start.Enabled || automatic.Enabled || !existing.Checked ||
+                !Field<CheckBox>("_quietSetup").Enabled || !Field<CheckBox>("_autoRestart").Enabled)
+                throw new Exception("Manual LTSC client upgrade is incorrectly blocked by automatic-download availability.");
+            var ltscImage = new InstallationImage(1, "Hebrew Enterprise LTSC fixture", "EnterpriseS", "x64", "10.0.26100.1", "Client", "he-IL");
+            var ltscSource = clientSource with { Images = [ltscImage] };
+            Populate(ltscSource, ltscImage);
+            Call("PresentImageInspection");
+            if (!status.Text.Contains("START UPGRADE") || !start.Enabled)
+                throw new Exception("Matching LTSC inspection does not agree with the Start control.");
+            var wrongLanguage = ltscImage with { Language = "en-US" };
+            Populate(ltscSource with { Images = [wrongLanguage] }, wrongLanguage);
+            Call("PresentImageInspection");
+            if (status.Text.Contains("START UPGRADE") || !Field<Label>("_imageInfo").Text.Contains("Language mismatch") ||
+                !Field<Label>("_operationNotice").Visible)
+                throw new Exception("LTSC language mismatch lost its original rejection details.");
+            var unsupported = ltsc with { Architecture = "arm64" };
+            Set("_readDownloadSystem", new Func<DownloadSystem>(() => unsupported));
+            Call("ApplyDownloadSystem", unsupported);
+            Populate(ltscSource, ltscImage);
+            Call("PresentImageInspection");
+            if (start.Enabled || status.Text.Contains("START UPGRADE") ||
+                !Field<Label>("_operationNotice").Text.Contains("x64"))
+                throw new Exception("Unsupported-host inspection advertised Start instead of its shared Core blocker.");
+            sources.Text = "";
+            Call("ExistingPathChanged");
+            Set("_readDownloadSystem", new Func<DownloadSystem>(() => client));
+            Call("ApplyDownloadSystem", client);
+
             var recommendation = new DownloadRecommendation("Microsoft", "https://download.invalid/es-ES",
                 "Windows11_es-es_fixture.iso", "Windows 11", "10.0.26100.1", true, "Matching Spanish ISO fixture.");
             Populate(clientSource, clientImage);

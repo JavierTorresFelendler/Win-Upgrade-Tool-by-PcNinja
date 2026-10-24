@@ -43,6 +43,10 @@ access to prior chats, local Codex skills, personal memories, or machine paths.
 
 - Keep the standalone application separate from future WinUpdate Tool integration.
 - GUI and CLI must use the same Core validation, download and upgrade operations.
+- Manual x64 Windows 10/11 client LTSC upgrades use `ManualUpgradePolicy` and
+  exact image edition/language checks. Do not infer manual eligibility from
+  automatic-download availability, reintroduce a blanket LTSC host ban, or permit
+  edition/channel conversion. Server execution remains blocked.
 - Never replace an in-place upgrade with a clean/data-only installation fallback.
 - Do not launch Windows Setup or upgrade the development machine during tests.
 - Keep automatic-provider transport/session details internal. Prefer the full-profile

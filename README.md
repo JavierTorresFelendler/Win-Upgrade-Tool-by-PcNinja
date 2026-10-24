@@ -41,6 +41,8 @@ warning/details area and CLI status. See [outcome diagnostics](docs/SETUP-OUTCOM
 Development only: [matched ISO download guidance](docs/MATCHED-ISO-DOWNLOADS.md)
 adds full-profile own-source priority, public browser recommendations and manual
 Server guidance in a separate Draft PR test build. This is **not in published RC7**.
+The same development PR allows matching manual x64 client LTSC media, without
+enabling automatic LTSC download, edition/channel conversion or Server execution.
 
 > **New in RC7:** Simpler main-window wording and full dashboard-card redraw
 > during resize. Original branding, public links and upgrade behavior are preserved.
@@ -280,7 +282,8 @@ when a `v*` tag is pushed.
 - x64 only
 - Consumer Windows 11 x64 ISO media
 - In-place upgrade only
-- No Windows Server or LTSC support
+- No Windows Server or LTSC upgrade execution in published RC7; see the development
+  PR note above for manual client LTSC and Server guidance-only behavior
 - English interface and CLI
 - Unsigned prerelease binary
 

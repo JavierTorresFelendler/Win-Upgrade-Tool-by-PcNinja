@@ -23,9 +23,14 @@ public sealed record DownloadSystem(string Edition, string Language, int Build, 
         var product = key?.GetValue("ProductName")?.ToString() ?? "";
         var composition = key?.GetValue("CompositionEditionID")?.ToString() ?? "";
         var revision = key?.GetValue("UBR") is int ubr && ubr >= 0 ? ubr : 0;
+        var installationType = key?.GetValue("InstallationType")?.ToString() ?? "";
+        // Preserve the execution gate's historical ProductName defense as well
+        // as InstallationType/edition detection; never classify Server as client.
+        if (product.Contains("Server", StringComparison.OrdinalIgnoreCase) &&
+            !installationType.Equals("Server Core", StringComparison.OrdinalIgnoreCase)) installationType = "Server";
         return new(current.Edition, current.Language, current.Build, revision,
             RuntimeInformation.OSArchitecture.ToString().ToLowerInvariant(),
-            key?.GetValue("InstallationType")?.ToString() ?? "",
+            installationType,
             DownloadSourcePolicy.IsLtscEdition(current.Edition) || DownloadSourcePolicy.IsLtscEdition(composition) ||
                 product.Contains("LTSC", StringComparison.OrdinalIgnoreCase) || product.Contains("LTSB", StringComparison.OrdinalIgnoreCase));
     }
@@ -73,7 +78,7 @@ public static class DownloadSourcePolicy
         if (GetAutomaticSource(system) is not null) return null;
         var detail = system.IsServer ? "Windows Server requires matching Server media and a separate supported upgrade decision." :
             !system.IsX64 ? $"The automatic PcNinja source is x64; this system is {system.Architecture}." :
-            system.IsLtsc || IsLtscEdition(system.Edition) ? "LTSC/LTSB media must match its exact edition and servicing family." :
+            system.IsLtsc || IsLtscEdition(system.Edition) ? "Automatic transfer is unavailable for LTSC/LTSB. Select matching LTSC media manually, with the exact edition and system UI language." :
             !system.IsSupportedClient ? "This Windows release is unknown, preview-only, or not an ordinary Windows 10/11 client upgrade route." :
             $"No automatic PcNinja source matches {system.Edition}, {system.Language}, {system.Architecture}.";
         return detail + " Configured automatic media: en-US, x64. Use the matching public ISO recommendation or select matching existing media. " +

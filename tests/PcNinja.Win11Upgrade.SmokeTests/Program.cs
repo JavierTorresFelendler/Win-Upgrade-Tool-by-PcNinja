@@ -14,6 +14,7 @@ SetupOutcomeChecks.Run();
 Windows10TargetChecks.Run();
 QuietSetupChecks.Run();
 ManualServerUpgradeChecks.Run();
+ManualUpgradeChecks.Run();
 await DownloadSourceChecks.RunAsync();
 if (UpgradeEngine.RequiredDownloadBytes(7L * 1024 * 1024 * 1024, true) != 28L * 1024 * 1024 * 1024)
     failures.Add("Combined ISO and Windows workspace reservation failed.");

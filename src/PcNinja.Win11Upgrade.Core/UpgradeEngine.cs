@@ -69,21 +69,7 @@ public sealed class UpgradeEngine
         return $"{family}{(string.IsNullOrWhiteSpace(edition) ? "" : $" {edition}")}{version} (build {build}, {architecture})";
     }
 
-    public void ValidateSupportedComputer()
-    {
-        if (RuntimeInformation.OSArchitecture != Architecture.X64)
-            throw new InvalidOperationException("This release supports x64 computers only.");
-
-        using var key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion");
-        var installationType = key?.GetValue("InstallationType")?.ToString() ?? "";
-        var productName = key?.GetValue("ProductName")?.ToString() ?? "";
-        if (installationType.Contains("Server", StringComparison.OrdinalIgnoreCase) ||
-            productName.Contains("Server", StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException("Windows Server and LTSC are not supported by this release.");
-        if (productName.Contains("LTSC", StringComparison.OrdinalIgnoreCase) ||
-            productName.Contains("LTSB", StringComparison.OrdinalIgnoreCase))
-            throw new InvalidOperationException("Windows Server and LTSC are not supported by this release.");
-    }
+    public void ValidateSupportedComputer() => ManualUpgradePolicy.EnsureAvailable(DownloadSystem.Read());
 
     public IReadOnlyList<string> FindLocalIsos()
     {

@@ -82,6 +82,14 @@ Test-Path E:\setup.exe
 
 ## Recommend a matching download page
 
+Development correction in PR #21: matching manually supplied x64 client LTSC media
+can use `validate --iso <path>` and `upgrade --iso <path>` (or `--mounted` for an
+explicit drive/folder). Inspect the actual image list and use `--image-index` when
+needed. Exact edition/N/IoT and system UI language must match. No edition/channel
+conversion is performed. Automatic `--download` stays unavailable for LTSC;
+Server execution stays blocked. This is not in the published RC7 binary.
+See [manual LTSC constraints](MATCHED-ISO-DOWNLOADS.md#manual-ltsc-correction).
+
 Request manual-download guidance for the detected system profile:
 
 ```powershell

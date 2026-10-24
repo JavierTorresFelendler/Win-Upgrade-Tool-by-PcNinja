@@ -2,6 +2,13 @@
 
 ## Development PR: matching ISO and Server guidance
 
+- LTSC correction: matching manually supplied x64 client LTSC media may proceed
+  under the same Core host policy as the CLI; automatic consumer transfer remains
+  unavailable. Readable media alone is not readiness. Unsupported-host inspection
+  says **Media inspected, but upgrade is blocked on this computer.** and shows the
+  shared blocker while retaining image mismatch details. Never ask the user to
+  click Start when the host gate disables it. Keep Server manual-copy-only wording.
+
 - Keep the same two source choices, logo and www.pcninja.pro branding. Add
   **Find matching ISO** beside the existing manual download buttons.
 - Automatic availability explains the full-profile match, not just the language.

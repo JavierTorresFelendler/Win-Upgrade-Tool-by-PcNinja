@@ -144,7 +144,9 @@ Usage:
   Windows-Upgrade-Assistant-By-PcNinja.exe status --json
 
 This command does not require Administrator permission and can report an
-unsupported Windows Server or LTSC host without attempting an upgrade.
+unsupported Windows Server/architecture/type without attempting an upgrade.
+Matching LTSC client media can use the manual upgrade path; automatic download
+remains unavailable for LTSC. Host eligibility is not image or Setup compatibility.
 """;
 
     private const string Downloads = """

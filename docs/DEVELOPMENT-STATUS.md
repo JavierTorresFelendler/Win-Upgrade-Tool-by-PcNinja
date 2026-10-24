@@ -8,6 +8,32 @@ assistant's personal memory or skills installation.
 
 ## Current development: matched ISO downloads and manual Server guidance
 
+### Owner-approved LTSC correction (same Draft PR #21)
+
+- Owner reproduced an inconsistent readiness state on Windows 10 Enterprise LTSC
+  21H2/build 19044.1288 using Hebrew Windows 11 Enterprise LTSC 2024 media: image
+  inspection succeeded and advertised Start, but a separate LTSC host ban disabled
+  Start; Core and CLI also contained a blanket LTSC host ban. Manual Windows Setup
+  offered to retain apps/files and was progressing when reported. Final migration
+  and data-preservation acceptance are still pending, not claimed as passed.
+- Replace divergent host gates with shared `ManualUpgradePolicy`: x64 Windows
+  10/11 Client, including LTSC, can use matching manually supplied media. Exact
+  edition/N/IoT, language, architecture and image profile checks remain; no channel
+  conversion, Server execution, automatic LTSC transfer or guessed LTSC catalog
+  match is enabled. Windows 10 target POC build-order policy stays unchanged.
+- GUI uses one detected profile for host policy and image guidance. Unsupported
+  hosts show their Core blocker instead of Start instructions; host eligibility
+  is logged for diagnosis. CLI status/preflight and final Core launch share the
+  same policy. Consent, storage, signature, answer-file, restart and final-media
+  revalidation remain unchanged. No real Setup/ISO/mount/reboot is run in tests.
+- Added regression first failed on the old implementation's disabled LTSC Start.
+  New Core/GUI tests cover Hebrew LTSC, edition/language rejection, automatic
+  exclusion, unsupported-host guidance, Server/architecture/type blocking and
+  unchanged command/restart/quiet profiles. New test artifact evidence follows
+  in the PR; original PR21 and RC files remain untouched.
+
+### Original matched-download implementation
+
 - Approved separate Draft PR on `feature/matched-iso-downloads`, stacked on
   `feature/iso-validation-reuse` (#20). It includes the eleven-edition OEM routing
   policy requested in #19 without changing #19, #20 or main. CI includes the
