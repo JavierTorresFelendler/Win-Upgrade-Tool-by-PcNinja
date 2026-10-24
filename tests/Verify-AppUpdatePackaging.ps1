@@ -52,7 +52,11 @@ function Invoke-PublicationFixture($Identity, [string]$Mode = 'Good') {
         param($operation, $parameters)
         $state.Calls.Add($operation)
         switch ($operation) {
-            'GetRelease' { return $state.Release }
+            'GetRelease' {
+                if ($Mode -eq 'DraftHiddenByTag' -and $null -ne $state.Release -and $state.Release.draft -and -not $parameters.ContainsKey('Id')) { return $null }
+                if ($parameters.ContainsKey('Id')) { & $assert ($parameters.Id -eq 701L) 'Post-create lookup lost its immutable release ID.' }
+                return $state.Release
+            }
             'GetLatest' {
                 $state.LatestCalls++
                 if ($state.PublishCount -gt 0) { return $state.Release }
@@ -77,6 +81,11 @@ function Invoke-PublicationFixture($Identity, [string]$Mode = 'Good') {
                     'BadSize' { $state.Release.assets[0].size++ }
                     'DuplicateId' { $state.Release.assets[1].id = $state.Release.assets[0].id }
                     'WrongUrl' { $state.Release.assets[0].browser_download_url = 'https://evil.test/file' }
+                    { $_ -in @('DraftTemporaryUrls', 'PublishedTemporaryUrls') } {
+                        foreach ($asset in $state.Release.assets) {
+                            $asset.browser_download_url = $asset.browser_download_url.Replace("/$($Identity.Tag)/", '/untagged-abcdef0123456789abcd/')
+                        }
+                    }
                     'MissingAsset' { $state.Release.assets = @($state.Release.assets | Select-Object -Skip 1) }
                     'ExtraAsset' { $state.Release.assets += $state.Release.assets[0] }
                     'WrongDraft' { $state.Release.draft = $false }
@@ -88,6 +97,11 @@ function Invoke-PublicationFixture($Identity, [string]$Mode = 'Good') {
                 & $assert ($parameters.Latest -eq $Identity.IsStable -and $parameters.Prerelease -eq (-not $Identity.IsStable)) 'Publication changed channel/latest behavior.'
                 $state.PublishCount++
                 $state.Release.draft = $false
+                if ($Mode -eq 'DraftTemporaryUrls') {
+                    foreach ($asset in $state.Release.assets) {
+                        $asset.browser_download_url = $asset.browser_download_url.Replace('/untagged-abcdef0123456789abcd/', "/$($Identity.Tag)/")
+                    }
+                }
             }
             default { throw 'Unexpected synthetic GitHub operation.' }
         }
@@ -153,6 +167,14 @@ try {
         $expectedCalls = if ($identity.IsStable) { 'GetRelease,GetLatest,CreateDraft,UploadAssets,GetRelease,GetLatest,Publish,GetRelease,GetLatest' }
             else { 'GetRelease,CreateDraft,UploadAssets,GetRelease,Publish,GetRelease' }
         Require (($good.State.Calls -join ',') -ceq $expectedCalls) 'Publication was not draft/upload/verify/publish-last.'
+        $hiddenDraft = Invoke-PublicationFixture $identity 'DraftHiddenByTag'
+        if ($null -ne $hiddenDraft.Failure) { throw $hiddenDraft.Failure }
+        Require ($hiddenDraft.State.PublishCount -eq 1) 'A hidden-by-tag draft was not verified by ID.'
+        $temporaryDraft = Invoke-PublicationFixture $identity 'DraftTemporaryUrls'
+        if ($null -ne $temporaryDraft.Failure) { throw $temporaryDraft.Failure }
+        Require ($temporaryDraft.State.PublishCount -eq 1) 'Temporary draft URLs were not resolved to strict published URLs.'
+        $temporaryPublished = Invoke-PublicationFixture $identity 'PublishedTemporaryUrls'
+        Require ($null -ne $temporaryPublished.Failure -and $temporaryPublished.State.PublishCount -eq 1) 'A temporary URL was accepted after publication.'
         foreach ($mode in @('BadDigest', 'MissingDigest', 'BadSize', 'DuplicateId', 'WrongUrl', 'MissingAsset', 'ExtraAsset', 'WrongDraft',
             'UploadFailure', 'ExistingPublished', 'ExistingDraftAssets', 'LocalChanged')) {
             $bad = Invoke-PublicationFixture $identity $mode

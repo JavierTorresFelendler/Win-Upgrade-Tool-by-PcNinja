@@ -30,10 +30,33 @@ opened/tested by the owner.
   still require main ancestry. All publication remains draft/upload/verify-first;
   Beta never changes stable/latest. No Windows Setup/reboot/live app update on
   the development machine.
-- Core and packaging fixtures pass locally. CLI and client GUI tests are being
-  finalized, including preview isolation, critical notice/link/consent, same-folder
-  publication/reuse and locked launch bytes. Elevated native/live VM acceptance
-  is distinct; record CI/artifact evidence before handing off.
+- Beta 1 is published as an immutable prerelease, tag `v1.1.0-beta.1`, source
+  `1e25bac7f324756ff313a573877f075becab7785`. Release ID `422891503` has exactly
+  four assets. EXE `Windows-Upgrade-Assistant-By-PcNinja-V1.1-Beta1.exe` is
+  73,084,772 bytes, unsigned, SHA-256
+  `ec654f1f3e3b28b947da6d89af2a5d6f0ebd8a76e4e49625cd6fea239a80648f`.
+- Local Core/headless CLI/client GUI/packaging suites pass. PR CI `40117997759`
+  passed including elevated private-workspace and real disposable-byte versioned
+  publish/reuse/no-delete launch-guard tests. These do not execute the app helper.
+- Tag workflow `40118262354` passed source gate/build/tests, then failed its final
+  draft lookup: the tag API hid the draft and draft asset URLs were temporary
+  `untagged-*` URLs. Verified the existing draft ID and every immutable uploaded
+  asset against independently downloaded CI artifact `12569628129`, then published
+  that same release as prerelease/non-latest. No tag or asset was replaced.
+  Publisher-only follow-up uses immutable release-ID checks and permits temporary
+  same-repository URLs only before publication; published/client URLs remain pinned.
+  Offline fixtures cover both behaviors and reject temporary published URLs.
+- Downloaded all four assets again from the public release; exact API sizes,
+  SHA-256 digests, source/product version and actual portable read-only CLI checks
+  pass. Live metadata-only check returns `APP_UPDATE_CURRENT` with setupStarted
+  and readyForRestart false. Stable/latest remains absent (404); RC8/main/tag and
+  RC8 assets are unchanged. A bare uncaptured invocation in the development tool
+  hit an invalid console handle; captured stdout (the test/JSON contract) passes.
+  Investigate that hosting edge case separately; do not claim it fixed here.
+- Remaining acceptance: owner opens Beta 1 on a VM from an ordinary writable local
+  NTFS folder, then authorizes Beta 2 publication for real consent/download/helper/
+  close/relaunch testing. No Beta 2, RC9, stable, main merge, Windows Setup or reboot
+  was performed. The later publisher-only checkpoint does not alter Beta 1 runtime.
 
 ## Historical RC8-era updater checkpoint (superseded destination design)
 

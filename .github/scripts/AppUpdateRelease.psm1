@@ -147,8 +147,15 @@ function Assert-PcNinjaUploadedAssets {
         $found = @($assets | Where-Object { $_.name -ceq $expected.Name })
         if ($found.Count -ne 1) { throw 'A release asset is missing or duplicated.' }
         $asset = $found[0]
+        # Draft assets can have GitHub's temporary untagged URL. They are bound
+        # here by this exact release ID, unique asset IDs, names, sizes and hashes;
+        # after publication ONLY the final pinned tag URL is accepted.
+        $temporaryUrl = '\Ahttps://github\.com/' + [regex]::Escape($Identity.Repository) +
+            '/releases/download/untagged-[a-f0-9]{16,64}/' + [regex]::Escape($expected.Name) + '\z'
+        $urlValid = $asset.browser_download_url -ceq $expected.Url -or
+            ($MustBeDraft -and $asset.browser_download_url -cmatch $temporaryUrl)
         if ([long]$asset.id -le 0 -or -not $ids.Add([long]$asset.id) -or $asset.state -cne 'uploaded' -or
-            [long]$asset.size -ne $expected.Size -or $asset.browser_download_url -cne $expected.Url -or
+            [long]$asset.size -ne $expected.Size -or -not $urlValid -or
             $asset.digest -inotmatch '\Asha256:[a-f0-9]{64}\z' -or $asset.digest -ine "sha256:$($expected.Sha256)") {
             throw 'Uploaded asset ID, byte count, pinned URL or SHA-256 digest failed verification.'
         }
@@ -188,7 +195,7 @@ function Publish-PcNinjaVerifiedRelease {
         $draft.prerelease -ne (-not $checked.IsStable) -or @($draft.assets).Count -ne 0) { throw 'GitHub did not return an empty matching draft.' }
     $releaseId = [long]$draft.id
     & $GitHub 'UploadAssets' @{ Tag = $checked.Tag; Paths = @($evidence | ForEach-Object Path) } | Out-Null
-    $uploaded = & $GitHub 'GetRelease' @{ Tag = $checked.Tag }
+    $uploaded = & $GitHub 'GetRelease' @{ Tag = $checked.Tag; Id = $releaseId }
     Assert-PcNinjaUploadedAssets $uploaded $checked $evidence $releaseId $true
     $again = @(Get-PcNinjaLocalAssetEvidence $checked $ArtifactDirectory)
     for ($index = 0; $index -lt $evidence.Count; $index++) {
@@ -197,7 +204,7 @@ function Publish-PcNinjaVerifiedRelease {
     }
     if ($checked.IsStable) { Assert-PcNinjaStableAdvance $checked (& $GitHub 'GetLatest' @{}) }
     & $GitHub 'Publish' @{ Id = $releaseId; Prerelease = (-not $checked.IsStable); Latest = $checked.IsStable } | Out-Null
-    $published = & $GitHub 'GetRelease' @{ Tag = $checked.Tag }
+    $published = & $GitHub 'GetRelease' @{ Tag = $checked.Tag; Id = $releaseId }
     Assert-PcNinjaUploadedAssets $published $checked $evidence $releaseId $false
     if ($checked.IsStable) {
         $latest = & $GitHub 'GetLatest' @{}

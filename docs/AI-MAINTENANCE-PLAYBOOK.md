@@ -320,6 +320,19 @@ an update. Regular/critical badges and plain-text release messages never replace
 consent or digital signing. Notes links point to the exact GitHub release and
 must not imply download consent.
 
+After creating a draft, inspect it by the returned immutable release ID, not only
+the published-by-tag endpoint. Search authenticated release records for an existing
+draft before creating anything. GitHub draft assets can temporarily use an
+`untagged-*` URL: allow only the exact repository/filename before publication,
+while still requiring unique IDs, uploaded state, exact sizes and SHA-256 digests.
+After publication require the final pinned tag URL again. Never relax the client
+download policy to compensate for publisher API behavior. If publication stops
+after upload, verify the existing draft/artifacts and recover it under owner
+authority; do not rerun with clobber, move tags, or replace published bytes.
+Offline fixtures must cover hidden-by-tag drafts and temporary URLs, including
+rejection if a temporary URL remains after publication. Run these PowerShell
+packaging fixtures with PowerShell 7, as CI does (they use System.Text.Json).
+
 ## Maintain the knowledge, not just the patch
 
 For each meaningful change, record:

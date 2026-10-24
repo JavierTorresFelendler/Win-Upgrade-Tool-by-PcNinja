@@ -32,7 +32,27 @@ $repository = $identity.Repository
 $adapter = {
     param($operation, $parameters)
     switch ($operation) {
-        'GetRelease' { Invoke-ReleaseApi "repos/$repository/releases/tags/$($parameters.Tag)" -AllowNotFound }
+        'GetRelease' {
+            if ($parameters.ContainsKey('Id')) {
+                Invoke-ReleaseApi "repos/$repository/releases/$($parameters.Id)"
+            } else {
+                $published = Invoke-ReleaseApi "repos/$repository/releases/tags/$($parameters.Tag)" -AllowNotFound
+                if ($null -ne $published) { $published }
+                else {
+                    # The tag endpoint may exclude drafts. Find them before creating
+                    # anything; after creation all verification is by immutable ID.
+                    $found = @()
+                    for ($page = 1; $page -le 10; $page++) {
+                        $entries = @(Invoke-ReleaseApi "repos/$repository/releases?per_page=100&page=$page")
+                        $found += @($entries | Where-Object { $_.tag_name -ceq $parameters.Tag })
+                        if ($entries.Count -lt 100) { break }
+                        if ($page -eq 10) { throw 'Cannot exclude an older draft safely; publication stopped.' }
+                    }
+                    if ($found.Count -gt 1) { throw 'Ambiguous existing release/draft tag; no assets were changed.' }
+                    if ($found.Count -eq 1) { $found[0] }
+                }
+            }
+        }
         'GetLatest' { Invoke-ReleaseApi "repos/$repository/releases/latest" -AllowNotFound }
         'CreateDraft' {
             Invoke-ReleaseApi "repos/$repository/releases" -Method POST -Body @{
