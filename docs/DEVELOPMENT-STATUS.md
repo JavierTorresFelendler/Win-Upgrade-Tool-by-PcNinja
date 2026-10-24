@@ -37,14 +37,21 @@ not the hold on merging, publishing or changing RC8. Refreshed the existing
 - Local Release warnings-as-errors Core, headless CLI, client GUI and packaging
   fixtures pass. Helper request/expiry/path/handshake bounds and actual atomic
   file move/replace/restore fixtures pass, including failure and lock cases.
-  The published local test EXE passes read-only CLI/help/completion checks.
+  The locally built portable test EXE passes read-only CLI/help/completion checks.
   Tests use fake network,
   unique Local gate objects and harmless temporary files, not live app replacement
   or Windows Setup. Elevated ACL fixtures and true two-stable-version update
   acceptance still require separate evidence. Do not describe this as shipped.
 
-Next: push the implementation/documentation to Draft
-#13, and provide a separate CI test EXE. Do not merge, mark ready, publish a new
+- Implementation checkpoint `6df4cdb03b2ab900b4259cc618e7d7ce071deb3d` is committed
+  under the owner, pushed and remote-SHA verified. PR #13 remains Draft and
+  mergeable. CI run `40110660239` passed all steps, including elevated protected
+  temporary-folder/ACL/anchor/cleanup fixtures (no Program Files writes). Local
+  non-admin SKIPs above remain honest, separate from this hosted native evidence.
+  A follow-up also proves read-only inspection accepts the actual built product
+  host, preserves subcommand help, and distinguishes helper deadline from cancellation.
+
+Next: provide the final separate CI test EXE. Do not merge, mark ready, publish a new
 release, replace RC8 or run an actual updater installation on the development PC.
 Media preparation #9 stays deferred. See [application updates](APPLICATION-UPDATES.md).
 

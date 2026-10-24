@@ -31,6 +31,8 @@ if (-not $status.build -or -not $status.build.StartsWith($ExpectedVersion)) { th
 if (-not $help.Contains('RollbackObserved') -or -not $help.Contains('SetupFailure')) { throw 'Rollback help missing.' }
 if (-not $help.Contains('COMMAND: app-update') -or -not $help.Contains('APP_UPDATE_HANDOFF_STARTED') -or
     -not $help.Contains('NOT installed yet')) { throw 'Offline application-update contract missing.' }
+$appHelp = Invoke-Assistant @('app-update', 'install', '--help')
+if ($LastCode -ne 0 -or -not $appHelp.Contains('COMMAND: app-update')) { throw 'App-update subcommand help failed.' }
 # These updater probes MUST stay offline and stop before any installation effect.
 $appStatus = (Invoke-Assistant @('app-update', 'status', '--json')) | ConvertFrom-Json
 if ($LastCode -ne 0 -or $appStatus.resultCode -ne 'APP_UPDATE_STATUS' -or

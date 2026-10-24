@@ -15,6 +15,12 @@ internal static class AppUpdateHelperChecks
             now.AddMinutes(-1).UtcDateTime.Ticks, @"C:\Fixture\app.exe", new string('a', 64),
             null, null, manifest, false);
         AppUpdateInstaller.ValidateRequest(request, id);
+        // Read the built product host, not this test runner; never execute it.
+        // This proves that the negative PE fixtures did not create an always-reject verifier.
+        var builtHost = Path.Combine(AppContext.BaseDirectory, AppUpdateIdentity.AssetName);
+        var builtInfo = AppUpdateWorkspace.InspectExecutable(builtHost);
+        Require(builtInfo.Version == ProductIdentity.Version && builtInfo.SizeBytes == new FileInfo(builtHost).Length &&
+            builtInfo.Sha256.Length == 64, "The real built product host failed read-only executable inspection.");
         foreach (var invalid in new[]
         {
             request with { SchemaVersion = 2 }, request with { OperationId = Guid.NewGuid().ToString("N") },

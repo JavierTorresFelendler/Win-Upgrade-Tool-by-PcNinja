@@ -81,7 +81,10 @@ internal static class AppUpdateInstaller
             workspace.MarkHandoffStarted(); // Running helper images must never be removed by download cleanup.
             using var readyTimeout = CancellationTokenSource.CreateLinkedTokenSource(token);
             readyTimeout.CancelAfter(TimeSpan.FromSeconds(20));
-            var response = await ReadHandshakeAsync(helper.StandardOutput, readyTimeout.Token);
+            string? response;
+            try { response = await ReadHandshakeAsync(helper.StandardOutput, readyTimeout.Token); }
+            catch (OperationCanceledException) when (!token.IsCancellationRequested)
+            { throw new TimeoutException("The verified update helper did not become ready in time. The current app was not replaced."); }
             if (response != Ready) throw new IOException("The update helper was not ready. The current app was not replaced.");
             token.ThrowIfCancellationRequested();
             AppOperationGate.EnsureUpdateAllowed();

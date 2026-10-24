@@ -20,6 +20,12 @@ internal static class CliHelp
         }
 
         if (first is "--help" or "-h") return true;
+        if (first == "app-update" && args.Length == 3 &&
+            args[1].ToLowerInvariant() is "check" or "status" or "install" && args[2] is "--help" or "-h")
+        {
+            topic = first;
+            return true;
+        }
         if (args.Length == 2 && args[1] is "--help" or "-h")
         {
             topic = first;
