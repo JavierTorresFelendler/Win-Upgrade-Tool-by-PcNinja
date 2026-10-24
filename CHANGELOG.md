@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased - application updates (Draft PR #13)
+
+- Add stable-only, product/repository-pinned GitHub application-update discovery,
+  explicit GUI consent and `app-update check|status|install` CLI/JSON. This updates
+  the assistant, never Windows; all updater results deny restart authorization.
+- Verify exact pinned release bytes, size, SHA-256 and EXE identity. Use private
+  fixed-local-NTFS staging, a machine-wide Windows/app-operation gate and a
+  revalidating helper for recoverable Program Files portable-copy installation.
+  An original outside the protected destination remains unchanged; CLI does not
+  relaunch a GUI or replay upgrade arguments. Unsigned trust limitations remain.
+- Centralize build identity in `Directory.Build.props`; add fail-closed future
+  stable manifest/publication support with draft-first verified immutable assets
+  and latest-last publication. RCs retain three assets/prerelease/no manifest.
+- Add safe HTTP/CLI/GUI/operation/path/packaging fixtures and updater guides.
+  Development source only: no new version/tag/release or replacement RC8 asset.
+  End-to-end two-stable-version disposable-VM acceptance is still pending.
+
 ## 1.1.0-rc.8 - 2026-10-24
 
 - Prefer the configured owner ISO for eleven matching en-US/x64 client editions;

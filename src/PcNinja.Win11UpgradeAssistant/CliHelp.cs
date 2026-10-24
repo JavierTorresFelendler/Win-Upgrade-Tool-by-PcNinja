@@ -5,7 +5,7 @@ internal static class CliHelp
     internal static string Version => ProductIdentity.Version;
 
     private static readonly string[] Topics =
-        ["status", "downloads", "scan", "validate", "upgrade", "log-path", "completion"];
+        ["status", "downloads", "scan", "validate", "upgrade", "app-update", "log-path", "completion"];
 
     public static bool TryGetRequestedTopic(string[] args, out string? topic)
     {
@@ -68,6 +68,7 @@ internal static class CliHelp
         "scan" or "refresh" or "rescan" => Scan,
         "validate" => Validate,
         "upgrade" => Upgrade,
+        "app-update" => AppUpdate,
         "log-path" => LogPath,
         "completion" => Completion,
         _ => null
@@ -90,6 +91,7 @@ Commands:
   scan         Find local ISO files, mounted Windows media, and download drives.
   validate     Validate one exact ISO file or mounted Windows source.
   upgrade      Validate a source and start Windows Setup after confirmation.
+  app-update   Check or install a stable update of this application, not Windows.
   log-path     Print the application log path.
   completion   Generate shell completion code. PowerShell completion is supported.
   help         Show general help or detailed help for one command.
@@ -348,6 +350,39 @@ SHA-256 is calculated for ISO files. Supply --sha256 or PCNINJA_ISO_SHA256 to
 compare with a trusted value; a calculated hash alone is not proof of integrity.
 """;
 
+    private const string AppUpdate = """
+COMMAND: app-update
+
+Update this application, NOT the Windows operating system.
+
+Usage:
+  Windows-Upgrade-Assistant-By-PcNinja.exe app-update check [--json]
+  Windows-Upgrade-Assistant-By-PcNinja.exe app-update status [--json]
+  Windows-Upgrade-Assistant-By-PcNinja.exe app-update install --yes [--json]
+
+check queries only this project's latest stable GitHub release and same-release
+manifest. RCs, drafts, older/equal versions and other repositories are rejected.
+No stable release yet is a normal result. status stays offline.
+
+install requires Administrator and explicit --yes. It verifies the exact pinned
+EXE bytes, size, SHA-256, x64 GUI/product/version and publisher continuity when
+signed. Unsigned releases rely on this project's GitHub release/manifest trust;
+a checksum is not a digital signature. No arbitrary feed or target switch exists.
+
+The updated portable copy is saved in Program Files\PcNinja\WindowsUpgradeAssistant.
+An original outside that protected folder stays untouched. A helper waits for
+this exact process to exit before recoverable replacement. The CLI does not
+relaunch a GUI or replay any arguments. No OS upgrade/reboot is started.
+
+APP_UPDATE_HANDOFF_STARTED means staged/handed off, NOT installed yet. Inspect
+app-update status and run the new copy's --version after the helper completes.
+Every app-update result has readyForRestart=false and setupStarted=false.
+Process exits retain the existing groups: 0 result/handoff, 2 invalid arguments,
+3 blocked, 4 network/verification/helper failure, 5 permission, 6 cancelled.
+Active PcNinja preparation/Setup, external Windows Setup or a pending Windows
+restart blocks installation; no force-close, forced restart or bypass is provided.
+""";
+
     private const string LogPath = """
 COMMAND: log-path
 
@@ -416,7 +451,7 @@ Register-ArgumentCompleter -Native -CommandName '__EXE_NAME__', 'Windows-Upgrade
         return
     }
 
-    $commands = @('status', 'downloads', 'scan', 'validate', 'upgrade', 'log-path', 'completion', 'help', '--help', '--version')
+    $commands = @('status', 'downloads', 'scan', 'validate', 'upgrade', 'app-update', 'log-path', 'completion', 'help', '--help', '--version')
     $options = switch ($command) {
         'status'     { @('--json', '--help') }
         'downloads'  { @('--json', '--help') }
@@ -425,8 +460,9 @@ Register-ArgumentCompleter -Native -CommandName '__EXE_NAME__', 'Windows-Upgrade
         'rescan'     { @('--json', '--help') }
         'validate'   { @('--iso', '--mounted', '--sha256', '--image-index', '--json', '--help') }
         'upgrade'    { @('--iso', '--mounted', '--download', '--destination', '--sha256', '--image-index', '--no-restart', '--quiet', '--dry-run', '--yes', '--json', '--help') }
+        'app-update' { @('check', 'status', 'install', '--yes', '--json', '--help') }
         'completion' { @('powershell', '--help') }
-        'help'       { @('status', 'downloads', 'scan', 'validate', 'upgrade', 'log-path', 'completion', 'all') }
+        'help'       { @('status', 'downloads', 'scan', 'validate', 'upgrade', 'app-update', 'log-path', 'completion', 'all') }
         default      { $commands }
     }
 

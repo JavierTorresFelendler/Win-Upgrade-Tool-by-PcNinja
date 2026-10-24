@@ -2,6 +2,8 @@
 
 RC8 includes [quiet Setup and remote automation results](CLI-AUTOMATION.md),
 with explicit consent, machine-readable outcomes and independent restart control.
+The `app-update` commands below exist only in development Draft PR #13, not the
+unchanged published RC8 binary. No new version/tag/release is created by this work.
 
 The graphical interface opens when the EXE is started without arguments. The
 same standalone EXE becomes a command-line tool when a command is supplied.
@@ -25,6 +27,8 @@ See [outcome diagnostics](SETUP-OUTCOME-DIAGNOSTICS.md) for correlation limits.
 `status`, `downloads`, `scan`, `--help`, `--version`, and `log-path` can run normally.
 Commands that mount or validate installation media, download and mount an ISO,
 or start Windows Setup must run from an elevated Command Prompt or PowerShell.
+Development `app-update check` and `app-update status` need no elevation;
+`app-update install` requires elevation and explicit `--yes`, without UAC relaunch.
 
 ## Built-in help and PowerShell completion
 
@@ -48,6 +52,68 @@ Completion covers commands, options relevant to the selected command, mounted
 drives, extracted folders, ISO paths, and destination directories. The EXE
 does not modify `$PROFILE`; run `help completion` before adding the generated
 script to a persistent profile.
+
+## Application updates (development only)
+
+These commands update the assistant EXE, **not Windows**, through the same pinned
+stable GitHub service as the development GUI:
+
+```powershell
+.\Windows-Upgrade-Assistant-By-PcNinja.exe help app-update
+.\Windows-Upgrade-Assistant-By-PcNinja.exe app-update check --json
+.\Windows-Upgrade-Assistant-By-PcNinja.exe app-update status --json
+```
+
+`check` fetches the project's latest stable release metadata and same-release
+manifest, not the EXE. Drafts/RCs and equal/older versions are not offers. Missing
+stable release is a normal result. Offline/verification failure returns exit 4;
+there is no arbitrary feed or preview switch. `status` stays offline and returns
+the fixed target path and bounded local `lastAttempt`, or null when unavailable.
+That record can be stale and does not prove the current EXE's identity.
+
+Only after deciding to install, run from an elevated terminal:
+
+```powershell
+.\Windows-Upgrade-Assistant-By-PcNinja.exe app-update install --yes --json
+```
+
+The exact verified EXE is saved to
+`%ProgramFiles%\PcNinja\WindowsUpgradeAssistant\Windows-Upgrade-Assistant-By-PcNinja.exe`.
+An original outside that protected folder is untouched. Running from ISO/network/
+removable/non-NTFS/reparse paths is refused; first copy the app to ordinary fixed
+local NTFS. Missing `--yes` or elevation fails before the network/install action.
+Concurrent PcNinja preparation/Setup, external Windows Setup, pending Windows
+restart or unavailable safety state blocks installation; there is no force switch.
+
+`APP_UPDATE_HANDOFF_STARTED` means only that the verified helper is ready to wait
+for this exact process to exit and apply the update. It is **not installed-success
+proof**. The CLI neither relaunches a GUI nor replays commands/upgrade arguments.
+After helper completion, inspect `app-update status --json` and verify the actual
+protected copy with its `--version`; a missing/stale helper result is not success.
+
+All `app-update` JSON results use the existing schema/result fields and add
+`command=app-update`, `applicationUpdated=false` and `setupStarted=false`.
+`readyForRestart` is always false, including exit 0/handoff. A nested last-attempt
+success is helper evidence, not an OS-upgrade or restart authorization.
+
+| Exit | resultCode | Meaning |
+| ---: | --- | --- |
+| 0 | APP_UPDATE_AVAILABLE | Newer stable discovered; nothing installed |
+| 0 | APP_UPDATE_CURRENT / APP_UPDATE_NO_STABLE_RELEASE | No candidate to install |
+| 0 | APP_UPDATE_STATUS | Offline local status only |
+| 0 | APP_UPDATE_HANDOFF_STARTED | Staged/helper handoff; later apply not yet confirmed |
+| 2 | INVALID_ARGUMENTS | Correct command/subcommand/options |
+| 3 | APP_UPDATE_BLOCKED | Resolve operation/Setup/restart/target blocker |
+| 4 | APP_UPDATE_CHECK_UNAVAILABLE / APP_UPDATE_FAILED | Check, transfer, verification or helper failure |
+| 5 | ADMINISTRATOR_REQUIRED / APP_UPDATE_PERMISSION_DENIED | Explicit elevated installation required |
+| 6 | APP_UPDATE_CONSENT_REQUIRED / APP_UPDATE_CANCELLED | No consent, or cancellation |
+
+Current released binaries are unsigned. Pinned URLs and SHA-256 provide integrity
+against the manifest, not protection from compromise of its publishing account.
+Signed current/installed apps require the same trusted certificate in a successor.
+See [trust, private staging/recovery and pending VM acceptance](APPLICATION-UPDATES.md).
+Neither these commands nor their test fixtures publish stable releases or start
+Windows Setup/reboot. Do not add OS-upgrade flags to this command.
 
 ## Inspect the computer and available sources
 
@@ -318,8 +384,8 @@ start "" /wait Windows-Upgrade-Assistant-By-PcNinja.exe status --json
 | 0 | Success |
 | 1 | Unexpected error |
 | 2 | Invalid arguments |
-| 3 | Validation, unsupported system, or storage failure |
-| 4 | Automatic download failure |
+| 3 | Validation, unsupported system/storage failure, or app-update blocker |
+| 4 | Download or app-update check/verification/helper failure |
 | 5 | Administrator permission required |
 | 6 | Confirmation or preparation cancelled |
 | 7 | Windows Setup returned a failure code |
@@ -327,8 +393,8 @@ start "" /wait Windows-Upgrade-Assistant-By-PcNinja.exe status --json
 
 The assistant never calls `shutdown.exe`. `--no-restart` adds `/noreboot` to
 Windows Setup, and a failed Setup process does not trigger a forced restart.
-After exit 0 with `--no-restart`, the CLI explicitly says to restart manually to
-continue the upgrade. Successful upgrade JSON includes `manualRestartRequired`
+After a successful actual `upgrade` with `--no-restart`, the CLI explicitly says
+to restart manually to continue the upgrade. Successful upgrade JSON includes `manualRestartRequired`
 (`true` with `--no-restart`, otherwise `false`); existing exit codes are unchanged.
 `/noreboot` suppresses the first post-preparation reboot, not later Setup reboots
 after the user manually restarts. PreparationCompleted is not final OS success.

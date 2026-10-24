@@ -50,6 +50,8 @@ internal static class CliRunner
                 return Success;
             }
 
+            if (args[0].Equals("app-update", StringComparison.OrdinalIgnoreCase))
+                return await CliAppUpdates.RunAsync(args.Skip(1).ToArray(), cancellation.Token);
             var options = CliOptions.Parse(args);
             if (options.Quiet && !options.Yes && !options.DryRun)
                 return Fail(Cancelled, "Quiet upgrade requires explicit --yes consent. Windows Setup was not started.", options.Json);

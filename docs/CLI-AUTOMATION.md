@@ -1,7 +1,8 @@
 # Quiet Setup and remote automation results
 
-Included in RC8. This documents the shared quiet Setup and remote result contract;
-it does not implement application self-update or agent-controlled restart code.
+The quiet Setup/result contract is included in RC8. Application-update results
+below apply only to development Draft PR #13, not the unchanged RC8 binary.
+Neither interface implements agent-controlled restart code.
 
 ## Invocation
 
@@ -64,6 +65,7 @@ opens a fallback browser or waits for a hidden interactive YES prompt.
 | 0 | UPGRADE_PREPARED_RESTART_REQUIRED | Preparation completed; readyForRestart=true; controller can schedule restart |
 | 0 | UPGRADE_PREPARED_AUTOMATIC_RESTART | Windows handles restart; readyForRestart=false |
 | 0 | VALIDATION_PASSED / DRY_RUN_COMPLETED / STATUS_REPORTED / SOURCES_SCANNED | No restart authorization |
+| 0 | DOWNLOAD_RECOMMENDATION / APP_UPDATE_* | Guidance/app-only result; never restart authorization |
 | 1 | UNEXPECTED_ERROR | Record details; do not restart |
 | 2 | INVALID_ARGUMENTS | Correct invocation; do not restart |
 | 3 | VALIDATION_FAILED | Resolve source/system/storage blocker; do not restart |
@@ -97,5 +99,29 @@ that the OS migration will succeed after reboot. `/noreboot` suppresses only the
 first reboot; Windows can restart again during subsequent installation phases.
 Windows 11 retains `/eula accept`; Windows 10 does not gain that unsupported flag.
 All edition/language/index/space/signature/unsafe-media checks remain in Core.
+
+## Application-update automation (development only)
+
+Use the separate `app-update` subcommands, never `upgrade`, to check/install an
+assistant release. `check --json` needs no elevation and reads only pinned stable
+GitHub metadata/manifest; `status --json` is offline. Installation explicitly
+requires elevation and `app-update install --yes --json`. It never UAC-relaunches,
+opens a GUI/browser prompt, runs Setup or requests a reboot. No hidden input or
+original-command replay occurs. See the [CLI result table](CLI.md#application-updates-development-only).
+
+Capture stdout and `$LASTEXITCODE` through a pipeline as in the invocation above.
+An exit-0 `APP_UPDATE_HANDOFF_STARTED` is not completed installation: the helper
+applies only after this parent exits. A controller must inspect subsequent local
+`app-update status` evidence and the protected EXE's actual `--version`; missing,
+stale, timeout or unparsable evidence remains unconfirmed. CLI never reopens the
+new GUI. The original portable file outside the Program Files target is untouched.
+
+Every updater result has `applicationUpdated=false`, `setupStarted=false` and
+`readyForRestart=false`. Do not treat app-update exit 0 or nested helper success
+as an OS success/restart permission; retain the exact upgrade-only readiness
+predicate above. Busy PcNinja work, external Setup and recognized pending-restart
+state block installation rather than force-close or bypass safety. Live remote
+agent use and two-stable-version disposable-VM acceptance remain separate tests;
+no stable release is published by this development work.
 
 Reference: [Microsoft Windows Setup options: Quiet, NoReboot and EULA](https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/windows-setup-command-line-options).

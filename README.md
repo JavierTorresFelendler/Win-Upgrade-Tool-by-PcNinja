@@ -33,6 +33,12 @@ Version/commit metadata remains
 in file properties, diagnostic logs, `version` and `status --json`, not the GUI
 title or executable filename. See [product identity](docs/PRODUCT-IDENTITY.md).
 
+Application updating is implemented separately in development Draft PR #13;
+it is **not in the published RC8 EXE**. The development updater discovers only
+newer stable GitHub releases and requires consent to save a protected Program
+Files copy, leaving a portable original elsewhere untouched. It never upgrades
+Windows or authorizes a reboot. See [app updates and remaining VM acceptance](docs/APPLICATION-UPDATES.md).
+
 Completed, correlated Windows Setup rollbacks are reported in the existing GUI
 warning/details area and CLI status. See [outcome diagnostics](docs/SETUP-OUTCOME-DIAGNOSTICS.md).
 
@@ -222,8 +228,8 @@ Stable CLI exit codes:
 | 0 | Success |
 | 1 | Unexpected error |
 | 2 | Invalid arguments |
-| 3 | Validation or storage failure |
-| 4 | Download failure |
+| 3 | Validation/storage failure or app-update blocker |
+| 4 | Download or app-update check/verification/helper failure |
 | 5 | Administrator permission required |
 | 6 | User confirmation or preparation cancelled |
 | 7 | Windows Setup returned failure |
@@ -307,8 +313,29 @@ dotnet run --project tests\PcNinja.Win11Upgrade.SmokeTests\PcNinja.Win11Upgrade.
 dotnet publish src\PcNinja.Win11UpgradeAssistant\PcNinja.Win11UpgradeAssistant.csproj -c Release -r win-x64 --self-contained true
 ```
 
-The GitHub release workflow produces the single-file EXE and SHA-256 checksum
-when a `v*` tag is pushed.
+`Directory.Build.props` contains the authoritative literal `PcNinjaReleaseVersion`
+for Core/GUI metadata and packaging. Development updater/packaging support does
+not change the current `1.1.0-rc.8` identity or any published asset.
+
+The tag workflow requires reviewed main ancestry, matching tag/version/notes,
+read-only CLI verification and the final EXE's exact `version+commit` metadata
+under the 100,000,000-byte cap. RC notes use `docs/RELEASE-RC{N}.md`; RC releases
+keep EXE, SHA256SUMS and BUILD-INFO as three prerelease assets, with no updater
+manifest. Future numeric `x.y.z` stable releases require
+`docs/RELEASE-{version}.md` and add `update-manifest.json` as a fourth asset.
+Both use draft-first upload/metadata verification; stable publication updates
+latest only after verified assets and refuses backwards movement. Existing
+published releases/assets are never overwritten. This is future publication
+support, not authorization to create a stable tag/release.
+
+The offline contract fixtures make no network or GitHub changes:
+
+```powershell
+& ./tests/Verify-AppUpdatePackaging.ps1
+```
+
+See the [updater implementation contract](docs/design/APPLICATION-UPDATES.md)
+for manifest, staging, trust and final two-stable-version VM gates.
 
 ## Current scope
 

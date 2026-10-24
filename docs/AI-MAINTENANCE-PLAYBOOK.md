@@ -33,6 +33,7 @@ All paths below are relative to the repository root.
 | Installation safety | `src/PcNinja.Win11Upgrade.Core/InstallationSafety.cs` | Selected/secondary answer files and final prelaunch gate |
 | Image/language policy | `src/PcNinja.Win11Upgrade.Core/InstallationImage.cs`, `AutomaticDownloadPolicy.cs` | Actual image metadata, compatible selection and automatic-language gate |
 | Outcome evidence | `src/PcNinja.Win11Upgrade.Core/UpgradeHistory.cs` | Persisted attempt and post-restart observations |
+| Application updates | `src/PcNinja.Win11Upgrade.Core/AppUpdates/`, `src/PcNinja.Win11UpgradeAssistant/AppUpdateInstaller.cs` | Stable release discovery, protected staging, operation gate and app-only helper/recovery |
 | Tests and delivery | `tests/`, `.github/workflows/` | Safe fixtures, client GUI checks, CLI checks and separate PR/release builds |
 
 ## Validated engineering lessons
@@ -276,6 +277,38 @@ source/index and answer-file safety, quote/reject unsafe CMD paths, label the sh
 explain supported-path/licensing limits, and keep clipboard untouched on failure
 or cancellation. Use fake browser/clipboard/preparation callbacks in GUI fixtures.
 No recommendation or synthetic command proves a supported real Server upgrade.
+
+## Application updates are not Windows upgrades
+
+Read `Core/AppUpdates/`, `MainForm.AppUpdates.cs`, `CliAppUpdates.cs` and
+`AppUpdateInstaller.cs` together. Discovery may run in the background, but
+downloading/replacing the application always needs explicit consent. Never reuse
+ISO provider cookies/redirect rules, accept an arbitrary update feed/target, replay
+upgrade arguments, or authorize a Windows restart from an app-update result.
+
+An exact release-pinned manifest/hash/size binds bytes, not a publisher identity.
+Unsigned builds explicitly depend on the project GitHub/TLS trust boundary.
+Preserve a valid existing signing certificate when signing is enabled; do not
+silently downgrade to unsigned or disable trust checks on a network error.
+
+Privileged replacement must not trust a writable Downloads path or path-only
+PID/lock checks. The implementation uses a protected fixed local target, safe
+directory/file ACLs, non-reparse anchored ancestors, exact executable inspection,
+a verified successor helper and an exact parent-process handle. Its READY/GO
+protocol transfers a non-thread-affine machine-wide semaphore before the parent
+exits. Never substitute a sleep, thread-affine mutex or stale history file.
+
+Keep app/Windows operations mutually exclusive and repeat external Setup/restart
+checks after slow hashing. Failure/cancellation before handoff leaves the current
+app unchanged; after handoff, keep recovery files and correlate helper status by
+operation ID. Atomic replacement and restore tests use disposable ordinary files;
+they do not prove signing, elevation, handoff or relaunch on a customer's VM.
+
+Stable release packaging must verify exact product/version/source commit and
+final bytes before publishing. Upload immutable assets to a draft, verify them,
+then publish stable/latest last; never clobber assets or mutate a published tag.
+RCs publish no stable update manifest. Keep the first-stable then higher-stable
+live-update experiment a separate owner-approved step with VM snapshots.
 
 ## Maintain the knowledge, not just the patch
 

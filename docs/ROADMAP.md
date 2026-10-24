@@ -9,17 +9,22 @@ The owner reaffirmed this scope on 2026-10-24:
 - Keep media extraction/copy/sanitization preparation (design PR #9) outside this
   delivery. Existing answer-file safety blocks and narrowly scoped selected-source
   cleanup remain; this deferral is not permission to weaken those safeguards.
-- The next new capability is **application self-update through GitHub**, separate
-  from downloading a Windows ISO or upgrading the operating system. Design PR #13
-  already describes the proposed manifest/release pattern used in WinUpdate V2
-  and Smart Office Installer. It is design only and needs refreshing against the
-  current code before implementation; do not merge it merely to claim an updater.
-- Plan one first stable version that already contains the updater, followed by a
+- **Application self-update through GitHub** is implemented in development Draft
+  PR #13, separately from downloading an ISO or upgrading Windows. The published
+  RC8 and older binaries remain unchanged and have no updater. Stable discovery,
+  explicit GUI/CLI consent, verified private staging, protected Program Files
+  portable-copy installation and draft-first publication support are development
+  capabilities, not a published stable feed or completed VM acceptance. See the
+  [user guide](APPLICATION-UPDATES.md) and [implementation contract](design/APPLICATION-UPDATES.md).
+- The remaining acceptance needs one first stable already containing the updater,
+  followed by a
   higher stable version to test discovery, consent, download verification,
   recoverable replacement/relaunch and failure recovery. The second version may
   have no functional changes beyond correct release/binary version identity.
-  Stable tags/releases require separate explicit approval. Never update the app
-  during ISO work or active Windows Setup, and never let app updates start Setup.
+  Both stable tags/releases require separate explicit approval; neither is
+  created by this PR. Verify the original outside copy, helper/gate and recovery
+  on a disposable VM. Never update the app during active ISO work/Windows Setup,
+  and never let app updates start Setup or authorize an OS restart.
 - Credit Massgrave's alternative ISO catalogs in the README and source docs.
   Credits do not change source priority, validation or the product's licensing scope.
 

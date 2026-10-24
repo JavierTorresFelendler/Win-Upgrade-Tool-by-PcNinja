@@ -8,6 +8,48 @@ assistant's personal memory or skills installation.
 
 ## RC8 release baseline (owner approved 2026-10-24)
 
+### Current development: application updates (Draft PR #13)
+
+The owner has now authorized updater implementation while continuing non-English
+Windows-upgrade tests. This supersedes the earlier design-only hold for #13,
+not the hold on merging, publishing or changing RC8. Refreshed the existing
+`design/application-updates` branch with reviewed RC8 main; keep one PR/history.
+
+- Shared Core discovers only this project's latest stable GitHub release and
+  same-release manifest. Bounded metadata/redirect/transfer policy, strict release
+  identity, exact size/SHA-256, executable metadata and signed-publisher continuity
+  fail closed. An unsigned release's checksum is not publisher authentication.
+- GUI discovery is nonblocking and separate from Windows-media diagnostics.
+  Installation needs explicit consent; CLI adds documented `app-update`
+  check/status/install commands without OS restart authorization.
+- The successor helper installs a controlled local Program Files portable copy.
+  An original outside that folder remains untouched. Private staging, anchored
+  paths, parent-process-bound READY/GO handoff and recoverable atomic replacement
+  avoid elevated replacement of a user-writable source path. Relaunch has no
+  arguments; CLI installation does not reopen a GUI.
+- A secure machine-wide operation gate serializes app replacement with Core ISO
+  preparation/validation/download/Setup. Repeat external Setup and pending-restart
+  checks before handoff/apply. Historical upgrade records are not permanent locks.
+- Centralized version identity in `Directory.Build.props`; development remains
+  `1.1.0-rc.8` with source-commit provenance, not a newly published RC. Stable
+  packaging is draft-first, verifies all immutable assets, and updates latest last.
+  No stable manifest, tag or feed has been published by this implementation work.
+- Local Release warnings-as-errors Core, headless CLI, client GUI and packaging
+  fixtures pass. Helper request/expiry/path/handshake bounds and actual atomic
+  file move/replace/restore fixtures pass, including failure and lock cases.
+  The published local test EXE passes read-only CLI/help/completion checks.
+  Tests use fake network,
+  unique Local gate objects and harmless temporary files, not live app replacement
+  or Windows Setup. Elevated ACL fixtures and true two-stable-version update
+  acceptance still require separate evidence. Do not describe this as shipped.
+
+Next: push the implementation/documentation to Draft
+#13, and provide a separate CI test EXE. Do not merge, mark ready, publish a new
+release, replace RC8 or run an actual updater installation on the development PC.
+Media preparation #9 stays deferred. See [application updates](APPLICATION-UPDATES.md).
+
+### Published baseline (unchanged)
+
 - Owner reports the current test application is working well and explicitly
   requested another RC before application-update planning or implementation.
   This authorizes consolidation and RC8 publication, not additional features.
@@ -31,7 +73,7 @@ assistant's personal memory or skills installation.
 - [RC8 notes](RELEASE-RC8.md) and [verification matrix](RC8-TESTING.md) describe
   scope and remaining field cases. The owner reports stable operation, but did
   not restate a complete per-profile/source test matrix for this exact binary.
-- Application self-update (#13, design only) and media preparation (#9) remain
+- Application self-update (#13, design only at RC8 publication) and media preparation (#9) remain
   outside RC8. Updater work starts separately only after this release checkpoint.
 
 The development sections below are historical checkpoints. Their earlier

@@ -1,113 +1,103 @@
-# Standalone application updates: proposed design
+# Standalone application updates: implementation contract
 
-Status: design only, 2026-10-18. The owner requested planning while testing PR #12.
-No updater, live feed, stable release, version bump or replacement test EXE is
-implemented/authorized by this document. Do not merge the Windows 10 POC merely
-because one initial trial passed. Keep safe-media PR #9 separately deferred.
+Status: implemented in development Draft PR #13, not a published capability.
+The published `v1.1.0-rc.8` and older assets remain unchanged and contain no app
+updater. This document supersedes the planning-only proposal; it authorizes no
+merge, version bump, stable tag, release or replacement of a tested executable.
+See the [user guide](../APPLICATION-UPDATES.md) and [CLI contract](../CLI.md#application-updates-development-only).
 
-## Small first scope
+## Architecture and identity
 
-- Check for a newer stable **application** version asynchronously when the GUI
-  opens, with a bounded timeout/cache and a manual Check for updates action.
-  Offline, missing-feed and rate-limit failures must not block normal tool use.
-- Show available version/release notes in the existing one-screen interface.
-  User chooses Update or Later. "Automatic" means discovery/download/handoff,
-  not silent executable replacement or an OS upgrade started by an updater.
-- Download the exact release EXE, verify SHA-256/size/version/product identity,
-  then perform a user-approved portable replacement/relaunch. Preserve an old
-  executable for recovery. Never add MSI installation, a service, scheduled task,
-  driver, telemetry or developer GitHub credentials to this portable product.
-- Add CLI check/install/help/JSON through the same service; proposed syntax and
-  exit codes need review with implementation, not undocumented ad-hoc flags.
-- Stable only initially. PR artifacts, draft releases and RCs are not a stable
-  customer update feed. A future preview channel must be explicitly opt-in.
+- `Core/AppUpdates/ApplicationUpdateClient.cs` owns product-pinned stable
+  discovery, strict manifest validation and bounded verified bytes. It creates
+  no files and never invokes Windows Setup.
+- `AppUpdateFiles.cs` owns fixed local NTFS staging, executable identity,
+  Authenticode policy, anchored paths and access-control checks.
+- `AppOperationGate.cs` shares machine-wide exclusion with Core Windows
+  preparation/Setup and transfers that exclusion to the verified helper.
+- The standalone host owns GUI consent and `app-update` CLI results.
+  `AppUpdateInstaller.cs` dispatches the internal helper before ordinary
+  startup/elevation, with no public arbitrary-copy or command-execution option.
+- `Directory.Build.props` is the literal release-version source for both
+  assemblies. Runtime informational metadata preserves `+commit`; semantic
+  comparison ignores valid build metadata, not prerelease identity. A stable
+  release can be newer than its same-base RC. Equal/older releases are not offers.
 
-## GitHub publication contract
+The pinned repository is
+`JavierTorresFelendler/Windows-Upgrade-Assistant-by-PcNinja`; the fixed asset is
+`Windows-Upgrade-Assistant-By-PcNinja.exe`. A future WinUpdate integration must
+keep its own host/product updater, not replace that host through this service.
 
-Reuse the manifest pattern already present in PcNinja WinUpdate V2 and Smart
-Office Installer, adapted for this standalone .NET portable EXE, not copied
-from another host's installation/replacement policy. A future `public-release/update-manifest.json` should
-contain schema version, stable channel, full release version/tag, exact asset
-name/URL, byte count, SHA-256 and release-notes URL. It does not exist here yet.
+## Discovery and publication contract
 
-Use a **version-pinned** GitHub Release asset URL, not a mutable latest-download
-URL that could change between manifest check and download. Publish a manifest
-only after the corresponding release assets/checksums are uploaded and verified.
-No feed read from a PR branch and no expired/authenticated CI artifact URL.
-GitHub's latest-release API excludes draft/prerelease releases; do not equate
-latest with the highest acceptable version. Always compare against the installed
-version, reject older/equal candidates, and verify tag/manifest/binary agreement.
+Discovery uses only the pinned GitHub latest-release API and that same release's
+`update-manifest.json` asset. Drafts/RCs are not candidates. HTTPS certificate
+validation stays enabled; cookies/automatic redirects are disabled. Manual
+redirect handling allows at most five release-asset redirects to the two exact
+GitHub asset CDN hosts. Metadata is bounded to 128 KiB/depth 16 and a 15-second
+check; transfer has a 100,000,000-byte cap, ten-minute total deadline and bounded
+reads. No feed override, mutable latest-EXE URL or CI-artifact URL is accepted.
 
-The release workflow currently accepts RC version syntax only, names RC assets
-and always publishes a prerelease. Stable publication support must be developed
-and tested separately before the owner authorizes a stable tag. Keep the merged-
-main/tag/version/notes/checksum checks and 100,000,000-byte EXE cap.
+Manifest schema 1 has exactly these camelCase fields:
 
-## Implementation boundaries and safety
+```text
+schemaVersion, product, repository, channel, version, tag, assetName,
+assetUrl, sizeBytes, sha256, releaseNotesUrl
+```
 
-- One authoritative release-version source for GUI, CLI, assembly metadata,
-  updater, user agent and packaging. Current RC strings are repeated across files.
-  Compare release versions correctly; ignore `+commit` only as build metadata,
-  never silently strip prerelease status or interpret a Git SHA as a version.
-- Keep a separate small app-update service. Do not reuse the ISO transfer flow:
-  its ISO filename/size, provider fallback and deletion rules are inappropriate
-  for a portable EXE. Reuse safe HTTP/hash primitives where sensible, not policy.
-- Pin the intended repository/product, require HTTPS and bounded responses,
-  retain certificate validation and verify exact asset bytes before use.
-  Hashes are integrity checks, not digital signatures. The current EXE is
-  unsigned; signing/disclosure is an owner decision before first stable release.
-  A signed version must not silently accept a wrong-publisher/unsigned successor.
-  The ISO setup.exe Microsoft-only signature verifier is NOT the app verifier:
-  PcNinja executables are a different publisher/product.
-- Reject replacement during ISO transfer/hash/mount/DISM/preparation/Windows
-  Setup, including concurrent CLI/GUI instances, using a shared operation gate.
-  Recheck before handoff. Handle a pending OS restart, but do not permanently
-  block solely on Last-Upgrade PreparationCompleted: Windows 10 POC history
-  intentionally requires manual outcome verification even after reboot.
-- Windows cannot replace the running EXE directly. A hidden, narrowly scoped
-  helper must wait for the exact original process to exit, reverify its staged
-  candidate and target, replace recoverably and relaunch the GUI **without any
-  OS-upgrade arguments**. Add internal helper dispatch before public CLI/GUI
-  startup/elevation handling; no public arbitrary-file-copy/command execution.
-- Treat handoff files and paths as untrusted input. Elevated staging/requests
-  must have restrictive ownership/ACLs, fixed product/target scope, freshness and
-  operation identity; no symlink/path traversal, broad process kills, deletion
-  or shell-built replacement commands. Verify again at replacement time.
-- On read-only ISO, unwritable or network execution paths, do not overwrite the
-  original source. Offer a user-approved local destination for the new app.
-  Check staging/helper/candidate/backup space separately from OS workspace.
-  Cancellation/failure leaves the old EXE intact. Clean only known owned files.
-- Future WinUpdate integration keeps its own host/product updater. Loading OS
-  upgrade Core in another tool must not cause this updater to replace that host.
+The manifest pins `channel=stable`, exact product/repository/asset, stable version,
+matching `v{version}` tag, exact version-pinned GitHub EXE URL and release-notes
+page. Release metadata and candidate bytes must agree on size/SHA-256; the actual
+candidate must also be the expected AMD64 GUI EXE/product/company/version.
+See [build and publication](../../README.md#build) for the workflow entry points.
 
-## Delivery and probes
+The release workflow supports future numeric `x.y.z` stable versions with
+`docs/RELEASE-{version}.md`; RC notes remain `docs/RELEASE-RC{N}.md`. It checks
+tag/main/version agreement and the final EXE's exact `version+GITHUB_SHA` after
+read-only CLI verification. Stable publication creates a draft, uploads EXE,
+SHA256SUMS, BUILD-INFO and manifest, checks all four asset IDs/sizes/SHA digests
+and rehashes local bytes, then publishes/latest last. It refuses existing
+published releases, nonempty drafts, asset replacement and backwards latest
+movement. RCs retain three assets/prerelease status and no manifest. There is
+no generated main-branch feed commit or permission to publish from this design.
 
-Complex boundary: process/file replacement under Windows. Before live releases,
-probe it with harmless old/new fixture EXEs in a temporary directory, not Setup.
-Acceptance: expected process exit, exact new version, no OS-upgrade launch,
-old-file recovery and no unrelated path/process changes. On partial/failure,
-stop the update and keep/recover the previous executable; do not force reboot.
+## Replacement safety
 
-1. Finish owner PR #12 image tests; merge only after feedback/approval.
-2. Review this design; implement updater/version identity and stable packaging
-   in scoped PR(s), with local fixtures and Windows client GUI/CLI checks.
-3. Test no update, newer/equal/older/RC versions, malformed manifest, wrong hash/
-   size/product/version, missing asset, offline/rate limit, cancelled/interrupted
-   download, unwritable/ISO/renamed paths, locked files and active upgrade states.
-4. Owner approves first stable publication. That first stable must **already
-   contain the updater**; publishing a version without one cannot test self-update.
-   Example labels only: `1.1.0` then `1.1.1` (not release authorization).
-5. Keep a copy of the first stable on a disposable VM. Publish the higher stable
-   with unchanged functional code if desired, but with correctly increased binary/
-   tag/manifest versions and its own checksum. Observe detection, consent,
-   download/verification, replacement/relaunch, new version and no repeated offer.
-6. Verify the previous EXE/recovery remains usable and test an update failure.
-   Existing published versions/assets remain immutable. Do not describe this
-   successful app-update test as a Windows OS migration test.
+Explicit GUI consent or elevated CLI `install --yes` is required. Installation
+targets the fixed protected Program Files copy, never the arbitrary running
+portable source. Private per-operation staging is Administrators/SYSTEM-only;
+the final app is readable/executable by users. Existing unsafe ownership/ACLs,
+reparse/hardlink/changed paths and non-fixed/non-NTFS locations fail closed, not
+silently hardened or redirected. A source running on ISO/network/removable media
+must first be copied to an ordinary fixed local NTFS folder by the user.
 
-## References inspected for planning
+The verified candidate also supplies the helper. A private, bounded, fresh
+request binds the exact parent process/start time/path/hash, candidate, target
+state and signing requirement. READY/GO handoff preserves the machine gate while
+the helper waits for the exact parent to exit. It rechecks Windows Setup/restart
+state, request, paths and bytes before recoverable replacement. It never kills
+processes, schedules work, forces a reboot or replays upgrade arguments. GUI
+relaunch has no arguments; CLI never launches a successor GUI.
 
-- [WinUpdate V2 manifest](https://github.com/JavierTorresFelendler/PcNinja-WinUpdateTool-V2/blob/main/public-release/update-manifest.json) and its WinUpdateTool.ps1 manifest/download/hash/signature flow.
-- [Smart Office manifest](https://github.com/JavierTorresFelendler/pcninja-smart-office-installer/blob/main/public-release/update-manifest.json) and its separate InstallerForm update UI.
-- [GitHub latest release](https://docs.github.com/en/rest/releases/releases#get-the-latest-release).
-- [GitHub release-asset metadata](https://docs.github.com/en/rest/releases/assets#get-a-release-asset).
+Unsigned releases explicitly rely on repository/release/manifest trust, not a
+cryptographic publisher guarantee. A compromised publishing account can replace
+both hash and executable. If the running or protected installed app is signed,
+the successor must retain its exact trusted signing certificate; invalid,
+unsigned or different-certificate successors are refused. Certificate rotation
+needs a separate policy. This is not the ISO Microsoft-only signature verifier.
+
+## Verification and remaining acceptance
+
+Safe fixtures cover release/version/HTTP rejection, exact bytes, CLI consent and
+handoff semantics, GUI state, local ACL/path/request policy, operation exclusion
+and the offline draft-first publication lifecycle. Privileged native probes may
+report SKIP when unavailable; synthetic fixtures are not a live replacement test.
+See [development handoff](../DEVELOPMENT-STATUS.md) for current run evidence.
+
+The final disposable-VM test still needs two separately owner-approved stable
+versions: first stable already containing this updater, then a higher stable
+with correctly increased binary/tag/manifest identity. Verify actual GitHub
+discovery, consent, exact bytes, helper/parent exit, protected-copy version and
+relaunch, original outside copy unchanged, no repeated offer, failure recovery
+and no Windows Setup/reboot/argument replay. Existing assets remain immutable.
+Neither those stable publications nor final VM acceptance occurred in this PR.
