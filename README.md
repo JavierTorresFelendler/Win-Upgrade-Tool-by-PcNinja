@@ -256,6 +256,23 @@ This boundary is intentional. The standalone product remains independent while
 the Core project can later be integrated into PcNinja WinUpdate Tool without
 copying the standalone interface.
 
+## ISO sources and acknowledgements
+
+Thank you to the [Massgrave](https://massgrave.dev/) contributors for maintaining
+the public Windows ISO catalogs used by our [development download fallback](docs/MATCHED-ISO-DOWNLOADS.md).
+PcNinja sources remain the preferred configured option; the external catalog
+helps users find matching media in other languages and editions. This fallback
+is a development feature, not part of the published RC7 binary.
+
+- [Massgrave website and ISO catalogs](https://massgrave.dev/)
+- [Catalog and website source on GitHub](https://github.com/massgravel/massgrave.dev)
+- [Massgrave's main project on GitHub](https://github.com/massgravel/Microsoft-Activation-Scripts)
+
+Our integration references ISO download catalogs only; it does not include or run
+activation scripts or modify licensing. Microsoft's official download alternative
+remains available. Source recommendations do not replace PcNinja's actual-media
+compatibility, signature and safety checks.
+
 ## Development workflow
 
 Work is tracked through issues, feature branches and Draft PRs under the owner's

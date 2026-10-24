@@ -34,6 +34,13 @@ existing explicit browser fallback and invalidate unattended consent.
 
 ## Catalog adapter and conservative limits
 
+Credits: the alternative ISO catalogs are maintained by the
+[Massgrave project](https://massgrave.dev/). See their
+[catalog/website source](https://github.com/massgravel/massgrave.dev) and
+[main GitHub project](https://github.com/massgravel/Microsoft-Activation-Scripts).
+We appreciate their work making the catalog available. This integration uses
+catalog references only, not their activation code or licensing tools.
+
 - Client catalog: <https://massgrave.dev/windows_11_links>.
 - Server catalog: <https://massgrave.dev/windows-server-links>.
 - Read HTML only, on explicit request, with a 20-second deadline and 2 MiB limit.

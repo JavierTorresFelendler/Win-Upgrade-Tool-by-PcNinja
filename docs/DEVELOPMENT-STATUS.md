@@ -8,6 +8,24 @@ assistant's personal memory or skills installation.
 
 ## Current development: matched ISO downloads and manual Server guidance
 
+### Scope and owner field update (2026-10-24)
+
+- Owner ran the corrected `0b1e0f2` test EXE on the previously blocked LTSC VM,
+  selected the ISO and reported successful preparation checks/start. This confirms
+  the readiness blocker is no longer reproduced in that trial; it is not a final
+  completed migration/apps-and-files preservation claim. Windows 10 Pro in Spanish
+  is under owner test, with outcome pending.
+- Freeze new feature scope around stability and safety. Media preparation design
+  #9 remains deferred. Application self-update through GitHub is the only planned
+  next new capability, using the design in #13 after it is refreshed. That PR is
+  still design only, not a merged/working updater. See [current roadmap](ROADMAP.md).
+- Documentation-only follow-up adds explicit Massgrave catalog/website/project
+  credits. Main-site GitHub link and catalog source repository were verified;
+  current WinUpdate V2 and Smart Office update manifests were inspected as
+  references. Do not copy their host-specific updater/replacement code blindly.
+- This follow-up changes no application code, provider URL, version, compiled
+  active test EXE or published artifact. No merge, RC/stable tag or Release.
+
 ### Owner-approved LTSC correction (same Draft PR #21)
 
 - Owner reproduced an inconsistent readiness state on Windows 10 Enterprise LTSC
