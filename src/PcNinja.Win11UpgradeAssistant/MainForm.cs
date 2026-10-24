@@ -72,6 +72,7 @@ internal sealed class MainForm : Form
     private bool _changingSourceSelection;
     private bool _refreshingSources;
     private readonly ComboBox _installationImages = new();
+    private readonly Panel _imageChoiceFrame = new();
     private string _installationImagePrompt = "Validate a source first";
     private readonly Button _inspectSource = new();
     private readonly Label _imageInfo = new();
@@ -316,7 +317,13 @@ internal sealed class MainForm : Form
         _installationImages.AccessibleName = "Windows installation image";
         StyleCombo(_installationImages, () => _installationImagePrompt);
         _installationImages.DropDownWidth = 700;
-        imageRow.Controls.Add(_installationImages, 0, 0);
+        _imageChoiceFrame.Dock = DockStyle.Fill;
+        _imageChoiceFrame.Padding = new Padding(2);
+        _imageChoiceFrame.MinimumSize = new Size(0, 36);
+        _imageChoiceFrame.Height = 36;
+        _imageChoiceFrame.Margin = new Padding(0);
+        _imageChoiceFrame.Controls.Add(_installationImages);
+        imageRow.Controls.Add(_imageChoiceFrame, 0, 0);
         StyleSecondaryButton(_inspectSource, "Validate");
         _inspectSource.Click += async (_, _) => { if (_operation is null) await PrepareOrUpgradeAsync(false); };
         imageRow.Controls.Add(_inspectSource, 1, 0);
@@ -625,20 +632,23 @@ internal sealed class MainForm : Form
 
     private void BrowseIso()
     {
-        using var dialog = new OpenFileDialog
+        using var dialog = CreateIsoDialog();
+        if (dialog.ShowDialog(this) != DialogResult.OK) return;
+        if (!_sources.Items.Contains(dialog.FileName)) _sources.Items.Insert(0, dialog.FileName);
+        _sources.Text = dialog.FileName;
+        _existingMedia.Checked = true;
+    }
+
+    private OpenFileDialog CreateIsoDialog() => new()
         {
             Title = _downloadSystem.IsServer ? "Select a Windows Server x64 ISO for manual guidance"
                 : "Select a Windows 10 or Windows 11 x64 ISO",
             Filter = "Windows ISO images (*.iso)|*.iso",
             CheckFileExists = true,
             Multiselect = false,
-            InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
+            InitialDirectory = UserDownloads.GetPath(),
+            RestoreDirectory = true
         };
-        if (dialog.ShowDialog(this) != DialogResult.OK) return;
-        if (!_sources.Items.Contains(dialog.FileName)) _sources.Items.Insert(0, dialog.FileName);
-        _sources.Text = dialog.FileName;
-        _existingMedia.Checked = true;
-    }
 
     private void BrowseInstallationFolder()
     {
@@ -708,6 +718,7 @@ internal sealed class MainForm : Form
         {
             if (startSetup && !_upgradeAllowed)
                 ManualUpgradePolicy.EnsureAvailable(_downloadSystem);
+            if (_autoDownload.Checked) AutomaticDownloadPolicy.EnsureAvailable(_readDownloadSystem());
             if (startSetup)
             {
                 var storage = _engine.CheckSystemDriveSpace();
@@ -773,6 +784,12 @@ internal sealed class MainForm : Form
             _progress.Style = ProgressBarStyle.Marquee;
             _status.Text = "Validating the selected installation media and images...";
             var preparationProgress = CreatePreparationProgress(_operation);
+            // An unsuccessful/cancelled recheck must not leave a stale Ready cue.
+            _preparedSource = null;
+            _preparedKey = null;
+            _installationImages.Items.Clear();
+            _serverCommandPreview.Clear();
+            UpdateImageInfo();
             if (automaticSource is not null) source = automaticSource;
             else if (path.EndsWith(".iso", StringComparison.OrdinalIgnoreCase))
             {
@@ -920,7 +937,7 @@ internal sealed class MainForm : Form
                 : "Source changed. Click Validate or START UPGRADE to check this media.";
         }
         if (_operation is null && !string.IsNullOrWhiteSpace(_sources.Text)) _downloadNotice.Visible = false;
-        UpdateServerCommandState();
+        UpdateSourceControls();
         UpdateReadinessSummary();
     }
 
@@ -963,6 +980,7 @@ internal sealed class MainForm : Form
         }
         _installationImages.AccessibleDescription = _installationImages.SelectedItem is InstallationImage
             ? _imageInfo.Text : _installationImagePrompt;
+        UpdateNextActionCue();
     }
 
     private void PresentImageInspection()
@@ -1088,6 +1106,7 @@ internal sealed class MainForm : Form
         _imageInfo.ForeColor = reason is not null || _preparedSource is not null && !available ? Warning : Muted;
         _installationImages.AccessibleDescription = selected is null ? _installationImagePrompt : _imageInfo.Text;
         UpdateServerCommandState();
+        UpdateNextActionCue();
     }
 
     private void PresentServerMediaInspection()
@@ -1167,7 +1186,7 @@ internal sealed class MainForm : Form
         _sources.Enabled = idle;
         _downloadLocations.Enabled = idle && _automaticDownloadAvailable;
         _chooseDownloadFolder.Enabled = idle && _automaticDownloadAvailable;
-        _inspectSource.Enabled = idle && _existingMedia.Checked;
+        _inspectSource.Enabled = idle && _existingMedia.Checked && !string.IsNullOrWhiteSpace(_sources.Text);
         _installationImages.Enabled = idle && _preparedSource is not null;
         _matchingDownload.Enabled = idle;
         UpdateServerCommandState();
@@ -1177,6 +1196,57 @@ internal sealed class MainForm : Form
         _existingMedia.Text = _existingMedia.Checked ? "✓ SELECTED  ·  Use an ISO, drive or folder" : "Use an ISO, drive or folder";
         _autoDownload.ForeColor = _autoDownload.Checked ? Success : Foreground;
         _existingMedia.ForeColor = _existingMedia.Checked ? Success : Foreground;
+        UpdateNextActionCue();
+    }
+
+    private void UpdateNextActionCue()
+    {
+        CueButton(_browse, false);
+        CueButton(_inspectSource, false);
+        CueButton(_copyServerCommand, false);
+        _imageChoiceFrame.BackColor = Surface;
+        _start.AccessibleDescription = "";
+        if (_operation is not null || _setupHasStarted) return; // Keep real red Cancel / running styles.
+        _start.FlatAppearance.BorderSize = 1;
+        _start.FlatAppearance.BorderColor = Success;
+        if (_autoDownload.Checked)
+        {
+            if (_automaticDownloadAvailable && _upgradeAllowed && _start.Enabled) CueStart();
+            return;
+        }
+        if (!_existingMedia.Checked) return;
+        var path = _sources.Text.Trim().Trim('"');
+        if (path.Length == 0) { CueButton(_browse, true); return; }
+        if (_preparedSource is null || !string.Equals(_preparedKey, path, StringComparison.OrdinalIgnoreCase))
+        { CueButton(_inspectSource, true); return; }
+        var images = _preparedSource.Images ?? [];
+        var current = new CurrentWindows(_downloadSystem.Edition, _downloadSystem.Language, _downloadSystem.Build);
+        bool Matches(InstallationImage item) => _downloadSystem.IsServer
+            ? ManualServerUpgrade.GetIncompatibility(item, _downloadSystem) is null
+            : InstallationImages.GetIncompatibility(item, current) is null;
+        if (!images.Any(Matches) || _lastErrorDetails is not null || !_downloadSystem.IsServer && !_upgradeAllowed) return;
+        if (_installationImages.SelectedItem is not InstallationImage selected || !images.Contains(selected) || !Matches(selected))
+        { _imageChoiceFrame.BackColor = Accent; return; }
+        if (_downloadSystem.IsServer) CueButton(_copyServerCommand, _copyServerCommand.Enabled);
+        else if (_start.Enabled) CueStart();
+    }
+
+    private void CueStart()
+    {
+        _start.FlatAppearance.BorderColor = Color.FromArgb(173, 242, 198);
+        _start.FlatAppearance.BorderSize = 2;
+        _start.AccessibleDescription = "Recommended next action: start the checked upgrade workflow.";
+    }
+
+    private static void CueButton(Button button, bool active)
+    {
+        button.BackColor = active && button.Enabled ? Color.FromArgb(49, 82, 133) : SurfaceRaised;
+        button.ForeColor = active && button.Enabled ? Color.White : Foreground;
+        button.FlatAppearance.BorderColor = active && button.Enabled ? AccentLight : Divider;
+        button.FlatAppearance.BorderSize = active && button.Enabled ? 2 : 1;
+        button.FlatAppearance.MouseOverBackColor = active && button.Enabled ? Color.FromArgb(62, 99, 157) : Color.FromArgb(52, 54, 68);
+        button.FlatAppearance.MouseDownBackColor = active && button.Enabled ? Color.FromArgb(40, 66, 109) : AccentTint;
+        button.AccessibleDescription = active && button.Enabled ? "Recommended next action" : "";
     }
 
     private void ApplyDownloadLanguagePolicy(string language)

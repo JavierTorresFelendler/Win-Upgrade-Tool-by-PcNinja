@@ -8,6 +8,27 @@ assistant's personal memory or skills installation.
 
 ## Current development: matched ISO downloads and manual Server guidance
 
+### Owner-approved automatic preflight and GUI next-action follow-up
+
+- Reviewed actual download/launch order before editing. Full-profile automatic
+  preflight already precedes HTTP/destination creation; retained the configured
+  owner URL, all eleven edition IDs, transport/cookies/TLS/provider fallback,
+  exact-name reuse and automatic consent/download/validation/upgrade sequence.
+  Added real-entry synthetic no-HTTP/no-destination regressions and GUI pre-consent
+  recheck. This does not assert remote bytes match configuration before download.
+- Add registered Downloads-first ISO picker with unchanged exact-file checks,
+  safe fallback and CWD restoration. Manual source stages get exclusive browse,
+  Validate, image-frame and Start cues; idle cues never override red Cancel or
+  running Setup. Auto retains Start with no added manual Validate. Clear displayed
+  prepared state before rechecking media; failed/cancelled checks cannot imply Ready.
+- Complete #19's missing CLI error fallback-page text without changing its
+  no-browser quiet/JSON rule. #19 is not merged/closed here. Update Unreleased
+  changelog for #20/#21; no new version or release approval is implied.
+- Verification: synthetic unsupported preflight, all existing Core/transfer/mount
+  contracts and new GUI/CLI fixtures. External effects are fake; no real provider
+  ISO transfer, ISO attach/detach, Setup or reboot during development. Current
+  branch remains Draft #21 stacked on #20; existing test EXEs remain immutable.
+
 ### Scope and owner field update (2026-10-24)
 
 - Owner ran the corrected `0b1e0f2` test EXE on the previously blocked LTSC VM,

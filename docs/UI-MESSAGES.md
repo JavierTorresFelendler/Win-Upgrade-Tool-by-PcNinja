@@ -1,5 +1,27 @@
 # User-message catalog
 
+## PR21 follow-up: visual next action and ISO browsing
+
+- ISO browsing defaults to the current user's registered Windows Downloads known
+  folder (including redirected/localized paths), with profile fallback if the
+  Shell API is unavailable. Keep exact-file filtering and restore the working
+  directory so browsing does not hold mounted media through CWD changes.
+- Manual flow cues exactly one next action: ISO browsing for an empty source,
+  blue Validate for a new nonempty path, a purple image-selector frame while a
+  compatible image needs selection, then a bright Start border for a compatible
+  selected image on an eligible host. Clear the previous cue on source changes.
+- No timers, flashing, automatic validation, new pages or focus stealing. Hints
+  do not create image selections or override independent mismatch/error notices.
+  Validate is enabled only for nonempty manual paths; advanced direct Start still
+  performs the existing complete validation/consent workflow.
+- Automatic stays automatic: Start remains the next action for eligible PcNinja
+  profiles, without a new manual Validate step. Busy/running states clear idle
+  cues and preserve actual red Cancel/locked Setup controls. Server never gets a
+  Start recommendation; matching explicit Server images may cue manual Copy only.
+- Reset displayed prepared state before a new media check, so failed/cancelled
+  revalidation cannot advertise an old Ready image. Core reuse proof and final
+  Setup revalidation remain mandatory and unchanged.
+
 ## Development PR: matching ISO and Server guidance
 
 - LTSC correction: matching manually supplied x64 client LTSC media may proceed

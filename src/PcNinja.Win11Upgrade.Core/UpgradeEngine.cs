@@ -22,8 +22,20 @@ public sealed class UpgradeEngine
     private const long DownloadSafetyMarginBytes = 1L * 1024 * 1024 * 1024;
     private readonly HttpClient _http;
     private readonly IsoValidationSession _isoValidation;
+    private readonly Func<DownloadSystem> _readDownloadSystem;
 
-    public UpgradeEngine()
+    public UpgradeEngine() : this(DownloadSystem.Read, CreateDownloadHttp()) { }
+
+    internal UpgradeEngine(Func<DownloadSystem> readDownloadSystem, HttpClient http)
+    {
+        _readDownloadSystem = readDownloadSystem;
+        _http = http;
+        _isoValidation = new(IsoFileProof.TryOpen, ResolveIsoMountAsync, HashIsoStreamAsync,
+            (root, token, progress) => ValidateMountedSourceAsync(root, token, progress: progress),
+            (root, token) => Task.Run(() => ValidateMountedSource(root, removeSelectedAnswerFiles: false), token));
+    }
+
+    private static HttpClient CreateDownloadHttp()
     {
         var handler = new HttpClientHandler
         {
@@ -32,11 +44,9 @@ public sealed class UpgradeEngine
             UseCookies = true,
             CookieContainer = new CookieContainer()
         };
-        _http = new HttpClient(handler) { Timeout = Timeout.InfiniteTimeSpan };
-        _http.DefaultRequestHeaders.UserAgent.ParseAdd("PcNinja-Win11-Upgrade-Assistant/1.1.0-rc.7");
-        _isoValidation = new(IsoFileProof.TryOpen, ResolveIsoMountAsync, HashIsoStreamAsync,
-            (root, token, progress) => ValidateMountedSourceAsync(root, token, progress: progress),
-            (root, token) => Task.Run(() => ValidateMountedSource(root, removeSelectedAnswerFiles: false), token));
+        var http = new HttpClient(handler) { Timeout = Timeout.InfiniteTimeSpan };
+        http.DefaultRequestHeaders.UserAgent.ParseAdd("PcNinja-Win11-Upgrade-Assistant/1.1.0-rc.7");
+        return http;
     }
 
     public string GetOperatingSystemDescription()
@@ -287,7 +297,7 @@ public sealed class UpgradeEngine
     public async Task<DownloadResult> DownloadIsoAsync(string destinationDirectory,
         IProgress<DownloadProgress>? progress, CancellationToken cancellationToken, string? expectedSha256 = null)
     {
-        var system = DownloadSystem.Read();
+        var system = _readDownloadSystem();
         AutomaticDownloadPolicy.EnsureAvailable(system);
         var configuredSource = DownloadSourcePolicy.GetAutomaticSource(system)!;
         InstallationSafety.EnsureSafe(AppContext.BaseDirectory, removeSelectedAnswerFiles: false);

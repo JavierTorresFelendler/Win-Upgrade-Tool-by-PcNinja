@@ -1,6 +1,25 @@
 # Changelog
 
-## Unreleased - quiet Setup, automation and image guidance (feature PR)
+## Unreleased - development after RC7
+
+- Prefer the configured owner ISO for eleven matching en-US/x64 client editions;
+  enforce full-profile preflight before automatic HTTP/file creation. Preserve
+  direct download, Windows 10 transport fallback, exact-file reuse and automatic
+  upgrade flow. Include the matching public page in CLI download-failure guidance.
+- Add bounded on-demand exact-language/edition public ISO catalog browser guidance,
+  manual-only Server inspection/command copy and read-only `downloads [--json]`.
+  Add Massgrave ISO-catalog credits; no activation/licensing code is integrated.
+- Permit exact matching manually supplied client LTSC media under a shared GUI/CLI
+  host policy; retain automatic LTSC exclusion, Server execution block and all
+  final image/storage/signature/answer-file checks. Explain actual host blockers.
+- Reuse unchanged exact-ISO preparation within a session only with conservative
+  file/journal/CLOSE and mount-identity proof; otherwise perform full checks.
+  Keep fresh safety checks, preparation progress and final Setup validation.
+- Default ISO browsing to registered Downloads and add exclusive visual next-step
+  cues for manual source/Validate/image/Start. Preserve automatic Start, direct
+  advanced Start, real Cancel, mismatch details, branding and two-source screen.
+- Media preparation/extraction and application self-update are not implemented
+  by these changes. Existing published RC assets remain unchanged.
 
 - Replace the blank image-selector row with state-aware guidance, without adding
   a fake selectable image/index. Inspect now explains no compatible media using

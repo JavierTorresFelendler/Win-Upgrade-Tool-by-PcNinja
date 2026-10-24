@@ -182,6 +182,11 @@ internal static class CliRunner
         return Success;
     }
 
+    private static string DownloadFailureMessage(string error, bool browserOpened, DownloadSystem system) =>
+        error + (browserOpened ? " The PcNinja browser fallback was opened. After the ISO downloads, rerun with --iso <path>."
+            : " Automatic download did not complete; provide the ISO with --iso <path>.") +
+        $" Download: {DownloadSourcePolicy.GetPcNinjaBrowserPage(system)}.";
+
     private static async Task<int> ValidateOrUpgradeAsync(UpgradeEngine engine, CliOptions options, bool startSetup, CancellationToken token)
     {
         try { engine.ValidateSupportedComputer(); }
@@ -236,12 +241,7 @@ internal static class CliRunner
                             AppLog.Error($"CLI browser fallback failed: {browserError}");
                         }
                     }
-                    return Fail(DownloadFailed,
-                        browserOpened
-                            ? $"{ex.Message} The PcNinja browser fallback was opened. " +
-                              "After the ISO downloads, rerun with --iso <path>."
-                            : $"{ex.Message} Automatic download did not complete; provide the ISO with --iso <path>.",
-                        options.Json);
+                    return Fail(DownloadFailed, DownloadFailureMessage(ex.Message, browserOpened, DownloadSystem.Read()), options.Json);
                 }
                 exactIsoPath = download.IsoPath;
                 source = download.ValidatedSource

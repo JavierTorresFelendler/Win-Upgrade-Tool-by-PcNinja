@@ -54,6 +54,9 @@ internal static class DownloadGuidanceChecks
             var copy = Field<Button>("_copyServerCommand");
             var preview = Field<TextBox>("_serverCommandPreview");
             var match = Field<Button>("_matchingDownload");
+            var validate = Field<Button>("_inspectSource");
+            var browse = Field<Button>("_browse");
+            var imageFrame = Field<Panel>("_imageChoiceFrame");
             if (automatic.Enabled || automatic.Checked || !existing.Checked || !match.Enabled ||
                 !Field<Button>("_browse").Enabled || !Field<Button>("_browseInstallationFolder").Enabled ||
                 !Field<Button>("_pcNinjaDownload").Enabled || !Field<Button>("_microsoft").Enabled)
@@ -85,6 +88,71 @@ internal static class DownloadGuidanceChecks
                     throw new Exception("Download/manual command operation did not return to idle.");
                 AssertNoSetup();
             }
+
+            if (validate.Enabled || browse.FlatAppearance.BorderSize != 2)
+                throw new Exception("Empty manual source did not cue ISO browsing or disabled Validate.");
+            var downloadsType = assembly.GetType("PcNinja.Win11UpgradeAssistant.UserDownloads", true)!;
+            var downloadsPath = (string)downloadsType.GetMethod("GetPath", BindingFlags.NonPublic | BindingFlags.Static)!.Invoke(null, null)!;
+            var resolver = downloadsType.GetMethod("Resolve", BindingFlags.NonPublic | BindingFlags.Static)!;
+            var redirected = @"D:\Descargas\בדיקה á";
+            if ((string)resolver.Invoke(null, [new Func<string?>(() => redirected), @"X:\profile"])! != redirected ||
+                (string)resolver.Invoke(null, [new Func<string?>(() => null), @"X:\profile"])! != @"X:\profile" ||
+                (string)resolver.Invoke(null, [new Func<string?>(() => throw new System.Runtime.InteropServices.COMException()), @"X:\profile"])! != @"X:\profile")
+                throw new Exception("Downloads resolution lost redirected/Unicode paths or safe fallback.");
+            var originalDirectory = Environment.CurrentDirectory;
+            using (var dialog = (OpenFileDialog)Call("CreateIsoDialog")!)
+                if (dialog.InitialDirectory != downloadsPath || !Path.IsPathFullyQualified(downloadsPath) ||
+                    !dialog.RestoreDirectory || !dialog.CheckFileExists || dialog.Multiselect || !dialog.Filter.Contains("*.iso"))
+                    throw new Exception("ISO dialog did not default to registered Downloads with exact-file checks/CWD restoration.");
+            if (Environment.CurrentDirectory != originalDirectory) throw new Exception("Creating the ISO dialog changed CWD.");
+
+            sources.Text = @"X:\exact-new.iso"; // No filesystem probe while typing.
+            if (!validate.Enabled || validate.FlatAppearance.BorderSize != 2 || browse.FlatAppearance.BorderSize != 1 ||
+                start.FlatAppearance.BorderSize != 1 || !start.Enabled)
+                throw new Exception("Source selection did not move the cue to Validate or blocked the advanced Start shortcut.");
+            Populate(clientSource);
+            if (imageFrame.BackColor == form.BackColor || start.FlatAppearance.BorderSize != 1 || validate.FlatAppearance.BorderSize != 1)
+                throw new Exception("Awaiting image selection retained a button cue.");
+            var imageCueColor = imageFrame.BackColor;
+            images.SelectedItem = clientImage;
+            if (start.FlatAppearance.BorderSize != 2 || imageFrame.BackColor == imageCueColor || validate.FlatAppearance.BorderSize != 1)
+                throw new Exception("A matching selected image did not move the cue to Start.");
+            var wrongImage = clientImage with { Language = "en-US" };
+            Populate(clientSource with { Images = [wrongImage] }, wrongImage);
+            if (start.FlatAppearance.BorderSize != 1 || imageFrame.BackColor == imageCueColor)
+                throw new Exception("Incompatible media advertised a ready/choose-image cue.");
+            Populate(clientSource, clientImage);
+            using (var fixtureOperation = new CancellationTokenSource())
+            {
+                Set("_operation", fixtureOperation);
+                Call("SetBusy", true);
+                if (start.BackColor != Color.FromArgb(177, 55, 61) || validate.Enabled ||
+                    validate.FlatAppearance.BorderSize != 1 || browse.FlatAppearance.BorderSize != 1 ||
+                    start.AccessibleDescription!.Contains("Recommended"))
+                    throw new Exception("Preparation cues overwrote actual red Cancel or left stale recommendations.");
+                Set("_operation", null);
+                Call("SetBusy", false);
+            }
+            var english = client with { Language = "en-US" };
+            Set("_readDownloadSystem", new Func<DownloadSystem>(() => english));
+            Call("ApplyDownloadSystem", english);
+            automatic.Checked = true;
+            if (start.FlatAppearance.BorderSize != 2 || validate.Enabled || validate.FlatAppearance.BorderSize != 1)
+                throw new Exception("Automatic flow gained a manual Validate step or lost its Start cue.");
+            Set("_readDownloadSystem", new Func<DownloadSystem>(() => client));
+            Call("ApplyDownloadSystem", client);
+            sources.Text = "";
+            var missingPath = Path.Combine(AppContext.BaseDirectory, "missing-cue-fixture-" + Guid.NewGuid().ToString("N") + ".iso");
+            Populate(clientSource with { Root = missingPath }, clientImage);
+            SynchronizationContext.SetSynchronizationContext(context);
+            Pump((Task)Call("PrepareOrUpgradeAsync", false)!);
+            if (Field<MountedSource?>("_preparedSource") is not null || images.Items.Count != 0 ||
+                start.FlatAppearance.BorderSize != 1 || validate.FlatAppearance.BorderSize != 2 ||
+                !Field<Label>("_operationNotice").Visible)
+                throw new Exception("Failed revalidation retained stale Ready metadata/cue or hid the error.");
+            sources.Text = "";
+            Set("_lastErrorDetails", null);
+            Console.WriteLine("PASS: Registered Downloads/fallback/Unicode ISO dialog; exclusive source/Validate/image/Start cues; unchanged automatic Start and red Cancel. No dialog shown or media accessed.");
 
             // Regression: readable matching LTSC media must not advertise START
             // while an unrelated download-profile gate silently disables it.

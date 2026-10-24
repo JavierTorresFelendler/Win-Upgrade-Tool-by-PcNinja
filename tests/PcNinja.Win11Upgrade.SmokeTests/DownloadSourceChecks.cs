@@ -8,6 +8,7 @@ internal static class DownloadSourceChecks
     public static async Task RunAsync()
     {
         CheckPolicy();
+        await CheckPreDownloadRejectionAsync();
         CheckCatalog();
         await CheckNetworkAsync();
         Console.WriteLine("PASS: Matched own-source priority, 38 exact cultures, Consumer/Business/N, Server recommendations, release-family/26H1 gates, public landing allowlist and bounded/cancellable HTML only. No ISO downloaded or Setup launched.");
@@ -53,6 +54,39 @@ internal static class DownloadSourceChecks
             "The Microsoft alternative crossed client/Server product families.");
         Require(!SystemFor(build: 28000).IsSupportedClient && !SystemFor(build: 26220).IsSupportedClient,
             "26H1 or preview build became an ordinary client route.");
+    }
+
+    private static async Task CheckPreDownloadRejectionAsync()
+    {
+        foreach (var profile in new[]
+        {
+            SystemFor(), SystemFor("en-GB"), SystemFor("he-IL"), SystemFor("en-US", "Enterprise"),
+            SystemFor("en-US", "EnterpriseS", ltsc: true), SystemFor("en-US", "EnterpriseSN", ltsc: true),
+            SystemFor("en-US", "ServerStandard", 26100, installation: "Server"),
+            SystemFor("en-US", architecture: "arm64"), SystemFor("en-US", architecture: "x86"),
+            SystemFor("en-US", build: 28000), SystemFor("en-US", build: 99999),
+            SystemFor("en-US", "Unknown"), SystemFor("en-US", installation: "Unknown")
+        })
+        {
+            using var handler = new FixtureHandler((_, _) => throw new Exception("Rejected profile reached HTTP."));
+            using var http = new HttpClient(handler);
+            var reads = 0;
+            var engine = new UpgradeEngine(() => { reads++; return profile; }, http);
+            var destination = Path.Combine(AppContext.BaseDirectory, "preflight-fixture-" + Guid.NewGuid().ToString("N"));
+            try
+            {
+                try
+                {
+                    await engine.DownloadIsoAsync(destination, null, CancellationToken.None);
+                    throw new Exception("An unsupported automatic profile started a transfer.");
+                }
+                catch (InvalidOperationException ex) when (ex.Message == DownloadSourcePolicy.GetUnavailableReason(profile)) { }
+                Require(reads == 1 && handler.Calls == 0 && !Directory.Exists(destination),
+                    "Automatic rejection happened after HTTP or destination creation.");
+            }
+            finally { if (Directory.Exists(destination)) Directory.Delete(destination, recursive: true); }
+        }
+        Console.WriteLine("PASS: Actual Core automatic entry rejects incompatible profiles before HTTP/destination creation; fake transport only.");
     }
 
     private static void CheckCatalog()

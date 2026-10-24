@@ -121,6 +121,15 @@ All paths below are relative to the repository root.
 
 - Put operational safety in Core and call it from both interfaces. Add tests for
   both presentation modes when availability, selection or exit behavior changes.
+- Prove automatic eligibility at the real download entry with a fail-if-called
+  fake HTTP handler and no destination creation, not only by testing a predicate.
+  Keep positive own-edition coverage and original transport behavior. Eligibility
+  trusts configured media coverage; actual downloaded bytes still need validation.
+- Visual next-action cues are state presentation, never operational authorization.
+  Clear the previous cue and stale displayed preparation on recheck/source change;
+  preserve automatic mode and red Cancel/Setup lockout. Resolve Downloads via the
+  user's Windows known folder, not a hardcoded English or C: path. Restore CWD
+  after browsing; do not probe network paths on every edit or add a polling timer.
 - Host eligibility, configured-download eligibility and actual image compatibility
   are three separate decisions. Shared `ManualUpgradePolicy` permits exact manual
   client LTSC media without enabling consumer downloads or Server execution. A

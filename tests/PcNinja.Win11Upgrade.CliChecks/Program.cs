@@ -43,6 +43,16 @@ foreach (var setupCode in new[] { 0, 0x40010004, unchecked((int)0xC190020E), unc
 
 // Every prelaunch/error group keeps its established exit code and cannot reboot.
 var fail = runner.GetMethod("Fail", BindingFlags.NonPublic | BindingFlags.Static)!;
+var downloadFailure = runner.GetMethod("DownloadFailureMessage", BindingFlags.NonPublic | BindingFlags.Static)!;
+foreach (var browserOpened in new[] { false, true })
+foreach (var language in new[] { "en-US", "es-ES" })
+{
+    var profile = new DownloadSystem("Professional", language, 19045, 1, "x64", "Client");
+    var message = (string)downloadFailure.Invoke(null, ["Fixture transfer failure", browserOpened, profile])!;
+    if (!message.Contains(DownloadSourcePolicy.GetPcNinjaBrowserPage(profile)) || !message.Contains("--iso") ||
+        message.Contains("sharepoint.com") || message.Contains("download=1"))
+        throw new Exception("CLI transfer failure omitted the matching public fallback or exposed internal transport.");
+}
 foreach (var failureCode in Enumerable.Range(1, 8))
 {
     var failed = Capture(() => (int)fail.Invoke(null, [failureCode, "fixture failure", true, null])!);

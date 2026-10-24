@@ -34,6 +34,32 @@ existing explicit browser fallback and invalidate unattended consent.
 
 ## Catalog adapter and conservative limits
 
+### Automatic-source preflight and manual guidance follow-up
+
+The owner's automatic PcNinja route/secure provider fallback remains unchanged.
+Eligibility is checked from the current edition, system UI language, architecture,
+client/LTSC/Server type and known build family **before** destination creation or
+an ISO HTTP request, in shared Core. The GUI also rechecks before asking for
+automatic-flow consent. All eleven configured owner editions remain covered;
+the existing own-source download/validation/upgrade flow has no added manual step.
+
+Tests call the real Core download entry with synthetic unsupported profiles and
+a fail-if-called HTTP handler, asserting zero requests and no destination created.
+The internal constructor seam is test-only, not a public CLI eligibility override.
+Normal HTTP redirect/cookie/TLS/user-agent/provider behavior and transfer callbacks
+are unchanged. Existing policy fixtures retain all eleven allowed edition IDs.
+
+This preflight trusts the owner's configured ISO coverage; it cannot prove that
+a mutable remote link still contains that media. Post-download actual-image,
+signature, integrity, storage and answer-file checks must still run. Wrong bytes,
+provider changes or Windows Setup's later compatibility checks can still fail;
+never replace those checks with a guessed filename or a readiness highlight.
+
+Manual source selection now uses a Downloads-first picker and visual next-action
+cues. These are presentation hints only, not consent or validation. Quiet/JSON
+CLI download errors include the matching public fallback page without opening a
+browser or exposing internal provider details. See [GUI messages](UI-MESSAGES.md).
+
 Credits: the alternative ISO catalogs are maintained by the
 [Massgrave project](https://massgrave.dev/). See their
 [catalog/website source](https://github.com/massgravel/massgrave.dev) and
