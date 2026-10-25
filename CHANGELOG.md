@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.1.0-beta.5 — identify the previous EXE after startup
+
+- Acknowledge shown/painted GUI startup over a bounded same-user random channel,
+  authenticated to the native PID of the exact launched successor.
+- Rename only the hash-verified predecessor to OLD- using a pinned source handle
+  after GUI readiness. Never overwrite/delete/sweep or archive before readiness.
+- Archive-name collisions advance OLD.V1-, OLD.V2-, etc. without overwriting any
+  existing archive; lock/mismatch/other rename failure retains the original name.
+  CLI has no GUI readiness and does not rename. Record archive status/path.
+- Owner-approved Beta-channel VM trial; no Windows upgrade/reboot dependency.
+
 ## 1.1.0-beta.4 — independent application update trial
 
 - Owner opened the fixed Beta 3 PR build in a VM; publish its separately versioned

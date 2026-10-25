@@ -65,7 +65,7 @@ internal sealed partial class MainForm
         AppUpdateClient.ValidateManifest(release);
         var message = $"{(release.Importance == "critical" ? "Critical update" : "Regular update")} — {release.Version}\n\n" +
             release.Message + $"\n\nSave and run:\n{AppUpdateInstaller.DestinationFor(release)}\n\n" +
-            "The current tool will close only after verification. Your original portable copy stays unchanged. " +
+            "The current tool will close only after verification. Your original portable copy is kept and may be renamed with OLD- after the new window opens. " +
             "No Windows upgrade or computer restart will start.";
         var accepted = _confirmAppUpdate?.Invoke(message) ?? ShowAppUpdateOffer(release, message);
         if (!accepted) return;

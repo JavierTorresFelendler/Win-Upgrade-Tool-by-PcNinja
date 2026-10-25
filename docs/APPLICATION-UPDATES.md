@@ -20,14 +20,36 @@ authorized by the Beta trial.
    is below that same folder. There is no Program Files destination or fallback.
 6. Verify bytes/hash/size/product/version/publisher continuity. A verified helper
    waits for the exact old process to exit, then GUI opens the new EXE with NO
-   arguments. The previous EXE stays unchanged as the usable old version.
+   arguments. After the initialized new window is shown/painted and acknowledges
+   startup, the helper marks only this exact predecessor OLD-; bytes stay intact.
 
-No installer, original replacement, old-file rename, numbered Copy N, service,
+No installer, original replacement, numbered Copy N, service,
 scheduled task, Windows Setup or forced restart is involved. Cancellation/failure
 before handoff keeps the old window open. A helper/launch failure does not remove
 the old EXE; open it again. A correctly verified existing exact-version file is
 reused; a mismatch is not overwritten/deleted and causes an actionable refusal.
 Readonly/unsupported locations fail, never relocate silently.
+
+### Mark the predecessor OLD (Beta 5 and later)
+
+After confirmed GUI startup, the helper best-effort renames only the exact
+predecessor bound in the private update request to `OLD-<original filename>`.
+No directory scan or deletion occurs. An existing OLD destination is never
+overwritten: try OLD.V1-, OLD.V2-, etc., retaining the exact original basename.
+There are at most 1000 deterministic name attempts; native no-overwrite rename
+also protects against a slot being occupied between the existence check and move.
+Locked/changed/unsafe/already-OLD files are retained and logged.
+This cosmetic failure does not fail an otherwise successful update. Original
+hash verification and no-overwrite rename share one source handle under anchored
+ancestors. Never release a path lock, hash a filename and then rename by path.
+
+GUI startup uses a bounded same-user random pipe; the helper verifies the native
+client PID against the retained exact new process. The environment carries only
+an opaque ACK channel, not a target path/command, and the GUI clears it. No command
+line arguments or OS actions are replayed. Missing/late/wrong-process readiness
+means no archive; old bytes remain available. CLI does not relaunch a GUI and
+therefore leaves the predecessor name unchanged. Local status adds archiveStatus
+and archivedPath. Published Beta 1/2/4 binaries are not retroactively modified.
 
 ## Version names and channels
 

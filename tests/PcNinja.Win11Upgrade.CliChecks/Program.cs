@@ -3,6 +3,7 @@ using System.Text.Json;
 using PcNinja.Win11Upgrade.Core;
 
 await AppUpdateCliChecks.RunAsync();
+await AppUpdateReadinessChecks.RunAsync();
 AppUpdateHelperChecks.Run();
 
 var assembly = Assembly.Load("Windows-Upgrade-Assistant-By-PcNinja");

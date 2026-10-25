@@ -11,6 +11,7 @@ internal sealed record AppUpdateRequest(int SchemaVersion, string OperationId, D
 
 internal sealed record AppUpdateHandoffResult(string Version, string TargetPath, string OperationId,
     int HelperProcessId, string Message);
+internal sealed record AppUpdateArchiveResult(string Status, string? Path);
 
 /// <summary>Explicit app-only handoff. Never passes CLI/OS-upgrade arguments to a successor.</summary>
 internal static class AppUpdateInstaller
@@ -87,7 +88,7 @@ internal static class AppUpdateInstaller
             handedOff = true;
             AppLog.Info($"App update handoff {id}: {ProductIdentity.Version} -> {release.Version}; target {target}.");
             return new(release.Version, target, id, helper.Id,
-                "Application run handoff started. The previous file stays unchanged. No Windows upgrade or restart was requested.");
+                "Application run handoff started. The previous EXE is retained and may be marked OLD after GUI readiness. No Windows upgrade or restart was requested.");
         }
         finally
         {
@@ -151,8 +152,14 @@ internal static class AppUpdateInstaller
                 await parent.WaitForExitAsync(exitTimeout.Token);
             parentExited = true;
             ValidateRequest(request, id);
-            ApplyVerified(workspace, request, LaunchGui);
-            try { WriteResult(workspace, request, true, "New portable version is ready."); }
+            var guiReady = false;
+            ApplyVerified(workspace, request, target => guiReady = AppUpdateGuiReadiness.LaunchAndWait(target));
+            if (request.RelaunchGui && !guiReady)
+                throw new IOException("The new GUI did not acknowledge readiness. The original executable was retained.");
+            originalGuard.Dispose(); // The old process exited and the new GUI is now confirmed.
+            var archive = ArchivePrevious(workspace, request, guiReady);
+            AppLog.Info($"App update {request.OperationId}: GUI ready={guiReady}; predecessor archive={archive.Status}; path={archive.Path ?? request.ParentPath}.");
+            try { WriteResult(workspace, request, true, "New portable version is ready.", archive); }
             catch (Exception statusError)
             {
                 // Replacement/relaunch already succeeded. A diagnostic write failure
@@ -207,20 +214,23 @@ internal static class AppUpdateInstaller
         if (request.RelaunchGui) launch(workspace.TargetPath(request.Release));
     }
 
-    private static void LaunchGui(string target)
+    internal static AppUpdateArchiveResult ArchivePrevious(AppUpdateWorkspace workspace, AppUpdateRequest request, bool guiReady)
     {
-        using var launched = Process.Start(new ProcessStartInfo
+        if (!request.RelaunchGui || !guiReady) return new("not-requested", null);
+        try { return new("renamed", workspace.ArchiveOriginal(request.ParentPath, request.ParentHash)); }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or System.ComponentModel.Win32Exception or System.Security.SecurityException)
         {
-            FileName = target, WorkingDirectory = Path.GetDirectoryName(target)!, UseShellExecute = false
-            // Intentionally no Arguments/ArgumentList. An updater must never resume an OS operation.
-        }) ?? throw new IOException("The updated app could not be reopened.");
+            AppLog.Info($"Predecessor filename retained after successful update: {ex.Message}");
+            return new("retained", null); // Cosmetic housekeeping must never turn a successful update into failure.
+        }
     }
 
-    private static void WriteResult(AppUpdateWorkspace workspace, AppUpdateRequest request, bool success, string message)
+    private static void WriteResult(AppUpdateWorkspace workspace, AppUpdateRequest request, bool success, string message, AppUpdateArchiveResult? archive = null)
     {
         workspace.WriteResult(new { schemaVersion = 1, timestamp = DateTimeOffset.UtcNow,
             operationId = request.OperationId, success, version = request.Release.Version,
-            targetPath = workspace.TargetPath(request.Release), originalPath = request.ParentPath, message });
+            targetPath = workspace.TargetPath(request.Release), originalPath = request.ParentPath,
+            archiveStatus = archive?.Status, archivedPath = archive?.Path, message });
     }
 
     // Console.In can implement ReadAsync with a synchronous underlying pipe read.

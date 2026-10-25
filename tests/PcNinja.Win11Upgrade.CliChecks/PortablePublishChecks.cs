@@ -42,6 +42,10 @@ internal static class PortablePublishChecks
                     Reject(() => Directory.Move(parent, parent + ".renamed"));
                 });
                 Require(callbackCount == 1, "App-only helper apply did not reach its injected launch exactly once.");
+                if (AppUpdateInstaller.ArchivePrevious(workspace, request, false).Status != "not-requested" || !File.Exists(original))
+                    throw new Exception("Missing GUI readiness renamed the predecessor.");
+                if (AppUpdateInstaller.ArchivePrevious(workspace, request with { RelaunchGui = false }, true).Status != "not-requested")
+                    throw new Exception("CLI without GUI relaunch archived an unconfirmed predecessor.");
             }
             using (var reused = AppUpdateWorkspace.CreateFixture(parent, Guid.NewGuid().ToString("N"), info.SizeBytes, info.SizeBytes))
             {
@@ -56,6 +60,12 @@ internal static class PortablePublishChecks
             {
                 Reject(() => refused.CopyExistingCandidate(release with { Sha256 = new string('0', 64) }, info.SignerThumbprint));
                 Require(AppUpdateWorkspace.InspectExecutable(target).Sha256 == info.Sha256, "Mismatch handling overwrote the existing version.");
+                var request = new AppUpdateRequest(2, Path.GetFileName(refused.DirectoryPath), DateTimeOffset.UtcNow,
+                    Environment.ProcessId + 10000, DateTime.UtcNow.AddMinutes(-1).Ticks, original, info.Sha256, null, release, true);
+                using (var held = AppUpdateWorkspace.HoldOriginal(original, info.Sha256))
+                    Require(AppUpdateInstaller.ArchivePrevious(refused, request, true).Status == "retained", "Locked predecessor housekeeping failed the update.");
+                var archived = AppUpdateInstaller.ArchivePrevious(refused, request, true);
+                Require(archived.Status == "renamed" && archived.Path == Path.Combine(parent, "OLD-" + Path.GetFileName(original)), "Confirmed GUI did not archive the exact predecessor.");
             }
             Console.WriteLine("PASS: Real elevated same-folder versioned publish, existing-file reuse, no overwrite/rename/Copy N, original preservation and no-write/no-delete launch guard. Temporary test-host bytes only; no helper/executable/Setup launched.");
         }

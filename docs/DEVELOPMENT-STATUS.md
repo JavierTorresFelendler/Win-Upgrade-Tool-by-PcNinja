@@ -6,6 +6,25 @@ Reusable architecture, diagnosis and verification know-how lives in
 [AI maintenance playbook](AI-MAINTENANCE-PLAYBOOK.md), independently of any
 assistant's personal memory or skills installation.
 
+## Current authorized work: Beta 5 OLD predecessor housekeeping
+
+Owner's VM log confirms Beta 3 -> Beta 4 handoff, Beta 4 GUI startup and subsequent
+UpToDate check. Owner approved the proposed exact OLD-prefix behavior and publishing
+a new Beta successor through the internet channel. No main merge/stable/RC9 or
+replacement of existing assets is authorized.
+
+Implement Beta 5: shown/painted new GUI acknowledges over bounded same-user nonce
+pipe; helper verifies native client PID and retained launched process. Only then
+release old guard and rehash/rename exact predecessor via same DELETE-capable
+handle under anchored ancestors, never overwrite. Missing readiness retains old;
+rename collisions use OLD.V1-/V2- etc. (owner's follow-up), never overwrite; other
+lock/mismatch/rename failures are nonfatal. CLI no GUI relaunch keeps old name.
+Core native temporary-byte collision/mismatch/locked/path/existing-OLD tests pass;
+CLI actual pipe correct/wrong PID and timeout fixtures pass. No real EXE/helper
+launch, Windows Setup, service/reset/flag writes or reboot on development machine.
+Finalize client GUI/CI, then exact-source tag/verified Beta 5 publication and public
+asset/old-version discovery checks. Real OLD rename lifecycle remains VM acceptance.
+
 ## Current authorization: Beta 4 successor to the fixed Beta 3 test build
 
 Owner has the fixed tool open in a VM and requests the update version. This

@@ -292,7 +292,9 @@ Preserve a valid existing signing certificate when signing is enabled; do not
 silently downgrade to unsigned or disable trust checks on a network error.
 
 The owner chose side-by-side versioned EXEs, not privileged in-place replacement
-or Program Files relocation. Keep private same-folder staging, anchored ancestors,
+or Program Files relocation. The owner later approved an OLD- prefix for the exact
+predecessor only after successor GUI readiness, with no overwrite or deletion.
+Keep private same-folder staging, anchored ancestors,
 exact executable verification and a verified successor helper. A held no-write/
 no-delete executable guard must cover the final verification and launch; a path
 hash followed by an unlocked CreateProcess permits swapping bytes in a writable
@@ -315,6 +317,17 @@ Failure/cancellation before handoff leaves the current
 app unchanged; after handoff, keep the original EXE and diagnostic files and correlate helper status by
 operation ID. Native publish/reuse/launch-lock tests use disposable files;
 they do not prove signing, elevation, handoff or relaunch on a customer's VM.
+
+For OLD housekeeping, authenticate the shown/painted successor's readiness to its
+native process identity over a bounded same-user nonce channel. Process.Start is
+not a readiness acknowledgement. Never scan for older EXEs or trust a public
+history file/environment path as rename authority. Use the private parent-bound
+request and rehash/rename the exact predecessor through the same DELETE-capable
+source handle, with anchored ancestors and ReplaceIfExists=false. Release the
+old read/no-delete guard only after new GUI readiness, then revalidate through
+the new handle. Archive collisions advance a bounded OLD.V1-/V2- sequence;
+never overwrite or rename a preexisting archive. Mismatches/locks/other failures skip housekeeping, never fail an
+already successful update. No ready GUI/CLI relaunch means no OLD rename.
 
 Stable release packaging must verify exact product/version/source commit and
 final bytes before publishing. Upload immutable assets to a draft, verify them,

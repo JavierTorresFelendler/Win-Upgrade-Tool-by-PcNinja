@@ -226,6 +226,57 @@ public sealed class AppUpdateWorkspace : IDisposable
             throw new InvalidDataException("The original executable changed; the new tool was not launched.");
     });
 
+    /// <summary>Archive only the exact verified predecessor; never overwrite OLD.</summary>
+    public string ArchiveOriginal(string path, string expectedHash)
+    {
+        EnsureAlive();
+        return ArchiveOriginalExact(SourceDirectory, path, expectedHash);
+    }
+
+    internal static string ArchiveFixtureOriginal(string parent, string path, string expectedHash) =>
+        ArchiveOriginalExact(ValidateFixtureParent(parent), path, expectedHash);
+
+    private static string ArchiveOriginalExact(string parent, string path, string expectedHash)
+    {
+        var full = NormalizeLocalPath(path);
+        if (!string.Equals(Path.GetDirectoryName(full), parent, StringComparison.OrdinalIgnoreCase) ||
+            !Path.GetExtension(full).Equals(".exe", StringComparison.OrdinalIgnoreCase) ||
+            Path.GetFileName(full).StartsWith("OLD-", StringComparison.OrdinalIgnoreCase) ||
+            Path.GetFileName(full).StartsWith("OLD.V", StringComparison.OrdinalIgnoreCase) ||
+            expectedHash is not { Length: 64 } || !expectedHash.All(char.IsAsciiHexDigit))
+            throw new InvalidDataException("Only the exact ordinary predecessor EXE can be archived.");
+        using var anchors = AnchorLocalChain(parent);
+        // Verify and rename through ONE pinned file handle: no path-based race
+        // between hash verification and the no-overwrite rename.
+        using var file = OpenRegularFile(full, GenericRead | DeleteAccess | ReadControl | ReadAttributes, 1);
+        using var stream = new FileStream(file, FileAccess.Read);
+        if (!Convert.ToHexString(SHA256.HashData(stream)).Equals(expectedHash, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("The predecessor changed; its filename was retained.");
+        var rootOffset = IntPtr.Size == 8 ? 8 : 4;
+        var lengthOffset = rootOffset + IntPtr.Size;
+        var nameOffset = lengthOffset + 4;
+        for (var slot = 0; slot < 1000; slot++)
+        {
+            var prefix = slot == 0 ? "OLD-" : $"OLD.V{slot}-";
+            var destination = Path.Combine(parent, prefix + Path.GetFileName(full));
+            if (ExistsExactly(destination)) continue; // Hint only; the native no-overwrite rename handles races.
+            var name = Encoding.Unicode.GetBytes(destination + '\0');
+            var buffer = Marshal.AllocHGlobal(nameOffset + name.Length);
+            try
+            {
+                Marshal.Copy(new byte[nameOffset], 0, buffer, nameOffset); // ReplaceIfExists=false, RootDirectory=null.
+                Marshal.WriteInt32(buffer, lengthOffset, name.Length - 2);
+                Marshal.Copy(name, 0, IntPtr.Add(buffer, nameOffset), name.Length);
+                if (RenameFileByHandle(file, 3, buffer, (uint)(nameOffset + name.Length))) return destination;
+                var error = Marshal.GetLastWin32Error();
+                if (error is 80 or 183) continue; // Someone occupied this slot; do not overwrite.
+                throw NativeFailure("The predecessor could not be renamed; its original filename was retained.", error);
+            }
+            finally { Marshal.FreeHGlobal(buffer); }
+        }
+        throw new IOException("No free OLD archive name within the bounded slot limit; the predecessor was retained.");
+    }
+
     private static IDisposable HoldExecutable(string path, Action<AppExecutableInfo> verify)
     {
         var full = NormalizeLocalPath(path);
@@ -571,6 +622,8 @@ public sealed class AppUpdateWorkspace : IDisposable
     private static extern uint GetFinalPathNameByHandleW(SafeFileHandle file, StringBuilder path, uint length, uint flags);
     [DllImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)] private static extern bool SetFileInformationByHandle(SafeFileHandle file, int informationClass, ref FileDisposition information, uint size);
+    [DllImport("kernel32.dll", EntryPoint = "SetFileInformationByHandle", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)] private static extern bool RenameFileByHandle(SafeFileHandle file, int informationClass, IntPtr information, uint size);
     [DllImport("kernel32.dll")] private static extern IntPtr LocalFree(IntPtr memory);
     [DllImport("advapi32.dll", CharSet = CharSet.Unicode, SetLastError = true, ExactSpelling = true)]
     [return: MarshalAs(UnmanagedType.Bool)] private static extern bool ConvertStringSecurityDescriptorToSecurityDescriptorW(string sddl, uint revision, out IntPtr descriptor, out uint size);

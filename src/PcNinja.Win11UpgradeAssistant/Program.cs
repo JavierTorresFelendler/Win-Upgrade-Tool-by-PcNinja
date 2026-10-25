@@ -28,7 +28,17 @@ internal static class Program
         Application.ThreadException += (_, e) => ShowFatal(e.Exception);
         AppDomain.CurrentDomain.UnhandledException += (_, e) =>
             ShowFatal(e.ExceptionObject as Exception ?? new Exception("Unknown application error."));
-        Application.Run(new MainForm());
+        var readinessPipe = Environment.GetEnvironmentVariable(AppUpdateGuiReadiness.EnvironmentName);
+        Environment.SetEnvironmentVariable(AppUpdateGuiReadiness.EnvironmentName, null);
+        using var form = new MainForm();
+        if (AppUpdateGuiReadiness.IsValidName(readinessPipe))
+            form.Shown += (_, _) => form.BeginInvoke(new Action(async () =>
+            {
+                if (form.IsDisposed || !form.Visible) return;
+                form.Update(); // Paint the initialized window before acknowledging startup.
+                await AppUpdateGuiReadiness.SignalAsync(readinessPipe);
+            }));
+        Application.Run(form);
         return 0;
     }
 
