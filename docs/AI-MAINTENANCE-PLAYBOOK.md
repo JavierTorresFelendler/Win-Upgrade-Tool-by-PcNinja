@@ -332,6 +332,13 @@ already successful update. No ready GUI/CLI relaunch means no OLD rename.
 Stable release packaging must verify exact product/version/source commit and
 final bytes before publishing. Upload immutable assets to a draft, verify them,
 then publish stable/latest last; never clobber assets or mutate a published tag.
+The first stable line uses short WinUpgradeToolByPcNinja.v.1.exe (1.0.0), then
+.v.1.1.exe (1.1.0), keeping significant zeroes for patches such as .v.1.0.1.exe.
+Keep C# and PowerShell formatters, manifest checks and embedded-help examples in
+sync. Historical Beta/RC names and bytes stay unchanged. Existing 1.1.0 Betas
+cannot select/downgrade to stable 1.0.0: document one-time manual bootstrap, never
+weaken channel/version checks. Freeware permission and upstream licenses are
+separate; public source visibility is not an open-source/reuse grant.
 RCs publish no update manifest. Beta has its own explicit numbered preview
 channel and may publish an exact PR-CI-passed unmerged commit when the owner
 authorizes that test. Stable/RC still require main ancestry. Test Beta 1 before

@@ -1,6 +1,36 @@
 # Roadmap
 
-## Current: owner-approved Beta updater trial
+## Current: first official V1 product closeout
+
+Freeze features and finish the existing product. The owner selected free-use-only
+licensing (not an open-source grant), private security contact
+**javier@pcninja.pro**, shorter stable download names and preparation of an official
+release after verification. This section supersedes the historical plans below.
+
+- First official V1: technical/tag `1.0.0` / `v1.0.0`, public EXE
+  `WinUpgradeToolByPcNinja.v.1.exe`. Next V1.1 uses `1.1.0` and `.v.1.1.exe`.
+  Nonzero patch components stay explicit. Internal product/assembly basename,
+  logo, site and download links do not change merely to shorten the download name.
+- Preserve every prior RC/Beta filename and byte. Beta remains an isolated
+  non-latest trial channel. Existing `1.1.0-beta.5` requires a one-time manual
+  official V1 bootstrap, not a downgrade/channel bypass; stable follows stable.
+- Carry forward the verified GUI/CLI/media safety and the Beta 5 portable updater:
+  explicit consent, same-folder verified successor, no OS-reboot/Setup dependency,
+  own-task serialization and exact predecessor OLD-/OLD.Vn- marking after native
+  PID-authenticated new GUI readiness. CLI without GUI relaunch does not rename.
+- Owner evidence includes successful Windows-upgrade field tests and real Beta
+  4 -> Beta 5 GUI startup/OLD rename/UpToDate. Preserve honest limits: not every
+  language/device/failure matrix or stable-to-stable lifecycle has been field-tested.
+- Close documentation/CLI examples, [Massgrave credits](CREDITS.md),
+  [LICENSE](../LICENSE), [SECURITY.md](../SECURITY.md), exact filename/manifest tests,
+  build provenance and final candidate verification. Merge/publication gates stay
+  explicit; do not treat a PR artifact as the official release.
+- Keep media extraction/copy/sanitization preparation outside V1. A later, separate
+  integration into PcNinja WinUpdate Tool should reuse Core, not duplicate the UI.
+
+No additional feature expansion is needed just to finish the first release.
+
+## Historical: owner-approved Beta updater trial (superseded)
 
 This section supersedes the older Program Files/first-stable test plan below.
 See [portable updates](APPLICATION-UPDATES.md) for the implemented contract.
@@ -11,7 +41,7 @@ original overwrite/rename and no Program Files. Beta is an isolated non-latest
 preview channel. After the live demo and field acceptance, consider RC9 and
 then a separately approved official V1.1. Do not merge or publish stable now.
 
-## Current owner scope: stability, then application updates
+## Historical owner scope: stability, then application updates
 
 The owner reaffirmed this scope on 2026-10-24:
 

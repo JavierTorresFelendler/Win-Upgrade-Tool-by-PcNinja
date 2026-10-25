@@ -1,3 +1,5 @@
+using PcNinja.Win11Upgrade.Core;
+
 namespace PcNinja.Win11UpgradeAssistant;
 
 internal static class CliHelp
@@ -40,32 +42,37 @@ internal static class CliHelp
         topic = topic?.ToLowerInvariant();
         if (string.IsNullOrWhiteSpace(topic))
         {
-            Console.WriteLine(General);
+            Console.WriteLine(RenderExamples(General));
             return true;
         }
 
         if (topic is "all" or "manual")
         {
-            Console.WriteLine(General);
+            Console.WriteLine(RenderExamples(General));
             foreach (var knownTopic in Topics)
             {
                 Console.WriteLine();
-                Console.WriteLine(GetTopic(knownTopic));
+                Console.WriteLine(RenderExamples(GetTopic(knownTopic)!));
             }
             return true;
         }
 
         var text = GetTopic(topic);
         if (text is null) return false;
-        Console.WriteLine(text);
+        Console.WriteLine(RenderExamples(text));
         return true;
     }
 
     public static string GetPowerShellCompletion(string executableName)
     {
         var safeName = executableName.Replace("'", "''");
-        return PowerShellCompletion.Replace("__EXE_NAME__", safeName, StringComparison.Ordinal);
+        return PowerShellCompletion.Replace("__EXE_NAME__", safeName, StringComparison.Ordinal)
+            .Replace("__PUBLIC_EXE_NAME__", AppUpdateIdentity.AssetNameFor(Version), StringComparison.Ordinal);
     }
+
+    private static string RenderExamples(string text) => text
+        .Replace("Windows-Upgrade-Assistant-By-PcNinja-V1.1-Beta1.exe", AppUpdateIdentity.AssetNameFor(Version), StringComparison.Ordinal)
+        .Replace(AppUpdateIdentity.AssetName, AppUpdateIdentity.AssetNameFor(Version), StringComparison.Ordinal);
 
     private static string? GetTopic(string topic) => topic switch
     {
@@ -97,7 +104,7 @@ Commands:
   scan         Find local ISO files, mounted Windows media, and download drives.
   validate     Validate one exact ISO file or mounted Windows source.
   upgrade      Validate a source and start Windows Setup after confirmation.
-  app-update   Check or install a stable update of this application, not Windows.
+  app-update   Check or download/run a new application version, not Windows.
   log-path     Print the application log path.
   completion   Generate shell completion code. PowerShell completion is supported.
   help         Show general help or detailed help for one command.
@@ -372,7 +379,7 @@ repositories and older/equal versions are not offered. status stays offline.
 
 run requires Administrator and explicit --yes. The exact version-named EXE is
 verified and saved BESIDE THE RUNNING EXE, not the current shell directory.
-No Program Files relocation, original replacement/rename or numbered Copy N.
+No Program Files relocation, original replacement or numbered downloaded Copy N.
 An existing exact-name file is validated for reuse; a mismatch is not overwritten.
 Unsupported/read-only folders fail rather than silently choosing another location.
 The install verb remains an alias for run; no software is installed.
@@ -386,14 +393,17 @@ verified. Unsigned trust depends on the publishing GitHub account/manifest; a
 checksum or critical tag is not an independent digital signature.
 
 A verified helper waits for this exact parent to exit. GUI reopens the new EXE
-with no arguments; CLI never opens a GUI or replays commands. The old file stays.
+with no arguments; CLI never opens a GUI or replays commands. CLI keeps the old
+filename. After confirmed new GUI readiness, only its exact predecessor is marked
+OLD-, then OLD.V1-/OLD.V2- on collisions, without overwriting any existing file.
+Local last-update status includes archiveStatus and archivedPath.
 APP_UPDATE_HANDOFF_STARTED means handed off, NOT running yet. Inspect subsequent
 app-update status and the new copy's --version. readyForRestart and setupStarted
 are always false. No Windows upgrade/reboot is started.
 
 Exit groups: 0 result/handoff, 2 invalid arguments, 3 blocked, 4 check/verification/
-helper failure, 5 permission, 6 cancelled. Active Windows operations, external
-Setup or pending Windows restart block running an update; no force bypass.
+helper failure, 5 permission, 6 cancelled. Only this tool's own active operations
+are serialized. External Setup and pending restart flags do not block application updates.
 """;
 
     private const string LogPath = """
@@ -426,7 +436,7 @@ PowerShell completion is supported; CMD receives the embedded help only.
 
     private const string PowerShellCompletion = """
 # Windows Upgrade Assistant By PcNinja native completion
-Register-ArgumentCompleter -Native -CommandName '__EXE_NAME__', 'Windows-Upgrade-Assistant-By-PcNinja.exe' -ScriptBlock {
+Register-ArgumentCompleter -Native -CommandName '__EXE_NAME__', '__PUBLIC_EXE_NAME__' -ScriptBlock {
     param($wordToComplete, $commandAst, $cursorPosition)
 
     $elements = @($commandAst.CommandElements | ForEach-Object { $_.Extent.Text.Trim("'").Trim('"') })

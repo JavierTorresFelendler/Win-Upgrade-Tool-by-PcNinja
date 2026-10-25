@@ -24,7 +24,10 @@ function Get-PcNinjaVersionIdentity {
     $label = if ($stable) { $Version } elseif ($beta) { "Beta$revision" } else { "RC$revision" }
     $display = "$($parts[0]).$($parts[1])" + $(if ($parts[2] -eq '0') { '' } else { ".$($parts[2])" })
     if (-not $stable) { $display += "-$label" }
-    $asset = "Windows-Upgrade-Assistant-By-PcNinja-V$display.exe"
+    $asset = if ($stable) {
+        if ($parts[1] -eq '0' -and $parts[2] -eq '0') { $display = $parts[0] }
+        "WinUpgradeToolByPcNinja.v.$display.exe"
+    } else { "Windows-Upgrade-Assistant-By-PcNinja-V$display.exe" }
     [pscustomobject]@{
         Version = $Version; Tag = "v$Version"; IsStable = $stable; IsBeta = $beta; HasManifest = ($stable -or $beta)
         Channel = $(if ($stable) { 'stable' } elseif ($beta) { 'beta' } else { 'preview' })

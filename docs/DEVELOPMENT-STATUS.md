@@ -6,6 +6,26 @@ Reusable architecture, diagnosis and verification know-how lives in
 [AI maintenance playbook](AI-MAINTENANCE-PLAYBOOK.md), independently of any
 assistant's personal memory or skills installation.
 
+## Current authorization: first stable V1 closeout
+
+Owner approved preparing V1, completing checks, main merge and official release.
+Owner selected freeware-use-only (option 2), not MIT/open source, and provided
+**javier@pcninja.pro** for security reporting. No third-party rights are relicensed.
+Prepare technical 1.0.0 / public WinUpgradeToolByPcNinja.v.1.exe; next 1.1.0 uses
+.v.1.1.exe. Stable formatter is shortened, internal assembly and legacy Beta/RC
+filenames unchanged. Existing Beta 1.1.0-beta.5 stays isolated: one manual download
+to first stable, no channel/downgrade bypass. Preserve all published assets.
+
+Owner's latest VM log confirms Beta4 -> Beta5 GUI readiness, exact OLD rename and
+UpToDate; owner also reports a real customer-machine provider-choice test. No raw
+logs are committed and these reports are not blanket validation of all media.
+
+This checkpoint is a V1 candidate, not an official release. Complete exact-source
+CI/client/actual EXE/hash checks and supply the candidate for the agreed short VM
+name/packaging check before main merge/publication. Remaining previous CI failure
+was SDK/runtime download HTTP409 before product tests; do not bypass test gates.
+LICENSE/SECURITY, full Massgrave credits and current product docs are being closed.
+
 ## Current authorized work: Beta 5 OLD predecessor housekeeping
 
 Owner's VM log confirms Beta 3 -> Beta 4 handoff, Beta 4 GUI startup and subsequent

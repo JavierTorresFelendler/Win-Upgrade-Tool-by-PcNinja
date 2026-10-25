@@ -1,10 +1,11 @@
-# Portable application updates — Beta trial
+# Portable application updates
 
-This feature is developed in Draft PR #13. Published RC8 and all older assets
-stay unchanged. The owner approved a live Beta 1 -> Beta 2 demonstration before
-RC9 or a stable V1.1. Beta 2 waits until the owner has opened/tested Beta 1.
-No main merge, RC9/stable publication or developer-machine Windows upgrade is
-authorized by the Beta trial.
+V1 includes the consent-based portable updater developed and tested through the
+Beta line. Published RC/Beta assets stay unchanged. The owner confirmed a real
+Beta 4 -> Beta 5 update, new GUI readiness, exact predecessor OLD rename and an
+UpToDate check. That evidence does not establish every failure-path test or a
+stable-to-stable lifecycle. Release authorization and remaining gates are recorded
+in [Development status](DEVELOPMENT-STATUS.md).
 
 ## User flow
 
@@ -30,7 +31,7 @@ the old EXE; open it again. A correctly verified existing exact-version file is
 reused; a mismatch is not overwritten/deleted and causes an actionable refusal.
 Readonly/unsupported locations fail, never relocate silently.
 
-### Mark the predecessor OLD (Beta 5 and later)
+### Mark the predecessor OLD
 
 After confirmed GUI startup, the helper best-effort renames only the exact
 predecessor bound in the private update request to `OLD-<original filename>`.
@@ -60,14 +61,25 @@ output remains Windows-Upgrade-Assistant-By-PcNinja.exe; published assets are:
 | --- | --- | --- |
 | 1.1.0-beta.1 | Windows-Upgrade-Assistant-By-PcNinja-V1.1-Beta1.exe | Beta only |
 | 1.1.0-beta.2 | Windows-Upgrade-Assistant-By-PcNinja-V1.1-Beta2.exe | Beta only |
-| 1.1.0 | Windows-Upgrade-Assistant-By-PcNinja-V1.1.exe | Stable only |
-| 1.1.1 | Windows-Upgrade-Assistant-By-PcNinja-V1.1.1.exe | Stable only |
+| 1.0.0 (V1) | WinUpgradeToolByPcNinja.v.1.exe | Stable only |
+| 1.0.1 | WinUpgradeToolByPcNinja.v.1.0.1.exe | Stable only |
+| 1.1.0 (V1.1) | WinUpgradeToolByPcNinja.v.1.1.exe | Stable only |
 
 Beta discovery checks up to three pages of five recent release records, bounded
 by metadata/time limits, and selects the highest numbered published Beta. It
 does not accept drafts, RCs or stable releases. Stable/RC binaries use only latest
 stable; they never request the Beta list. Missing Beta/stable releases are normal
 results. An offline/rate-limited/invalid check does not block normal tool use.
+
+### One-time move from the Beta trial to official V1
+
+Download the first stable V1 from the official GitHub Release and open it manually
+once. The Beta trial used `1.1.0-beta.5`; the first official line starts at `1.0.0`.
+The old Beta updater intentionally rejects both a channel switch and a lower
+version. It cannot automatically bootstrap V1, and old binaries/assets are not
+patched to make that happen. Manual bootstrap is not a downgrade bypass in the
+updater. After bootstrap, stable V1 follows stable releases such as V1.1 normally.
+Keep the old copy for recovery until the official build has been checked.
 
 ## Publisher-controlled regular/critical notices
 
@@ -119,22 +131,23 @@ After helper completion, correlate `operationId` in local
 bounded/read-only and may be null/unavailable without folder access.
 Every updater result has setupStarted=false and readyForRestart=false.
 
-## Live Beta acceptance
+## Live acceptance and historical Beta notes
 
-Beta 1/2's published binaries contain the old overly strict OS-state gate. The
-unreleased Beta 3 PR build removes it in both parent and helper. A blocked old
-binary cannot repair itself by discovering a new release: manually bootstrap the
-fixed test EXE once. Do not clear registry flags, force a reboot loop, or replace
-old published assets. The owner now has the fixed Beta 3 open and authorized its
-Beta 4 successor. Use Check app updates in fixed Beta 3 to test the real flow;
-Beta 4 contains the same runtime source with a new version and normal notice.
-Beta 3 stays a PR artifact; no tag/publication is needed for the starting binary.
+The owner-provided Beta 5 log confirms the Beta 4 handoff, new GUI startup,
+`GUI ready=True`, `predecessor archive=renamed`, and a subsequent UpToDate check.
+The OLD.V collision sequence also has native disposable-file test coverage;
+do not describe every collision/cancel/offline/signing scenario as field-tested.
 
-Use a disposable Windows 10/11 VM/snapshot. The owner confirmed Beta 1 is running
-and authorized the separately verified Beta 2 with increased binary/tag/manifest
-version. In Beta 1 use Check app updates. Test decline/notes with no EXE
-transfer, explicit download, exact same-folder files, new version relaunch with
-no arguments, original preserved, no repeated offer from Beta 2, existing-file
-reuse, cancellation/offline/mismatch and regular/critical notices. No Windows
-upgrade is required for this experiment. CI/fake callbacks do not prove the live
-helper/elevation/relaunch sequence or signed-binary acceptance.
+Use a disposable Windows 10/11 VM/snapshot for release-candidate checks: notes
+and Not now must not transfer an EXE; consent must download/verify the exact
+release and open its new GUI without replayed arguments. Check sibling paths,
+predecessor naming/bytes, no-overwrite collision behavior and new-version status.
+A stable-to-stable test needs a genuinely newer separately approved stable
+release; opening V1 or checking metadata alone does not prove that lifecycle.
+No Windows upgrade or OS restart is required to test application updates.
+
+Historical Beta 1/2 contain the old overly strict OS-state gate; Beta 3 was an
+unreleased PR bootstrap, and Beta 4/5 remove that dependency. Keep those published
+assets immutable, rather than resetting Windows flags or rewriting history.
+See [product identity](PRODUCT-IDENTITY.md), [LICENSE](../LICENSE),
+[credits](CREDITS.md) and [security reporting](../SECURITY.md).

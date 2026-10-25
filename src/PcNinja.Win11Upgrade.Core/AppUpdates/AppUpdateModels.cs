@@ -19,6 +19,11 @@ public static class AppUpdateIdentity
     {
         var parsed = ReleaseVersion.Parse(version);
         var display = $"{parsed.Major}.{parsed.Minor}" + (parsed.Patch == 0 ? "" : $".{parsed.Patch}");
+        if (parsed.IsStable)
+        {
+            if (parsed.Minor == 0 && parsed.Patch == 0) display = $"{parsed.Major}";
+            return $"WinUpgradeToolByPcNinja.v.{display}.exe";
+        }
         if (!parsed.IsStable)
         {
             var parts = parsed.Prerelease.Split('.');

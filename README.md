@@ -1,11 +1,11 @@
 # Windows Upgrade Assistant By PcNinja
 
-Standalone Windows application for guiding advanced home users through an
+Free-to-use standalone Windows application for guiding advanced home users through an
 in-place Windows upgrade on x64 hardware, including an experimental Windows 11
 compatibility method and an experimental manual Windows 10 target path.
 
 > [!WARNING]
-> RC8 is prerelease software. Its Windows 11 path uses the undocumented
+> The Windows 11 path uses the undocumented
 > `/product server` compatibility behavior. Back up important files
 > before using it. Microsoft can change this behavior in future releases.
 
@@ -18,28 +18,39 @@ project-specific decisions and working procedures across assistants and machines
 
 ## Download
 
-Download [RC8](https://github.com/JavierTorresFelendler/Windows-Upgrade-Assistant-by-PcNinja/releases/tag/v1.1.0-rc.8)
-from the repository's **Releases** page:
+V1 is being prepared for official publication. Download a published build only
+from this repository's [Releases](https://github.com/JavierTorresFelendler/Windows-Upgrade-Assistant-by-PcNinja/releases)
+page; a PR artifact is a test build, not an official release. The first stable
+download uses this short name:
 
 ```text
-Windows-Upgrade-Assistant-By-PcNinja.exe
+WinUpgradeToolByPcNinja.v.1.exe
 ```
 
 The portable x64 EXE contains both the graphical application and the CLI. No
 PowerShell or CMD files are required.
 
-RC8 uses that fixed filename; previous release assets remain unchanged.
-Version/commit metadata remains
-in file properties, diagnostic logs, `version` and `status --json`, not the GUI
-title or executable filename. See [product identity](docs/PRODUCT-IDENTITY.md).
+Public V1 is technical version `1.0.0`; V1.1 is `1.1.0` and uses
+`WinUpgradeToolByPcNinja.v.1.1.exe`. Full version/commit metadata remains in
+file properties, diagnostic logs, `version` and `status --json`. The GUI title
+stays **Windows Upgrade Assistant By PcNinja**. Historical RC/Beta assets keep
+their original names and bytes. See [product identity](docs/PRODUCT-IDENTITY.md).
 
-Application updates are in the separate [Beta trial](docs/APPLICATION-UPDATES.md)
-in Draft PR #13, not the unchanged RC8 EXE. New version-named EXEs stay beside
-the running tool; nothing moves to Program Files or replaces the old EXE.
+V1 includes [portable application updates](docs/APPLICATION-UPDATES.md).
+New version-named EXEs stay beside the running tool; nothing moves to Program
+Files or overwrites the old EXE. After the new GUI confirms startup, only the
+exact predecessor is marked `OLD-`, or `OLD.V1-`, `OLD.V2-`, etc. if occupied.
 A regular/critical offer shows the release summary and exact GitHub notes;
 only **Download and run the new version** authorizes EXE transfer.
-Beta discovers Beta only; stable/RC discovers stable only. First test Beta 1,
-then publish Beta 2 for the owner's live update check; no stable release yet.
+Stable discovers stable only; Beta discovers numbered Betas only. **Beta users
+must download and open the first stable V1 manually once.** The old
+`1.1.0-beta.5` cannot switch channels or downgrade itself to stable `1.0.0`.
+Future stable-to-stable updates use the normal consent-based updater. Windows
+restart flags and external Setup do not gate updates to this application.
+
+The tool is free to use, but it is **not offered under an open-source license**.
+See [LICENSE](LICENSE) for the actual permissions and restrictions, and
+[SECURITY.md](SECURITY.md) for private vulnerability reporting.
 
 Completed, correlated Windows Setup rollbacks are reported in the existing GUI
 warning/details area and CLI status. See [outcome diagnostics](docs/SETUP-OUTCOME-DIAGNOSTICS.md).
@@ -52,7 +63,7 @@ request a matching public browser download, then select the exact ISO manually.
 Matching manual x64 client LTSC media is supported without enabling automatic
 LTSC download, edition/channel conversion or Server execution.
 
-> **New in RC8:** Full-profile automatic-download preflight, matching manual
+> **Included in V1:** Full-profile automatic-download preflight, matching manual
 > download guidance, safe exact-ISO session reuse, Downloads-first browsing and
 > visual next-action cues. Includes optional quiet Setup and machine-readable CLI
 > results. Original branding, safety gates and two-source screen remain.
@@ -64,7 +75,7 @@ choices on one screen:
 2. **Use an ISO, drive or folder.** Select an ISO, mounted drive, extracted
    Setup folder or network folder in one path field, using **ISO...** or **Folder...**.
 
-RC8 also accepts a manually supplied **Windows 10 client x64**
+The tool also accepts a manually supplied **Windows 10 client x64**
 image on Windows 10, using the same image selector and `--image-index`. By owner
 request, this POC does **not compare build order inside Windows 10**: older,
 same-build and newer images may be offered to Windows Setup, which must allow
@@ -184,11 +195,12 @@ Mounted media/extracted folders do not support whole-ISO checksum comparison.
 
 Routine errors appear in the main window; **View details** shows diagnostics.
 See the [message catalog](docs/UI-MESSAGES.md) for the short English wording
-and the [RC8 test notes](docs/RC8-TESTING.md) for current coverage and limits.
+and the [historical RC8 test matrix](docs/RC8-TESTING.md) for field scenarios and
+limits. Do not treat every matrix row as independently field-tested.
 
 ## CLI
 
-RC8 includes [quiet Setup and automation results](docs/CLI-AUTOMATION.md)
+V1 includes [quiet Setup and automation results](docs/CLI-AUTOMATION.md)
 for remote scripts/management agents, including explicit restart readiness.
 
 The same EXE contains global help, per-command help, and a complete offline
@@ -199,23 +211,23 @@ See the [complete CLI guide](docs/CLI.md) for mounted ISO drives, automatic
 downloads, validation-only runs, JSON output, confirmations, and exit codes.
 
 ```powershell
-.\Windows-Upgrade-Assistant-By-PcNinja.exe help
-.\Windows-Upgrade-Assistant-By-PcNinja.exe help all
-.\Windows-Upgrade-Assistant-By-PcNinja.exe help upgrade
-.\Windows-Upgrade-Assistant-By-PcNinja.exe status --json
-.\Windows-Upgrade-Assistant-By-PcNinja.exe scan
-.\Windows-Upgrade-Assistant-By-PcNinja.exe downloads --json
-.\Windows-Upgrade-Assistant-By-PcNinja.exe validate --iso "D:\Windows11.iso"
-.\Windows-Upgrade-Assistant-By-PcNinja.exe validate --mounted E:\
-.\Windows-Upgrade-Assistant-By-PcNinja.exe upgrade --iso "D:\Windows11.iso" --no-restart
-.\Windows-Upgrade-Assistant-By-PcNinja.exe upgrade --mounted E:\ --no-restart
-.\Windows-Upgrade-Assistant-By-PcNinja.exe upgrade --download --destination "E:\PcNinja Downloads"
+.\WinUpgradeToolByPcNinja.v.1.exe help
+.\WinUpgradeToolByPcNinja.v.1.exe help all
+.\WinUpgradeToolByPcNinja.v.1.exe help upgrade
+.\WinUpgradeToolByPcNinja.v.1.exe status --json
+.\WinUpgradeToolByPcNinja.v.1.exe scan
+.\WinUpgradeToolByPcNinja.v.1.exe downloads --json
+.\WinUpgradeToolByPcNinja.v.1.exe validate --iso "D:\Windows11.iso"
+.\WinUpgradeToolByPcNinja.v.1.exe validate --mounted E:\
+.\WinUpgradeToolByPcNinja.v.1.exe upgrade --iso "D:\Windows11.iso" --no-restart
+.\WinUpgradeToolByPcNinja.v.1.exe upgrade --mounted E:\ --no-restart
+.\WinUpgradeToolByPcNinja.v.1.exe upgrade --download --destination "E:\PcNinja Downloads"
 ```
 
 Enable PowerShell completion for the current session:
 
 ```powershell
-& .\Windows-Upgrade-Assistant-By-PcNinja.exe completion powershell | Out-String | Invoke-Expression
+& .\WinUpgradeToolByPcNinja.v.1.exe completion powershell | Out-String | Invoke-Expression
 ```
 
 Mount, validation, download-and-mount, and upgrade operations must be launched
@@ -287,7 +299,7 @@ Thank you to the [Massgrave](https://massgrave.dev/) contributors for maintainin
 the public Windows ISO catalogs used by our [matching download fallback](docs/MATCHED-ISO-DOWNLOADS.md).
 PcNinja sources remain the preferred configured option; the external catalog
 helps users find matching media in other languages and editions. This fallback
-is included in RC8 as manual browser guidance, not automatic third-party transfer.
+provides manual browser guidance, not automatic third-party transfer.
 
 - [Massgrave website and ISO catalogs](https://massgrave.dev/)
 - [Catalog and website source on GitHub](https://github.com/massgravel/massgrave.dev)
@@ -297,6 +309,10 @@ Our integration references ISO download catalogs only; it does not include or ru
 activation scripts or modify licensing. Microsoft's official download alternative
 remains available. Source recommendations do not replace PcNinja's actual-media
 compatibility, signature and safety checks.
+
+See the dedicated [credits and external-source notes](docs/CREDITS.md) for the
+role of their catalogs, source links, upstream terms and integration boundaries.
+This acknowledgement does not claim formal partnership or endorsement.
 
 ## Development workflow
 
@@ -316,8 +332,9 @@ dotnet publish src\PcNinja.Win11UpgradeAssistant\PcNinja.Win11UpgradeAssistant.c
 ```
 
 `Directory.Build.props` contains the authoritative literal `PcNinjaReleaseVersion`
-for Core/GUI metadata and packaging. Current development is `1.1.0-beta.1`;
-published RC8 and older assets remain immutable.
+for Core/GUI metadata and packaging. The first official line maps V1 to `1.0.0`;
+the release status is recorded in [Development status](docs/DEVELOPMENT-STATUS.md).
+Published RC/Beta assets remain immutable.
 
 The tag workflow requires reviewed main ancestry, matching tag/version/notes,
 read-only CLI verification and the final EXE's exact `version+commit` metadata
@@ -331,8 +348,8 @@ Numeric `x.y.z` stable releases require
 `docs/RELEASE-{version}.md` and add `update-manifest.json` as a fourth asset.
 Both use draft-first upload/metadata verification; stable publication updates
 latest only after verified assets and refuses backwards movement. Existing
-published releases/assets are never overwritten. This is future publication
-support, not authorization to create a stable tag/release.
+published releases/assets are never overwritten. Owner approval, completed checks
+and a matching release identity remain separate from ordinary development builds.
 
 The offline contract fixtures make no network or GitHub changes:
 
@@ -341,7 +358,7 @@ The offline contract fixtures make no network or GitHub changes:
 ```
 
 See the [updater implementation contract](docs/design/APPLICATION-UPDATES.md)
-for manifest, staging, trust and final two-stable-version VM gates.
+for manifest, staging, trust and the distinction between fixture and live VM checks.
 
 ## Current scope
 
@@ -353,7 +370,22 @@ for manifest, staging, trust and final two-stable-version VM gates.
 - Windows Server download/inspection/explicit manual-command-copy guidance only;
   the assistant never starts Setup on Server
 - English interface and CLI
-- Unsigned prerelease binary
-- No application self-updater or media extraction/copy/detach preparation in RC8
+- Consent-based portable application updates through GitHub
+- Currently unsigned binaries; published SHA-256 is not independent publisher signing
+- No automatic media extraction/copy/detach preparation
 
-RC releases remain prereleases. Repository visibility is managed separately.
+Historical RC/Beta releases remain prereleases. Repository visibility is managed
+separately and does not turn this free-to-use product into open-source software.
+
+## License, support and security
+
+The owner provides the tool free of charge for use under [LICENSE](LICENSE).
+Do not assume that public source visibility permits modifying or redistributing
+the code or rebranding the tool. Check the license for the actual permission terms.
+Third-party software, installation media and trademarks retain their own terms.
+
+Report ordinary reproducible defects through the repository's
+[issue tracker](https://github.com/JavierTorresFelendler/Windows-Upgrade-Assistant-by-PcNinja/issues),
+with sensitive information removed. Send security vulnerabilities privately to
+**javier@pcninja.pro**, following [SECURITY.md](SECURITY.md); do not publish exploit
+details or customer logs in an issue.

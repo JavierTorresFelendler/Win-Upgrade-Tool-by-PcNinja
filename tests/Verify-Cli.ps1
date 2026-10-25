@@ -13,6 +13,13 @@ $version = Invoke-Assistant @('--version')
 if ($LastCode -ne 0 -or $version.Trim() -ne $ExpectedVersion) { throw 'Version mismatch.' }
 $help = Invoke-Assistant @('help', 'all')
 if ($LastCode -ne 0) { throw 'Offline help failed.' }
+if ($ExpectedVersion -eq '1.0.0' -and -not $help.Contains('WinUpgradeToolByPcNinja.v.1.exe')) {
+    throw 'Offline V1 help omitted the short public executable name.'
+}
+if (-not $help.Contains('do not block application updates') -or -not $help.Contains('OLD.V1-') -or
+    $help.Contains('pending Windows restart block running an update')) {
+    throw 'Offline updater help contradicts OS independence or OLD archive policy.'
+}
 if (-not $help.Contains('manualRestartRequired') -or -not $help.Contains('restart manually to continue')) {
     throw 'Offline help omitted successful manual-restart guidance.'
 }
