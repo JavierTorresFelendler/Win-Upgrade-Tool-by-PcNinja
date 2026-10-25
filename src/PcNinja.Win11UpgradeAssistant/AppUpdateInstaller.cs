@@ -60,7 +60,6 @@ internal static class AppUpdateInstaller
                 requiredSigner, release, relaunchGui);
             workspace.WriteRequest(request);
             token.ThrowIfCancellationRequested();
-            AppOperationGate.EnsureUpdateAllowed();
             var start = new ProcessStartInfo
             {
                 FileName = workspace.HelperPath, WorkingDirectory = workspace.DirectoryPath,
@@ -79,7 +78,6 @@ internal static class AppUpdateInstaller
             { throw new TimeoutException("The verified update helper did not become ready in time. The current app was not replaced."); }
             if (response != Ready) throw new IOException("The update helper was not ready. The current app was not replaced.");
             token.ThrowIfCancellationRequested();
-            AppOperationGate.EnsureUpdateAllowed();
             // Disarm BEFORE GO. On a failed write neither process releases a live operation;
             // closing all remaining handles safely destroys the semaphore instead.
             gate.TransferToHelper();
@@ -153,7 +151,6 @@ internal static class AppUpdateInstaller
                 await parent.WaitForExitAsync(exitTimeout.Token);
             parentExited = true;
             ValidateRequest(request, id);
-            AppOperationGate.EnsureUpdateAllowed();
             ApplyVerified(workspace, request, LaunchGui);
             try { WriteResult(workspace, request, true, "New portable version is ready."); }
             catch (Exception statusError)
@@ -206,9 +203,7 @@ internal static class AppUpdateInstaller
         if (!SamePath(workspace.SourceDirectory, Path.GetDirectoryName(request.ParentPath)!))
             throw new InvalidDataException("The update destination differs from the original application folder.");
         AppUpdateWorkspace.VerifyCandidate(workspace.CandidatePath, request.Release, request.RequiredSigner);
-        AppOperationGate.EnsureUpdateAllowed();
         using var candidateGuard = workspace.PublishAndHold(request.Release, request.RequiredSigner);
-        AppOperationGate.EnsureUpdateAllowed();
         if (request.RelaunchGui) launch(workspace.TargetPath(request.Release));
     }
 

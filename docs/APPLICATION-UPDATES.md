@@ -75,9 +75,13 @@ Exact candidate/ancestor read/no-write/no-delete handles remain held through
 launch. Existing files are never overwritten. Private handoff files are retained
 for diagnosis; do not broadly clean the staging root or replay helper requests.
 
-The machine-wide gate excludes app updating from Core ISO preparation/Setup
-across instances; fresh external Setup/pending-restart checks also apply. The
-updater never force-closes Windows work, replays upgrade arguments or reboots.
+The machine-wide gate serializes this tool's own active operations across instances;
+it never reads Windows restart flags or enumerates external Setup processes.
+Pending Windows Update/CBS/file-renames, drivers, antivirus and external OS Setup
+do not gate downloading/running a new version of this application. No Windows
+restart, update reset or flag deletion is needed. The updater never force-closes
+Windows work, replays upgrade arguments or reboots. An own active operation must
+finish/cancel normally before closing its window for application handoff.
 SHA-256 and fixed GitHub URLs bind bytes to the manifest, not an independent
 publisher identity. EXEs are currently unsigned; a compromised publishing account
 could change both manifest and binary. A signed current app requires the same
@@ -94,6 +98,13 @@ bounded/read-only and may be null/unavailable without folder access.
 Every updater result has setupStarted=false and readyForRestart=false.
 
 ## Live Beta acceptance
+
+Beta 1/2's published binaries contain the old overly strict OS-state gate. The
+unreleased Beta 3 PR build removes it in both parent and helper. A blocked old
+binary cannot repair itself by discovering a new release: manually bootstrap the
+fixed test EXE once. Do not clear registry flags, force a reboot loop, or replace
+old published assets. A later independently published successor is needed for
+another real end-to-end update demonstration from that fixed starting point.
 
 Use a disposable Windows 10/11 VM/snapshot. The owner confirmed Beta 1 is running
 and authorized the separately verified Beta 2 with increased binary/tag/manifest

@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased 1.1.0-beta.3 — independent application updating
+
+- Remove Windows pending-restart and external Setup probes from both app-update
+  parent and successor helper. Updating this tool is independent of updating Windows.
+- Keep explicit consent, own-operation serialization, permissions, exact verified
+  bytes, safe sibling publication and parent-bound no-argument relaunch.
+- Remove the obsolete OS preflight hook rather than leave an unused bypass.
+  Add a source-contract regression and exercise the real helper apply path with
+  temporary verified bytes and an injected launch callback, never a real launch.
+- Development/PR test build only. Published Beta 1, Beta 2, RC8 and main unchanged.
+
 ## 1.1.0-beta.2 — live application update trial
 
 - Owner opened Beta 1 in a VM; prepare the separately versioned successor for a

@@ -303,8 +303,15 @@ are refused, not taken over. The exact parent handle and READY/GO transfer keep
 the non-thread-affine operation barrier through handoff. Never replace that
 protocol with a sleep, thread-affine mutex or stale history file.
 
-Keep app/Windows operations mutually exclusive and repeat external Setup/restart
-checks after slow hashing. Failure/cancellation before handoff leaves the current
+Keep this application's own operations serialized, but never gate an application
+update on Windows restart flags or external Setup state. The owner explicitly
+separated these concerns after repeated Beta 1 blocks survived a VM restart.
+An important tool fix must not require completing an unrelated Windows update.
+Do not port an OS-updater's reboot policy into the portable EXE updater, even if
+it discriminates generic file renames. Do not mutate/reset flags or stop services.
+The source-contract regression protects both parent and helper from reintroduced
+OS probes; native fixtures exercise real helper apply with only a fake launch.
+Failure/cancellation before handoff leaves the current
 app unchanged; after handoff, keep the original EXE and diagnostic files and correlate helper status by
 operation ID. Native publish/reuse/launch-lock tests use disposable files;
 they do not prove signing, elevation, handoff or relaunch on a customer's VM.

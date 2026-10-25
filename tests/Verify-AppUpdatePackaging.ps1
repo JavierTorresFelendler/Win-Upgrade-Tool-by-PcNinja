@@ -9,6 +9,12 @@ $encoding = [Text.UTF8Encoding]::new($false)
 $fixtureCommit = 'a' * 40
 
 function Require([bool]$Condition, [string]$Message) { if (-not $Condition) { throw $Message } }
+function Assert-AppUpdateOsIndependence([string]$Source) {
+    # Protect both parent and successor-helper paths without changing the test
+    # machine's servicing flags or launching a real/fake Windows Setup process.
+    $osProbe = 'EnsureUpdateAllowed|Microsoft\.Win32(?:\.Registry|\s*;)|Registry\.|PendingFileRenameOperations|RebootPending|RebootRequired|GetProcesses(?:ByName)?\s*\('
+    Require ($Source -notmatch $osProbe) 'Application updates must not depend on OS restart/Setup probes.'
+}
 function MustReject([scriptblock]$Action, [string]$Message) {
     $rejected = $false
     try { & $Action | Out-Null } catch { $rejected = $true }
@@ -193,6 +199,15 @@ try {
         [Management.Automation.Language.Parser]::ParseFile($script.FullName, [ref]$null, [ref]$parseErrors) | Out-Null
         Require ($parseErrors.Count -eq 0) "Workflow helper parse error: $($script.Name)"
     }
+    foreach ($unsafeSource in @('Registry.LocalMachine.OpenSubKey(path)', 'Process.GetProcessesByName("setup")',
+        'AppOperationGate.EnsureUpdateAllowed()', 'PendingFileRenameOperations', 'RebootPending', 'RebootRequired')) {
+        MustReject { Assert-AppUpdateOsIndependence $unsafeSource } 'The app-only architectural guard did not catch an OS-state dependency.'
+    }
+    foreach ($sourcePath in @('src/PcNinja.Win11Upgrade.Core/AppUpdates/AppOperationGate.cs',
+        'src/PcNinja.Win11UpgradeAssistant/AppUpdateInstaller.cs')) {
+        Assert-AppUpdateOsIndependence (Get-Content -LiteralPath (Join-Path $repositoryRoot $sourcePath) -Raw)
+    }
+    Write-Output 'PASS: Parent/helper source contract excludes pending-restart/registry/external-Setup probes. No OS flags were changed.'
     Write-Output 'PASS: Offline RC/stable props/manifest identity, exact final-byte binding, immutable assets, draft-first digest verification, latest-last publication and fail-closed lifecycle fixtures. No network, app/ISO/Setup execution or GitHub publication.'
 } finally {
     $resolved = [IO.Path]::GetFullPath($fixtureRoot)

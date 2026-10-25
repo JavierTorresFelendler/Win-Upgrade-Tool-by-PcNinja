@@ -1,9 +1,6 @@
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Runtime.InteropServices;
-using System.Security;
 using System.Security.Principal;
-using Microsoft.Win32;
 using Microsoft.Win32.SafeHandles;
 
 namespace PcNinja.Win11Upgrade.Core;
@@ -19,7 +16,7 @@ public static class AppOperationGate
     private const string SystemAccount = "S-1-5-18";
     private static readonly AsyncLocal<Scope?> LogicalScope = new();
     private static readonly Definition Production = new(ProductionName, Administrators,
-        [SystemAccount, Administrators], RequireAdministrator, EnsureUpdateAllowed);
+        [SystemAccount, Administrators], RequireAdministrator);
 
     public static AppOperationLease EnterWindows() => Enter(Production, update: false);
     public static AppOperationLease EnterUpdate() => Enter(Production, update: true);
@@ -30,60 +27,6 @@ public static class AppOperationGate
     /// It must signal READY with this handle open, wait for GO, then AdoptHandoff.
     /// </summary>
     public static AppOperationLease OpenHandoff() => OpenHandoff(Production);
-
-    /// <summary>Repeat after staging, before handoff and immediately before apply.</summary>
-    public static void EnsureUpdateAllowed()
-    {
-        try
-        {
-            foreach (var name in new[] { "setup", "setuphost", "setupprep", "mighost" })
-            {
-                var processes = Process.GetProcessesByName(name);
-                try
-                {
-                    if (processes.Length != 0)
-                        throw new InvalidOperationException("Application update is blocked while Windows Setup is running. Finish Setup and restart Windows if required, then try again.");
-                }
-                finally { foreach (var process in processes) process.Dispose(); }
-            }
-
-            using var setup = Registry.LocalMachine.OpenSubKey(@"SYSTEM\Setup")
-                ?? throw new InvalidOperationException("Windows Setup state could not be read safely. Application update was not started.");
-            foreach (var name in new[] { "SystemSetupInProgress", "OOBEInProgress", "SetupType", "UpgradeInProgress" })
-            {
-                var value = setup.GetValue(name);
-                if (value is null) continue;
-                if (value is not int && value is not long)
-                    throw new InvalidOperationException("Windows Setup state is unrecognized. Application update was not started.");
-                if (Convert.ToInt64(value) != 0)
-                    throw new InvalidOperationException("Application update is blocked by Windows Setup. Finish Setup and restart Windows if required, then try again.");
-            }
-
-            foreach (var path in new[]
-            {
-                @"SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending",
-                @"SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired"
-            })
-            {
-                using var pending = Registry.LocalMachine.OpenSubKey(path);
-                if (pending is not null) throw PendingRestart();
-            }
-            using var session = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Control\Session Manager")
-                ?? throw new InvalidOperationException("Windows restart state could not be read safely. Application update was not started.");
-            var rename = session.GetValue("PendingFileRenameOperations");
-            if (rename is not null && (rename is not string[] names || names.Any(name => !string.IsNullOrWhiteSpace(name))))
-                throw PendingRestart();
-            // Last-Upgrade.json is deliberately not consulted: a historical
-            // PreparationCompleted record can survive a successful Windows 10 reboot.
-        }
-        catch (Exception ex) when (ex is Win32Exception or UnauthorizedAccessException or SecurityException or IOException)
-        {
-            throw new InvalidOperationException("Windows Setup/restart state could not be checked safely. Application update was not started.", ex);
-        }
-    }
-
-    private static InvalidOperationException PendingRestart() => new(
-        "Restart Windows before updating this application. A Windows pending-restart condition is active; this tool will not force a restart.");
 
     private static void RequireAdministrator()
     {
@@ -114,7 +57,6 @@ public static class AppOperationGate
             if (wait == 258) throw new InvalidOperationException("Another PcNinja Windows or application-update operation is running. Wait for it to finish, then try again.");
             if (wait != 0) throw new Win32Exception(Marshal.GetLastWin32Error(), "The application operation gate could not be acquired.");
             acquired = true;
-            if (update) definition.EnsureUpdateAllowed();
             var state = new State(definition.Name, handle, update, handoff: false);
             var scope = new Scope(state, previous);
             LogicalScope.Value = scope;
@@ -222,23 +164,23 @@ public static class AppOperationGate
     }
 
     private sealed record Definition(string Name, string OwnerSid, string[] AllowedSids,
-        Action RequireAdministrator, Action EnsureUpdateAllowed)
+        Action RequireAdministrator)
     {
         internal string Sddl => $"O:{OwnerSid}G:{OwnerSid}D:P" +
             string.Concat(AllowedSids.Select(sid => $"(A;;GA;;;{sid})"));
     }
 
-    // Tests use ONLY a unique Local object and a current-user ACL. Their probes
-    // are injected; no production Global gate, registry or Setup query is touched.
+    // Tests use ONLY a unique Local object and a current-user ACL. Permission
+    // probes are injected; no production Global gate is touched.
     internal sealed class TestEndpoint
     {
         private readonly Definition _definition;
-        internal TestEndpoint(string name, string sid, Action? updateProbe = null, Action? administratorProbe = null)
+        internal TestEndpoint(string name, string sid, Action? administratorProbe = null)
         {
             if (!name.StartsWith(@"Local\PcNinja.AppOperationGate.Tests.", StringComparison.Ordinal) || name.Length > 200)
                 throw new ArgumentException("A unique Local test gate name is required.", nameof(name));
             var canonicalSid = new SecurityIdentifier(sid).Value;
-            _definition = new(name, canonicalSid, [canonicalSid], administratorProbe ?? (() => { }), updateProbe ?? (() => { }));
+            _definition = new(name, canonicalSid, [canonicalSid], administratorProbe ?? (() => { }));
         }
         internal AppOperationLease EnterWindows() => Enter(_definition, update: false);
         internal AppOperationLease EnterUpdate() => Enter(_definition, update: true);

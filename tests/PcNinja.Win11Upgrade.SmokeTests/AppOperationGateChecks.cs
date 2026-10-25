@@ -9,8 +9,8 @@ internal static class AppOperationGateChecks
         using var identity = WindowsIdentity.GetCurrent();
         var sid = identity.User?.Value ?? throw new Exception("The fixture user SID is unavailable.");
         string Name() => @"Local\PcNinja.AppOperationGate.Tests." + Guid.NewGuid().ToString("N");
-        var updateProbes = 0;
-        var gate = new AppOperationGate.TestEndpoint(Name(), sid, () => updateProbes++);
+        var permissionProbes = 0;
+        var gate = new AppOperationGate.TestEndpoint(Name(), sid, () => permissionProbes++);
 
         using (var outer = gate.EnterWindows())
         {
@@ -23,12 +23,12 @@ internal static class AppOperationGateChecks
                 ExpectBlocked(outer.AdoptHandoff);
                 await Independent(() => ExpectBlocked(() => gate.EnterWindows()));
             }
-            if (updateProbes != 0) throw new Exception("Windows entry unexpectedly probed real/update-only OS state.");
             await Independent(() => ExpectBlocked(() => gate.EnterUpdate()));
         }
+        var beforeUpdatePermission = permissionProbes;
         using (var update = gate.EnterUpdate())
         {
-            if (updateProbes != 1) throw new Exception("Update entry did not run the injected preflight once.");
+            if (permissionProbes != beforeUpdatePermission + 1) throw new Exception("Update entry did not check permission exactly once.");
             ExpectBlocked(() => gate.EnterUpdate());
             ExpectBlocked(() => gate.EnterWindows());
             await Task.Yield();
@@ -53,11 +53,6 @@ internal static class AppOperationGateChecks
         finally { finish.TrySetResult(); }
         await child.WaitAsync(TimeSpan.FromSeconds(5));
         using (gate.EnterWindows()) { }
-
-        var failingProbe = new AppOperationGate.TestEndpoint(Name(), sid,
-            () => throw new InvalidOperationException("injected pending Windows restart"));
-        ExpectBlocked(() => failingProbe.EnterUpdate());
-        using (failingProbe.EnterWindows()) { } // Failed preflight must release/close the acquired object.
 
         var deniedName = Name();
         var denied = new AppOperationGate.TestEndpoint(deniedName, sid, administratorProbe:
@@ -142,7 +137,7 @@ internal static class AppOperationGateChecks
             throw new Exception("A helper created an absent operation gate instead of opening an existing hold.");
         }
         catch (Win32Exception) { }
-        Console.WriteLine("PASS: Secure unique-Local semaphore ownership/DACL, async Windows nesting/reference lifetime, cross-flow contention, update preflight and READY/GO release transfer/failure. No production Global gate, Setup/process/registry query, app replacement or restart.");
+        Console.WriteLine("PASS: Secure unique-Local semaphore ownership/DACL, async Windows nesting/reference lifetime, cross-flow contention, app permission and READY/GO release transfer/failure. No production Global gate, Setup/process/registry query, app replacement or restart.");
     }
 
     private static void ExpectBlocked(Action action)

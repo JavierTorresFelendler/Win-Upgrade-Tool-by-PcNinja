@@ -12,8 +12,9 @@ Draft PR #13 remains the implementation/review history; RC8 is immutable.
 - AppUpdateFiles.cs: source-directory anchoring, private same-folder staging,
   exact product/PE/hash/signature validation, safe existing-file reuse, private
   copy/helper ACLs, no-overwrite publication and held launch guard.
-- AppOperationGate.cs: secure non-thread-affine machine-wide exclusion, fresh
-  Setup/restart checks and helper ownership transfer. Windows operations share it.
+- AppOperationGate.cs: secure non-thread-affine serialization of this tool's own
+  work and helper ownership transfer. No OS restart flags or external Setup probes.
+  Windows-upgrade validation remains separate; app updates never require reboot.
 - AppUpdateInstaller.cs: internal protocol-v2 successor helper. Private fresh
   request binds exact parent process/start/path/hash and release. READY/GO,
   exact-parent exit wait and no-argument GUI relaunch; no legacy command replay.

@@ -1,5 +1,6 @@
 using System.Security.Principal;
 using PcNinja.Win11Upgrade.Core;
+using PcNinja.Win11UpgradeAssistant;
 
 internal static class PortablePublishChecks
 {
@@ -27,13 +28,20 @@ internal static class PortablePublishChecks
             {
                 File.Copy(builtHost, workspace.CandidatePath);
                 target = workspace.TargetPath(release);
-                using (workspace.PublishAndHold(release, info.SignerThumbprint))
+                var callbackCount = 0;
+                var request = new AppUpdateRequest(2, Path.GetFileName(workspace.DirectoryPath), DateTimeOffset.UtcNow,
+                    Environment.ProcessId + 10000, DateTime.UtcNow.AddMinutes(-1).Ticks,
+                    original, info.Sha256, info.SignerThumbprint, release, true);
+                AppUpdateInstaller.ApplyVerified(workspace, request, launchedPath =>
                 {
+                    callbackCount++;
+                    Require(launchedPath == target, "Helper apply chose a different launch path.");
                     Require(File.Exists(original) && File.Exists(target) && Path.GetDirectoryName(target) == parent, "New version moved away from its source directory.");
                     Reject(() => File.WriteAllText(target, "must not change verified bytes"));
                     Reject(() => File.Move(target, target + ".renamed"));
                     Reject(() => Directory.Move(parent, parent + ".renamed"));
-                }
+                });
+                Require(callbackCount == 1, "App-only helper apply did not reach its injected launch exactly once.");
             }
             using (var reused = AppUpdateWorkspace.CreateFixture(parent, Guid.NewGuid().ToString("N"), info.SizeBytes, info.SizeBytes))
             {

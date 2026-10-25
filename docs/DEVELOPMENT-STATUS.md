@@ -6,6 +6,30 @@ Reusable architecture, diagnosis and verification know-how lives in
 [AI maintenance playbook](AI-MAINTENANCE-PLAYBOOK.md), independently of any
 assistant's personal memory or skills installation.
 
+## Current fix: application updates independent of OS state
+
+Owner reported Beta 1's update block again after a VM reboot and asked to compare
+WinUpdate V1/V2. Inspected pinned V2 `b644dc373a92dca84d64716245a6fc3b90ad7a5d`
+and V1 `950e3cf52a39f046d010ccbf3558de39816dff8f` WinUpdateCore.psm1: all four
+pending-rename/reboot functions are identical. They ignore generic renames but
+still block CBS/WU restart keys. The supplied app log fails in that latter key
+branch, not the generic-rename branch; it does not identify which exact key.
+
+Owner then clarified a stronger rule: application updates must not depend on OS
+updating at all. This supersedes the historical external Setup/restart gate below.
+Removed all such probes and every parent/helper preflight call; retained own-task
+serialization, busy GUI protection, file/permission/signature/identity verification,
+READY/GO parent identity, and held launch guards. OS upgrade safety is unchanged.
+No registry writes, service stops, Setup, reboot or real app handoff was tested.
+
+Development identity is 1.1.0-beta.3 for a distinct PR test EXE, not a published
+Beta 3. Continue existing Draft PR13; no release/tag/main merge authorized here.
+Beta 1/2 cannot acquire this fix through their own blocked parent: manually open
+the fixed test binary once, then plan a new live successor test separately.
+Regression fails on the old source and passes after removal. Core smoke tests
+pass locally, with elevated filesystem tests honestly skipped; CLI/client GUI/CI
+and real helper-apply fake-launch verification are being finalized.
+
 ## Current authorized work: portable Beta update demonstration
 
 The owner approved Beta 1 then Beta 2 testing BEFORE any official release.
