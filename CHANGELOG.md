@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.0.0 — first stable V1 candidate
+
+- Prepare the owner-approved official line with technical 1.0.0 and short public
+  filename WinUpgradeToolByPcNinja.v.1.exe; next 1.1.0 maps to .v.1.1.exe. Keep
+  internal assembly naming and every historical Beta/RC asset unchanged.
+- Preserve the field-tested Beta 5 upgrade/update behavior. Update only stable
+  asset identity, packaging, current help/completion examples and product docs.
+- Add explicit freeware-use-only LICENSE, private security reporting at
+  javier@pcninja.pro, substantial Massgrave credits and third-party boundaries.
+- Document one-time manual Beta-to-first-stable bootstrap, with no downgrade or
+  channel-check bypass. Test exact short-name stable 1.0.0 -> 1.1.0 via fake HTTP.
+- This entry describes the candidate; official publication awaits the final
+  owner VM check and reviewed green-checked main release.
+
 ## 1.1.0-beta.5 — identify the previous EXE after startup
 
 - Acknowledge shown/painted GUI startup over a bounded same-user random channel,

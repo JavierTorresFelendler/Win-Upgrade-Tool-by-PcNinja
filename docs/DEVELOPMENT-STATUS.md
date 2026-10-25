@@ -26,6 +26,28 @@ name/packaging check before main merge/publication. Remaining previous CI failur
 was SDK/runtime download HTTP409 before product tests; do not bypass test gates.
 LICENSE/SECURITY, full Massgrave credits and current product docs are being closed.
 
+- Source candidate `b3167e0384009e9ae596afcc365a4c92f98e804d` committed under
+  owner, pushed and remote-SHA verified. Exact-source CI `40234046583` passed all
+  steps, including elevated native updater/archive fixtures; the earlier SDK
+  HTTP409 did not recur. No workflow gate was weakened or skipped.
+- Independently downloaded artifact `12612879948`; tested merge
+  `f2a4bbbb329ab1b2cee88f7e854be49a82ba4beb`. Candidate WinUpgradeToolByPcNinja.v.1.exe,
+  73,088,931 bytes, NotSigned, SHA-256
+  `96275e721c804d654f4a6238d95b55b566660bba6947b945f9a2ce9ac300f302`.
+  Actual product/file/build identity, SHA256SUMS, provenance and read-only CLI
+  help/status/completion/consent checks pass. Live metadata-only check correctly
+  returns APP_UPDATE_NO_STABLE_RELEASE with Setup/restart authorization false.
+- Local Core/CLI/client GUI/packaging pass with zero build warnings/errors.
+  Native privileged fixtures skip honestly locally and pass in CI. No real app
+  updater/GUI handoff/Windows Setup/ISO action/reboot on developer PC.
+- README, license/security/credits, identity/CLI/current updater docs and new
+  V1 notes/testing checklist are prepared. GUI/logo/site links and Windows upgrade
+  code remain unchanged. Offline help's stale OS-restart-gate text was corrected.
+- Await the agreed short owner VM packaging/name check of this exact artifact
+  before merging PR13 or tagging/publishing V1. No stable tag/release/main changes
+  yet; no new Beta release. The current official-publication approval remains
+  contingent on completed checks, not permission to claim this candidate shipped.
+
 ## Current authorized work: Beta 5 OLD predecessor housekeeping
 
 Owner's VM log confirms Beta 3 -> Beta 4 handoff, Beta 4 GUI startup and subsequent
