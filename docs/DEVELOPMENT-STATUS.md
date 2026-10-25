@@ -26,9 +26,22 @@ Development identity is 1.1.0-beta.3 for a distinct PR test EXE, not a published
 Beta 3. Continue existing Draft PR13; no release/tag/main merge authorized here.
 Beta 1/2 cannot acquire this fix through their own blocked parent: manually open
 the fixed test binary once, then plan a new live successor test separately.
-Regression fails on the old source and passes after removal. Core smoke tests
-pass locally, with elevated filesystem tests honestly skipped; CLI/client GUI/CI
-and real helper-apply fake-launch verification are being finalized.
+Regression fails on the old source and passes after removal. Core, CLI, packaging
+and client GUI pass locally with zero build warnings/errors; elevated filesystem
+tests honestly skip locally. Exact-source CI `40160693888` passed, including real
+helper ApplyVerified with temporary validated bytes, held launch guards and an
+injected callback (not an executable/process launch).
+
+Fix source `8d4e5223f21cdc3c4cec761c0944e6c87e4abf3a` is owner-committed, pushed
+and remote-SHA verified. CI artifact `12586507183` is an unreleased Beta 3 test
+EXE built from tested merge `b0a1454f88e3144e10d6390927897e34d6543380`, 73,083,146
+bytes, unsigned, SHA-256
+`0f5c36b9a37716211efe0bd2ee1e9e9b64c368bf90b4f7029cca573a02727e3a`.
+Independently downloaded CI artifact, SHA/provenance/actual portable read-only CLI
+verified. Main and published Beta 2 IDs/digests unchanged; no new tag/Release.
+Real VM update from the bootstrapped fixed binary to a later authorized successor
+still needs a separately published version; opening/checking metadata alone does
+not prove its transfer/helper/relaunch lifecycle.
 
 ## Current authorized work: portable Beta update demonstration
 
