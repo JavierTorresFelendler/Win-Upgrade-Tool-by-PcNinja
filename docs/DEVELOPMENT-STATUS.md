@@ -14,9 +14,32 @@ This scope supersedes the Program Files/replacement design below; it does not
 authorize merging, stable/RC9 publication or publishing Beta 2 before Beta 1 is
 opened/tested by the owner. On 2026-10-25 the owner confirmed Beta 1 is running
 in a VM and requested the next step: Beta 2 publication is now authorized.
-Prepare version/normal notice only; no runtime feature changes. Publisher-only
-checkpoint `0e54cc2` passed CI `40119465892`. Verify the new exact-source PR CI
-before tagging Beta 2. Real helper/relaunch acceptance remains with the owner's VM.
+Version/normal notice only; no runtime feature changes. Publisher-only checkpoint
+`0e54cc2` passed CI `40119465892`. Beta 2 exact-source PR CI `40157971709` and tag
+publication workflow `40158083135` both passed. Real helper/relaunch acceptance
+remains with the owner's VM.
+
+### Beta 2 published; awaiting live VM update result
+
+- Immutable tag `v1.1.0-beta.2`, source `f40614bae588b2fc45067ed659b6f34baf32f9fc`,
+  release ID `423124590`, prerelease/non-latest. Four published assets downloaded
+  independently and verified against API sizes/digests. EXE asset ID `673978317`,
+  73,084,787 bytes, unsigned, SHA-256
+  `4a0367836bec5fa9d7aa4f065d0b69b0201b7c0f8600ec815db86cfd8b8c1fb4`.
+- Actual published EXE product/source/file identity and read-only CLI suite pass;
+  local Windows-client GUI fixtures pass with zero build warnings/errors.
+  Published Beta 1 metadata-only check returns `APP_UPDATE_AVAILABLE` with exact
+  Beta 2 version/normal message/notes URL/sibling target path. Beta 2 returns
+  `APP_UPDATE_CURRENT`. Both deny Windows Setup and restart authorization.
+- Source tree is unchanged from Beta 1; only version/notice/docs plus earlier
+  tested publisher-only fix differ. Beta 1/RC8 asset IDs/digests and main remain
+  unchanged. Stable/latest is still absent (404). No merge/stable/RC9 publication.
+- Ask the owner to use Check app updates in the running Beta 1, test notes/Not now
+  without transfer, recheck and consent, then verify new-window version and old-file
+  preservation. Do not run Windows upgrades for this test. No real helper/app
+  update/reboot was exercised on the development PC; live success is not claimed.
+
+### Beta 1 implementation and publication evidence (historical)
 
 - Versioned EXEs saved beside the running tool; no original overwrite, old-name
   rename, numbered copies or Program Files fallback. Private anchored staging
