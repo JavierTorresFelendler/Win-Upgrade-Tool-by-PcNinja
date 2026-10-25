@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.1.0-beta.4 — independent application update trial
+
+- Owner opened the fixed Beta 3 PR build in a VM; publish its separately versioned
+  Beta 4 successor for real download/verification/close/relaunch acceptance.
+- Version and regular-update notice only; runtime source identical to fixed Beta 3.
+  Preserve app-update independence from Windows restart/external Setup state.
+- Beta-only/non-latest. No main merge, stable/RC9, Beta 3 release tag or changes
+  to any existing published binaries/assets.
+
 ## Unreleased 1.1.0-beta.3 — independent application updating
 
 - Remove Windows pending-restart and external Setup probes from both app-update

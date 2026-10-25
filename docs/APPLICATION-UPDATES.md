@@ -103,8 +103,10 @@ Beta 1/2's published binaries contain the old overly strict OS-state gate. The
 unreleased Beta 3 PR build removes it in both parent and helper. A blocked old
 binary cannot repair itself by discovering a new release: manually bootstrap the
 fixed test EXE once. Do not clear registry flags, force a reboot loop, or replace
-old published assets. A later independently published successor is needed for
-another real end-to-end update demonstration from that fixed starting point.
+old published assets. The owner now has the fixed Beta 3 open and authorized its
+Beta 4 successor. Use Check app updates in fixed Beta 3 to test the real flow;
+Beta 4 contains the same runtime source with a new version and normal notice.
+Beta 3 stays a PR artifact; no tag/publication is needed for the starting binary.
 
 Use a disposable Windows 10/11 VM/snapshot. The owner confirmed Beta 1 is running
 and authorized the separately verified Beta 2 with increased binary/tag/manifest

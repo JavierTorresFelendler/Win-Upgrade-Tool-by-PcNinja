@@ -6,6 +6,16 @@ Reusable architecture, diagnosis and verification know-how lives in
 [AI maintenance playbook](AI-MAINTENANCE-PLAYBOOK.md), independently of any
 assistant's personal memory or skills installation.
 
+## Current authorization: Beta 4 successor to the fixed Beta 3 test build
+
+Owner has the fixed tool open in a VM and requests the update version. This
+authorizes Beta 4 prerelease publication, not main merge/stable/RC9 or mutation of
+any existing release. Beta 3 remains a PR artifact, not a released tag. Prepare
+version 1.1.0-beta.4 / file 1.1.0.4 and normal notice only. Runtime source must
+remain identical to fix `8d4e522`; require exact-source successful PR CI before
+tagging, then draft-first verified publication and independent asset download.
+Live old-to-new helper/relaunch acceptance remains with the owner's VM.
+
 ## Current fix: application updates independent of OS state
 
 Owner reported Beta 1's update block again after a VM reboot and asked to compare
