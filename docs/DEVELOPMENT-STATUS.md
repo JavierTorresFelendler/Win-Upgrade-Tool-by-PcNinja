@@ -16,6 +16,23 @@ remain identical to fix `8d4e522`; require exact-source successful PR CI before
 tagging, then draft-first verified publication and independent asset download.
 Live old-to-new helper/relaunch acceptance remains with the owner's VM.
 
+- Published immutable `v1.1.0-beta.4`, source `fdd53d9287482883bca3e93bb98f36e430f0394c`,
+  release ID `423142684`, prerelease/non-latest. Exact-source PR CI `40161067772`
+  and tag publication workflow `40161201584` both passed. Local client GUI checks
+  and offline packaging/OS-independence fixtures pass; src/ matches fix `8d4e522`.
+- Downloaded all four public assets and verified exact API sizes/SHA-256 digests.
+  EXE asset `674065199`, 73,083,108 bytes, NotSigned, SHA-256
+  `a15ee05e2352b65c08d12c6b1beedf63a797bc415cedbed88ba845069072bea8`.
+  Actual published EXE file/product/source version and portable read-only CLI pass.
+- Actual fixed Beta 3 metadata-only discovery gives `APP_UPDATE_AVAILABLE` with
+  exact Beta 4/normal message/notes/sibling target; Beta 4 gives `APP_UPDATE_CURRENT`.
+  No executable transfer through the updater, helper launch, Windows Setup or
+  reboot was tested on the development PC. Real VM lifecycle remains pending.
+- Main remains `4b5bd87`; published Beta 2 asset IDs/digests unchanged. Stable/latest
+  remains absent (404), no Beta 3 release tag, no main merge or stable/RC9 release.
+  Ask owner to consent in the running fixed Beta 3 and report actual old-close/
+  new-open, original-file preservation and new version check results.
+
 ## Current fix: application updates independent of OS state
 
 Owner reported Beta 1's update block again after a VM reboot and asked to compare
