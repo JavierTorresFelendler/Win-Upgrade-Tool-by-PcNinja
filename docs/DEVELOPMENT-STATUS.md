@@ -25,6 +25,24 @@ launch, Windows Setup, service/reset/flag writes or reboot on development machin
 Finalize client GUI/CI, then exact-source tag/verified Beta 5 publication and public
 asset/old-version discovery checks. Real OLD rename lifecycle remains VM acceptance.
 
+- Published immutable `v1.1.0-beta.5`, source `097cd5fc252dcd9b1423aeb613e8dcbbee105bd1`,
+  release ID `423594841`, prerelease/non-latest. Exact-source PR CI `40222913793`
+  and release workflow `40223070159` passed. Positive elevated archive wrapper,
+  native rename and in-process PID/ACK/timeout fixtures pass; local client GUI,
+  Core/CLI and packaging pass with zero build warnings/errors.
+- Downloaded all four public assets and verified exact API sizes/SHA-256 digests.
+  EXE asset `675840295`, 73,089,098 bytes, NotSigned, SHA-256
+  `02c13ce3f1cf03c8e1cea6064e332aaaf985113fd282b3310932067c114506be`.
+  Actual published EXE file/product/source identity and portable read-only CLI pass.
+- Actual Beta 4 metadata-only probe returns `APP_UPDATE_AVAILABLE` with Beta 5
+  and OLD.V notice; Beta 5 returns `APP_UPDATE_CURRENT`. No updater transfer/helper
+  process/GUI relaunch or OLD rename of a real app on the developer PC. Rename
+  tests use only disposable files; live readiness/archive remains owner's VM test.
+- Main remains `4b5bd87`; Beta 4 asset IDs/digests unchanged; stable/latest absent.
+  No merge/stable/RC9 or replacement of published assets. Continue Draft PR13.
+  Owner should verify Beta4 closes, Beta5 opens, exact old filename becomes OLD-
+  (or next OLD.V slot), bytes/metadata intact and no newer version on recheck.
+
 ## Current authorization: Beta 4 successor to the fixed Beta 3 test build
 
 Owner has the fixed tool open in a VM and requests the update version. This
