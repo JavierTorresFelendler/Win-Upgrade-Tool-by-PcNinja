@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.1.0-beta.2 — live application update trial
+
+- Owner opened Beta 1 in a VM; prepare the separately versioned successor for a
+  real consent/download/verification/close/relaunch trial in the Beta channel.
+- Version and regular-update notice only; runtime source and Windows upgrade
+  behavior remain identical to Beta 1. Includes the tested publisher-only draft
+  lookup/URL recovery fix. No main merge, stable/RC9 or Beta 1 asset changes.
+
 ## 1.1.0-beta.1 — application update trial
 
 - Replace the unshipped Program Files/in-place updater design with version-named

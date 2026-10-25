@@ -95,9 +95,9 @@ Every updater result has setupStarted=false and readyForRestart=false.
 
 ## Live Beta acceptance
 
-Use a disposable Windows 10/11 VM/snapshot. Manually open Beta 1 first; no Beta 2
-is published yet. After owner confirmation, publish a separately verified Beta 2
-with increased binary/tag/manifest version. Test decline/notes with no EXE
+Use a disposable Windows 10/11 VM/snapshot. The owner confirmed Beta 1 is running
+and authorized the separately verified Beta 2 with increased binary/tag/manifest
+version. In Beta 1 use Check app updates. Test decline/notes with no EXE
 transfer, explicit download, exact same-folder files, new version relaunch with
 no arguments, original preserved, no repeated offer from Beta 2, existing-file
 reuse, cancellation/offline/mismatch and regular/critical notices. No Windows

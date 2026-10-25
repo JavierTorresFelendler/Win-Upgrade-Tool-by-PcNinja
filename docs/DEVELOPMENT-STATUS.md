@@ -1,6 +1,6 @@
 # Development handoff
 
-Updated: 2026-10-24. This is sanitized project context, not a backup of Codex chats.
+Updated: 2026-10-25. This is sanitized project context, not a backup of Codex chats.
 
 Reusable architecture, diagnosis and verification know-how lives in
 [AI maintenance playbook](AI-MAINTENANCE-PLAYBOOK.md), independently of any
@@ -12,7 +12,11 @@ The owner approved Beta 1 then Beta 2 testing BEFORE any official release.
 Keep RC8/main and all existing assets unchanged. Continue in Draft PR #13.
 This scope supersedes the Program Files/replacement design below; it does not
 authorize merging, stable/RC9 publication or publishing Beta 2 before Beta 1 is
-opened/tested by the owner.
+opened/tested by the owner. On 2026-10-25 the owner confirmed Beta 1 is running
+in a VM and requested the next step: Beta 2 publication is now authorized.
+Prepare version/normal notice only; no runtime feature changes. Publisher-only
+checkpoint `0e54cc2` passed CI `40119465892`. Verify the new exact-source PR CI
+before tagging Beta 2. Real helper/relaunch acceptance remains with the owner's VM.
 
 - Versioned EXEs saved beside the running tool; no original overwrite, old-name
   rename, numbered copies or Program Files fallback. Private anchored staging
@@ -21,7 +25,7 @@ opened/tested by the owner.
   **Download and run the new version** consent or CLI **app-update run --yes**.
   Keep the unreleased install verb only as an alias; no installer is involved.
 - Explicit Beta channel selects only numbered Beta releases; stable/RC selects
-  stable only. Current source version is 1.1.0-beta.1, not a replacement RC8.
+  stable only. Current source version is 1.1.0-beta.2, not a replacement RC8.
 - Offer includes Regular/Critical badge, bounded plain-text publisher message
   and exact version's GitHub notes link. Critical remains optional, never forced.
   Release notice is source-controlled in docs/updates/{version}.json.
