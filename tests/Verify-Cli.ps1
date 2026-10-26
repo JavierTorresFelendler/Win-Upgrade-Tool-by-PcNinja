@@ -13,7 +13,7 @@ $version = Invoke-Assistant @('--version')
 if ($LastCode -ne 0 -or $version.Trim() -ne $ExpectedVersion) { throw 'Version mismatch.' }
 $help = Invoke-Assistant @('help', 'all')
 if ($LastCode -ne 0) { throw 'Offline help failed.' }
-if ($ExpectedVersion -eq '1.0.0' -and -not $help.Contains('WinUpgradeToolByPcNinja.v.1.exe')) {
+if ($ExpectedVersion -eq '1.0.0' -and -not $help.Contains('Win-Upgrade-Tool-by-PcNinja-v.1.exe')) {
     throw 'Offline V1 help omitted the short public executable name.'
 }
 if (-not $help.Contains('do not block application updates') -or -not $help.Contains('OLD.V1-') -or
@@ -51,7 +51,7 @@ if ($LastCode -ne 6 -or $appDeclined.resultCode -ne 'APP_UPDATE_CONSENT_REQUIRED
     $appDeclined.readyForRestart -ne $false -or $appDeclined.setupStarted -ne $false) {
     throw 'App update without consent did not stop before network/install.'
 }
-if ((Get-Item -LiteralPath $exe).VersionInfo.ProductName -ne 'Windows Upgrade Assistant By PcNinja') {
+if ((Get-Item -LiteralPath $exe).VersionInfo.ProductName -ne 'Windows Upgrade Tool by PcNinja') {
     throw 'Product metadata branding mismatch.'
 }
 if (-not $status.systemUiLanguage -or $null -eq $status.automaticDownloadAvailable) { throw 'Language availability missing from status.' }

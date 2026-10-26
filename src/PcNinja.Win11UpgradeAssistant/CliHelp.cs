@@ -88,7 +88,7 @@ internal static class CliHelp
     };
 
     private const string General = """
-Windows Upgrade Assistant By PcNinja
+Windows Upgrade Tool by PcNinja
 
 The graphical interface opens when the EXE is started without arguments.
 Supplying a command starts CLI mode.
@@ -435,7 +435,7 @@ PowerShell completion is supported; CMD receives the embedded help only.
 """;
 
     private const string PowerShellCompletion = """
-# Windows Upgrade Assistant By PcNinja native completion
+# Windows Upgrade Tool by PcNinja native completion
 Register-ArgumentCompleter -Native -CommandName '__EXE_NAME__', '__PUBLIC_EXE_NAME__' -ScriptBlock {
     param($wordToComplete, $commandAst, $cursorPosition)
 

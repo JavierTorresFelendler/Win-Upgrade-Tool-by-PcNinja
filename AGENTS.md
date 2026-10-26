@@ -45,8 +45,9 @@ access to prior chats, local Codex skills, personal memories, or machine paths.
   open-source permission grant. Do not replace it with MIT/GPL or imply source
   reuse/rebranding rights without an explicit owner decision. Preserve upstream
   third-party terms; report security issues privately to javier@pcninja.pro.
-- Stable V1 uses technical 1.0.0 and WinUpgradeToolByPcNinja.v.1.exe; 1.1.0 uses
-  .v.1.1.exe. Keep C# and publisher filename mappings identical and preserve all
+- Stable V1 uses technical 1.0.0 and Win-Upgrade-Tool-by-PcNinja-v.1.exe; 1.1.0 uses
+  -v.1.1.exe. Display Windows Upgrade Tool by PcNinja; canonical repository is
+  JavierTorresFelendler/Win-Upgrade-Tool-by-PcNinja. Keep C# and publisher filename mappings identical and preserve all
   historical Beta/RC names. Beta-to-first-stable is a manual bootstrap, not an
   excuse to bypass newer-version or channel checks.
 - Keep the standalone application separate from future WinUpdate Tool integration.

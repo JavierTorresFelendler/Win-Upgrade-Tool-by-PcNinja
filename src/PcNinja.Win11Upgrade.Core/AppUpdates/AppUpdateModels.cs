@@ -4,8 +4,8 @@ namespace PcNinja.Win11Upgrade.Core;
 
 public static class AppUpdateIdentity
 {
-    public const string Repository = "JavierTorresFelendler/Windows-Upgrade-Assistant-by-PcNinja";
-    public const string Product = "Windows Upgrade Assistant By PcNinja";
+    public const string Repository = "JavierTorresFelendler/Win-Upgrade-Tool-by-PcNinja";
+    public const string Product = "Windows Upgrade Tool by PcNinja";
     public const string AssetName = "Windows-Upgrade-Assistant-By-PcNinja.exe";
     public const string ManifestName = "update-manifest.json";
     public const long MaximumBytes = 100_000_000;
@@ -22,7 +22,7 @@ public static class AppUpdateIdentity
         if (parsed.IsStable)
         {
             if (parsed.Minor == 0 && parsed.Patch == 0) display = $"{parsed.Major}";
-            return $"WinUpgradeToolByPcNinja.v.{display}.exe";
+            return $"Win-Upgrade-Tool-by-PcNinja-v.{display}.exe";
         }
         if (!parsed.IsStable)
         {
@@ -38,7 +38,7 @@ public static class AppUpdateIdentity
 
 public sealed record AppUpdateManifest(int SchemaVersion, string Product, string Repository, string Channel,
     string Version, string Tag, string AssetName, string AssetUrl, long SizeBytes, string Sha256, string ReleaseNotesUrl,
-    string Importance = "normal", string Message = "A new version of Windows Upgrade Assistant By PcNinja is available.");
+    string Importance = "normal", string Message = "A new version of Windows Upgrade Tool by PcNinja is available.");
 
 public enum AppUpdateCheckState { Available, UpToDate, NoStableRelease, Unavailable, NoBetaRelease }
 

@@ -20,8 +20,9 @@ the official GitHub Release/tag/hash identifies the published product.
 
 Copy the candidate to an ordinary writable local NTFS folder and open it manually.
 
-1. Filename `WinUpgradeToolByPcNinja.v.1.exe`; version 1.0.0 and PcNinja logo/site
-   links are correct. No installer/Program Files move or unexpected console.
+1. Filename `Win-Upgrade-Tool-by-PcNinja-v.1.exe`; version 1.0.0 and PcNinja logo/site
+   links are correct. Website is visibly larger (11pt) and still opens
+   https://www.pcninja.pro. No installer/Program Files move or unexpected console.
 2. Existing-source browsing, Refresh and image-inspection guidance remain familiar.
    No Windows upgrade needs to be started for this packaging/name check.
 3. Check app updates: until the first stable is published, No stable release is

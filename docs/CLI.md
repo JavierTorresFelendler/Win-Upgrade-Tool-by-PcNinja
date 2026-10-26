@@ -8,8 +8,8 @@ does not gain these commands retroactively; its name and bytes remain unchanged.
 The graphical interface opens when the EXE is started without arguments. The
 same standalone EXE becomes a command-line tool when a command is supplied.
 
-Product: **Windows Upgrade Assistant By PcNinja**. Official V1 (`1.0.0`) uses
-`WinUpgradeToolByPcNinja.v.1.exe`; use the exact version-named file actually running.
+Product: **Windows Upgrade Tool by PcNinja**. Official V1 (`1.0.0`) uses
+`Win-Upgrade-Tool-by-PcNinja-v.1.exe`; use the exact version-named file actually running.
 Published older RC assets are not renamed. Explicit `version` and `status --json`
 retain release identity; JSON status includes the complete `build` identity.
 Correlated completed Windows Setup rollback is exposed as `RollbackObserved`
@@ -18,9 +18,9 @@ Missing/stale logs remain unknown. No Windows files are repaired or deleted.
 See [outcome diagnostics](SETUP-OUTCOME-DIAGNOSTICS.md) for correlation limits.
 
 ```powershell
-.\WinUpgradeToolByPcNinja.v.1.exe --help
-.\WinUpgradeToolByPcNinja.v.1.exe help upgrade
-.\WinUpgradeToolByPcNinja.v.1.exe help all
+.\Win-Upgrade-Tool-by-PcNinja-v.1.exe --help
+.\Win-Upgrade-Tool-by-PcNinja-v.1.exe help upgrade
+.\Win-Upgrade-Tool-by-PcNinja-v.1.exe help all
 ```
 
 ## Permissions
@@ -36,16 +36,16 @@ or start Windows Setup must run from an elevated Command Prompt or PowerShell.
 The EXE contains its own documentation and does not require GitHub access:
 
 ```powershell
-.\WinUpgradeToolByPcNinja.v.1.exe help
-.\WinUpgradeToolByPcNinja.v.1.exe help validate
-.\WinUpgradeToolByPcNinja.v.1.exe upgrade --help
-.\WinUpgradeToolByPcNinja.v.1.exe help all
+.\Win-Upgrade-Tool-by-PcNinja-v.1.exe help
+.\Win-Upgrade-Tool-by-PcNinja-v.1.exe help validate
+.\Win-Upgrade-Tool-by-PcNinja-v.1.exe upgrade --help
+.\Win-Upgrade-Tool-by-PcNinja-v.1.exe help all
 ```
 
 Enable Tab completion for the current PowerShell session:
 
 ```powershell
-& .\WinUpgradeToolByPcNinja.v.1.exe completion powershell |
+& .\Win-Upgrade-Tool-by-PcNinja-v.1.exe completion powershell |
     Out-String | Invoke-Expression
 ```
 
@@ -60,11 +60,11 @@ Read [portable updates and live acceptance](APPLICATION-UPDATES.md). Published
 RC8 has no updater. For the official V1 executable:
 
 ```powershell
-.\WinUpgradeToolByPcNinja.v.1.exe help app-update
-.\WinUpgradeToolByPcNinja.v.1.exe app-update check --json
-.\WinUpgradeToolByPcNinja.v.1.exe app-update status --json
+.\Win-Upgrade-Tool-by-PcNinja-v.1.exe help app-update
+.\Win-Upgrade-Tool-by-PcNinja-v.1.exe app-update check --json
+.\Win-Upgrade-Tool-by-PcNinja-v.1.exe app-update status --json
 # Explicit elevated consent to download/verify and stage a later version:
-.\WinUpgradeToolByPcNinja.v.1.exe app-update run --yes --json
+.\Win-Upgrade-Tool-by-PcNinja-v.1.exe app-update run --yes --json
 ```
 
 check is metadata only, status is offline. Beta discovers Beta only; stable/RC
@@ -111,8 +111,8 @@ Show the Windows version, system-drive storage, administrator state, and log
 path:
 
 ```powershell
-.\WinUpgradeToolByPcNinja.v.1.exe status
-.\WinUpgradeToolByPcNinja.v.1.exe status --json
+.\Win-Upgrade-Tool-by-PcNinja-v.1.exe status
+.\Win-Upgrade-Tool-by-PcNinja-v.1.exe status --json
 ```
 
 `status` stays offline: it reports the detected download profile and configured
@@ -126,7 +126,7 @@ Rescan ISO files found beside the application, mounted Windows media, and
 available download drives:
 
 ```powershell
-.\WinUpgradeToolByPcNinja.v.1.exe scan
+.\Win-Upgrade-Tool-by-PcNinja-v.1.exe scan
 ```
 
 A mounted Windows ISO appears under `Mounted Windows sources`. The drive must
@@ -149,8 +149,8 @@ See [manual LTSC constraints](MATCHED-ISO-DOWNLOADS.md#manual-ltsc-correction).
 Request manual-download guidance for the detected system profile:
 
 ```powershell
-.\WinUpgradeToolByPcNinja.v.1.exe downloads
-.\WinUpgradeToolByPcNinja.v.1.exe downloads --json
+.\Win-Upgrade-Tool-by-PcNinja-v.1.exe downloads
+.\Win-Upgrade-Tool-by-PcNinja-v.1.exe downloads --json
 ```
 
 This command does not require Administrator permission. It never opens a
@@ -186,19 +186,19 @@ use `validate --iso <path>` before considering `upgrade --iso <path>`.
 Validate the mounted media without starting Windows Setup:
 
 ```powershell
-.\WinUpgradeToolByPcNinja.v.1.exe validate --mounted E:\
+.\Win-Upgrade-Tool-by-PcNinja-v.1.exe validate --mounted E:\
 ```
 
 Validate it and start the upgrade:
 
 ```powershell
-.\WinUpgradeToolByPcNinja.v.1.exe upgrade --mounted E:\
+.\Win-Upgrade-Tool-by-PcNinja-v.1.exe upgrade --mounted E:\
 ```
 
 Prevent Windows Setup from restarting automatically:
 
 ```powershell
-.\WinUpgradeToolByPcNinja.v.1.exe upgrade --mounted E:\ --no-restart
+.\Win-Upgrade-Tool-by-PcNinja-v.1.exe upgrade --mounted E:\ --no-restart
 ```
 
 The drive is intentionally explicit. The assistant never guesses which mounted source to
@@ -208,7 +208,7 @@ An extracted folder containing `setup.exe` and the `sources` directory can use
 the same option:
 
 ```powershell
-.\WinUpgradeToolByPcNinja.v.1.exe upgrade --mounted "C:\Win11 Extracted"
+.\Win-Upgrade-Tool-by-PcNinja-v.1.exe upgrade --mounted "C:\Win11 Extracted"
 ```
 
 ## Use a local ISO file
@@ -216,13 +216,13 @@ the same option:
 Mount and validate an exact ISO path without starting Setup:
 
 ```powershell
-.\WinUpgradeToolByPcNinja.v.1.exe validate --iso "D:\ISO\Windows11.iso"
+.\Win-Upgrade-Tool-by-PcNinja-v.1.exe validate --iso "D:\ISO\Windows11.iso"
 ```
 
 Start an upgrade from that ISO:
 
 ```powershell
-.\WinUpgradeToolByPcNinja.v.1.exe upgrade --iso "D:\ISO\Windows11.iso"
+.\Win-Upgrade-Tool-by-PcNinja-v.1.exe upgrade --iso "D:\ISO\Windows11.iso"
 ```
 
 ## Download an ISO automatically
@@ -252,13 +252,13 @@ Microsoft media. Select the same system UI language, edition and x64 architectur
 Download to the default suitable fixed drive, validate, and start the upgrade:
 
 ```powershell
-.\WinUpgradeToolByPcNinja.v.1.exe upgrade --download
+.\Win-Upgrade-Tool-by-PcNinja-v.1.exe upgrade --download
 ```
 
 Select a download folder or removable NTFS/exFAT drive:
 
 ```powershell
-.\WinUpgradeToolByPcNinja.v.1.exe upgrade --download --destination "E:\PcNinja Downloads"
+.\Win-Upgrade-Tool-by-PcNinja-v.1.exe upgrade --download --destination "E:\PcNinja Downloads"
 ```
 
 ## Validation, confirmation, and automation
@@ -267,14 +267,14 @@ Select a download folder or removable NTFS/exFAT drive:
 using the `upgrade` command:
 
 ```powershell
-.\WinUpgradeToolByPcNinja.v.1.exe upgrade --iso "D:\ISO\Windows11.iso" --dry-run
+.\Win-Upgrade-Tool-by-PcNinja-v.1.exe upgrade --iso "D:\ISO\Windows11.iso" --dry-run
 ```
 
 An interactive upgrade requires typing `YES`. Automation must deliberately add
 `--yes` to bypass that prompt:
 
 ```powershell
-.\WinUpgradeToolByPcNinja.v.1.exe upgrade --mounted E:\ --no-restart --yes
+.\Win-Upgrade-Tool-by-PcNinja-v.1.exe upgrade --mounted E:\ --no-restart --yes
 ```
 
 Add `--json` when the final result must be machine-readable. Progress and
@@ -288,8 +288,8 @@ starting Setup. In JSON, inspect `imagePath`, `images`,
 `compatibleImageIndexes` and `selectedImageIndex`.
 
 ```powershell
-.\WinUpgradeToolByPcNinja.v.1.exe validate --mounted E:\ --json
-.\WinUpgradeToolByPcNinja.v.1.exe upgrade --mounted E:\ --image-index 6 --no-restart
+.\Win-Upgrade-Tool-by-PcNinja-v.1.exe validate --mounted E:\ --json
+.\Win-Upgrade-Tool-by-PcNinja-v.1.exe upgrade --mounted E:\ --image-index 6 --no-restart
 ```
 
 Index 6 is only an example: never assume a fixed index for Pro. Without an explicit
@@ -346,8 +346,8 @@ SHA-256 is calculated for ISO files. For independent verification, obtain an
 expected hash from a trusted source and pass it explicitly:
 
 ```powershell
-.\WinUpgradeToolByPcNinja.v.1.exe validate --iso "D:\Windows11.iso" --sha256 <64-hex-character-hash>
-.\WinUpgradeToolByPcNinja.v.1.exe upgrade --download --sha256 <64-hex-character-hash> --no-restart
+.\Win-Upgrade-Tool-by-PcNinja-v.1.exe validate --iso "D:\Windows11.iso" --sha256 <64-hex-character-hash>
+.\Win-Upgrade-Tool-by-PcNinja-v.1.exe upgrade --download --sha256 <64-hex-character-hash> --no-restart
 ```
 
 Alternatively set `PCNINJA_ISO_SHA256` before launching the app. That setting
@@ -364,7 +364,7 @@ PowerShell invocation and redirected output remain supported. For reliable
 waiting and `%ERRORLEVEL%` handling in interactive CMD, use:
 
 ```bat
-start "" /wait WinUpgradeToolByPcNinja.v.1.exe status --json
+start "" /wait Win-Upgrade-Tool-by-PcNinja-v.1.exe status --json
 ```
 
 ## Exit-code reference
@@ -403,4 +403,4 @@ build can be a shared base, not the exact installed feature release, so it never
 triggers `TargetWindowsObserved` automatically.
 
 For reliable waiting in PowerShell scripts with this GUI-subsystem EXE, capture
-output through a pipeline, for example `$result = & .\WinUpgradeToolByPcNinja.v.1.exe status --json | Out-String`, then read `$LASTEXITCODE`.
+output through a pipeline, for example `$result = & .\Win-Upgrade-Tool-by-PcNinja-v.1.exe status --json | Out-String`, then read `$LASTEXITCODE`.

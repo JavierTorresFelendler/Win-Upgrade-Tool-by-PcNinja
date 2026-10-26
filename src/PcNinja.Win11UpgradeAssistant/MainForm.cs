@@ -213,8 +213,8 @@ internal sealed partial class MainForm : Form
         };
         var website = new LinkLabel
         {
-            Text = "www.pcninja.pro", AutoSize = true,
-            Font = new Font("Segoe UI Semibold", 9F), LinkColor = AccentLight,
+            Name = "PcNinjaWebsite", Text = "www.pcninja.pro", AutoSize = true,
+            Font = new Font("Segoe UI Semibold", 11F), LinkColor = AccentLight,
             ActiveLinkColor = Accent, VisitedLinkColor = AccentLight,
             Margin = new Padding(0, 0, 0, 4), BackColor = Color.Transparent
         };

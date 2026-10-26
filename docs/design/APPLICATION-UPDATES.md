@@ -4,8 +4,8 @@ The owner replaced the earlier fixed Program Files/in-place replacement design
 with consent-based side-by-side versioned portable EXEs. The authoritative
 [user and acceptance guide](../APPLICATION-UPDATES.md) records behavior and limits.
 PR #13 retains implementation/review history; historical RC/Beta assets are immutable.
-Official V1 maps technical `1.0.0` to `WinUpgradeToolByPcNinja.v.1.exe`, with
-`1.1.0` -> `.v.1.1.exe` and `1.0.1` -> `.v.1.0.1.exe`. Internal assembly/build
+Official V1 maps technical `1.0.0` to `Win-Upgrade-Tool-by-PcNinja-v.1.exe`, with
+`1.1.0` -> `-v.1.1.exe` and `1.0.1` -> `-v.1.0.1.exe`. Internal assembly/build
 names stay unchanged, and Beta/RC publication keeps its legacy filename formatter.
 
 - Core/AppUpdates/ApplicationUpdateClient.cs: pinned repository, isolated

@@ -1,13 +1,16 @@
 # Product identity and portable download contract
 
-- Display/GUI title: Windows Upgrade Assistant By PcNinja, without a release suffix.
+- Display/GUI title: Windows Upgrade Tool by PcNinja, without a release suffix.
+- Canonical GitHub repository: `JavierTorresFelendler/Win-Upgrade-Tool-by-PcNinja`.
+- Header website: `www.pcninja.pro`, 11-point Segoe UI Semibold, linking to
+  `https://www.pcninja.pro`. Keep the original single PcNinja logo and ISO links.
 - Product version, not filename, drives update comparison. Full version/source
   commit remain in properties, startup logs and CLI version/status.
 - Internal build output: Windows-Upgrade-Assistant-By-PcNinja.exe.
 - Official stable download naming is separate from the unchanged internal build
-  basename: V1 (`1.0.0`) is `WinUpgradeToolByPcNinja.v.1.exe`; V1.1 (`1.1.0`) is
-  `WinUpgradeToolByPcNinja.v.1.1.exe`. A nonzero patch remains unambiguous, for
-  example `1.0.1` uses `WinUpgradeToolByPcNinja.v.1.0.1.exe`.
+  basename: V1 (`1.0.0`) is `Win-Upgrade-Tool-by-PcNinja-v.1.exe`; V1.1 (`1.1.0`) is
+  `Win-Upgrade-Tool-by-PcNinja-v.1.1.exe`. A nonzero patch remains unambiguous, for
+  example `1.0.1` uses `Win-Upgrade-Tool-by-PcNinja-v.1.0.1.exe`.
 - Beta/RC assets retain their legacy naming, for example
   `Windows-Upgrade-Assistant-By-PcNinja-V1.1-Beta5.exe`; the short stable names do
   not authorize renaming or replacing a historical GitHub asset.
@@ -26,6 +29,10 @@
   `1.0.0` or to another channel. Download/open the first official V1 manually once;
   subsequent stable-to-stable updates use the normal verified updater. Do not add
   a downgrade/channel bypass for this one-time transition.
+- Earlier test candidates used the former product/repository identity. Download
+  and open the final-branded first stable manually; do not relax manifest product,
+  repository or asset checks to migrate a candidate. Historical notes retain the
+  names and evidence of the builds they describe; current usage follows this file.
 - The product is free to use, not offered under an open-source license. Public
   source visibility is not a grant to modify/redistribute it; see [LICENSE](../LICENSE).
 

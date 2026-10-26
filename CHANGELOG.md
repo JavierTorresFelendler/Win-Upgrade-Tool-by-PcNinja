@@ -3,10 +3,13 @@
 ## 1.0.0 — first stable V1 candidate
 
 - Prepare the owner-approved official line with technical 1.0.0 and short public
-  filename WinUpgradeToolByPcNinja.v.1.exe; next 1.1.0 maps to .v.1.1.exe. Keep
+  filename Win-Upgrade-Tool-by-PcNinja-v.1.exe; next 1.1.0 maps to -v.1.1.exe. Keep
   internal assembly naming and every historical Beta/RC asset unchanged.
 - Preserve the field-tested Beta 5 upgrade/update behavior. Update only stable
   asset identity, packaging, current help/completion examples and product docs.
+- Final branding: Windows Upgrade Tool by PcNinja; repository
+  Win-Upgrade-Tool-by-PcNinja. Increase the linked header website from 9pt to 11pt,
+  keeping its target, logo, ISO download links and Windows upgrade behavior.
 - Add explicit freeware-use-only LICENSE, private security reporting at
   javier@pcninja.pro, substantial Massgrave credits and third-party boundaries.
 - Document one-time manual Beta-to-first-stable bootstrap, with no downgrade or

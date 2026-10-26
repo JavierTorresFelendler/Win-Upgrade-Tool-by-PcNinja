@@ -61,9 +61,9 @@ output remains Windows-Upgrade-Assistant-By-PcNinja.exe; published assets are:
 | --- | --- | --- |
 | 1.1.0-beta.1 | Windows-Upgrade-Assistant-By-PcNinja-V1.1-Beta1.exe | Beta only |
 | 1.1.0-beta.2 | Windows-Upgrade-Assistant-By-PcNinja-V1.1-Beta2.exe | Beta only |
-| 1.0.0 (V1) | WinUpgradeToolByPcNinja.v.1.exe | Stable only |
-| 1.0.1 | WinUpgradeToolByPcNinja.v.1.0.1.exe | Stable only |
-| 1.1.0 (V1.1) | WinUpgradeToolByPcNinja.v.1.1.exe | Stable only |
+| 1.0.0 (V1) | Win-Upgrade-Tool-by-PcNinja-v.1.exe | Stable only |
+| 1.0.1 | Win-Upgrade-Tool-by-PcNinja-v.1.0.1.exe | Stable only |
+| 1.1.0 (V1.1) | Win-Upgrade-Tool-by-PcNinja-v.1.1.exe | Stable only |
 
 Beta discovery checks up to three pages of five recent release records, bounded
 by metadata/time limits, and selects the highest numbered published Beta. It

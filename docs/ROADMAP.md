@@ -8,9 +8,10 @@ licensing (not an open-source grant), private security contact
 release after verification. This section supersedes the historical plans below.
 
 - First official V1: technical/tag `1.0.0` / `v1.0.0`, public EXE
-  `WinUpgradeToolByPcNinja.v.1.exe`. Next V1.1 uses `1.1.0` and `.v.1.1.exe`.
-  Nonzero patch components stay explicit. Internal product/assembly basename,
-  logo, site and download links do not change merely to shorten the download name.
+  `Win-Upgrade-Tool-by-PcNinja-v.1.exe`. Next V1.1 uses `1.1.0` and `-v.1.1.exe`.
+  Nonzero patch components stay explicit. Product/UI is Windows Upgrade Tool by
+  PcNinja; repository is Win-Upgrade-Tool-by-PcNinja. Internal assembly basename,
+  logo, website target and ISO links remain; the website font increases to 11pt.
 - Preserve every prior RC/Beta filename and byte. Beta remains an isolated
   non-latest trial channel. Existing `1.1.0-beta.5` requires a one-time manual
   official V1 bootstrap, not a downgrade/channel bypass; stable follows stable.

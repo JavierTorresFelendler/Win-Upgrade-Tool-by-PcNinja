@@ -1,7 +1,7 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
-$script:Repository = 'JavierTorresFelendler/Windows-Upgrade-Assistant-by-PcNinja'
-$script:Product = 'Windows Upgrade Assistant By PcNinja'
+$script:Repository = 'JavierTorresFelendler/Win-Upgrade-Tool-by-PcNinja'
+$script:Product = 'Windows Upgrade Tool by PcNinja'
 $script:BuildExecutableName = 'Windows-Upgrade-Assistant-By-PcNinja.exe'
 $script:ManifestName = 'update-manifest.json'
 $script:MaximumBytes = 100000000L
@@ -26,7 +26,7 @@ function Get-PcNinjaVersionIdentity {
     if (-not $stable) { $display += "-$label" }
     $asset = if ($stable) {
         if ($parts[1] -eq '0' -and $parts[2] -eq '0') { $display = $parts[0] }
-        "WinUpgradeToolByPcNinja.v.$display.exe"
+        "Win-Upgrade-Tool-by-PcNinja-v.$display.exe"
     } else { "Windows-Upgrade-Assistant-By-PcNinja-V$display.exe" }
     [pscustomobject]@{
         Version = $Version; Tag = "v$Version"; IsStable = $stable; IsBeta = $beta; HasManifest = ($stable -or $beta)
@@ -49,7 +49,7 @@ function Get-PcNinjaReleaseIdentity {
 function New-PcNinjaAppUpdateManifest {
     param([Parameter(Mandatory)]$Identity, [Parameter(Mandatory)][long]$SizeBytes, [Parameter(Mandatory)][string]$Sha256,
         [ValidateSet('normal','critical')][string]$Importance = 'normal',
-        [string]$Message = 'A new version of Windows Upgrade Assistant By PcNinja is available.')
+        [string]$Message = 'A new version of Windows Upgrade Tool by PcNinja is available.')
     $checked = Get-PcNinjaVersionIdentity $Identity.Version
     if (-not $checked.HasManifest) { throw 'RC releases must not publish an application-update manifest.' }
     if ([string]::IsNullOrWhiteSpace($Message) -or $Message.Length -gt 1200 -or $Message -match '[\x00-\x09\x0B\x0C\x0E-\x1F\x7F-\x9F\u202A-\u202E\u2066-\u2069]') { throw 'Update message must be bounded plain text without control or direction overrides.' }

@@ -1,12 +1,45 @@
 # Development handoff
 
-Updated: 2026-10-25. This is sanitized project context, not a backup of Codex chats.
+Updated: 2026-10-26. This is sanitized project context, not a backup of Codex chats.
 
 Reusable architecture, diagnosis and verification know-how lives in
 [AI maintenance playbook](AI-MAINTENANCE-PLAYBOOK.md), independently of any
 assistant's personal memory or skills installation.
 
-## Current authorization: first stable V1 closeout
+## Current authorization: final V1 branding
+
+Owner finalized the exact public filename **Win-Upgrade-Tool-by-PcNinja-v.1.exe**
+and requested a slightly larger website brand. Current product/UI is
+**Windows Upgrade Tool by PcNinja**, canonical repository
+**JavierTorresFelendler/Win-Upgrade-Tool-by-PcNinja**. Stable technical version/tag
+remain 1.0.0/v1.0.0; 1.1.0 maps to -v.1.1 and 1.0.1 to -v.1.0.1.
+
+- Coordinate C# update identity, PowerShell publisher, Product/Description file
+  metadata, CLI help/completion, current docs and contract fixtures. Preserve
+  internal assembly/namespace names and historical Beta/RC asset names/bytes.
+- Header website changes from 9pt to 11pt Segoe UI Semibold, retaining the exact
+  https://www.pcninja.pro click target and original single logo. Add GUI regression
+  for size/autosizing and an injected browser callback (no real browser launch).
+- Reject superseded candidate filename/product/repository in manifest tests.
+  Do not weaken safety or channel/version checks for the rename. Manually open
+  the first final-branded stable from an older Beta/test identity.
+- No Windows upgrade engine, ISO provider/links or update helper protocol change.
+  Existing candidate b3167e0 and all published releases remain immutable. Source
+  changes stay in Draft PR13; final-branded candidate needs fresh checks and the
+  agreed owner VM name/site/UI acceptance before main merge/tag/publication.
+- Local Core, headless CLI, Windows-client GUI (including larger website font and
+  exact click target), and offline publication fixtures PASS, zero build warnings
+  or errors. Elevated native fixtures honestly SKIP locally; require fresh CI.
+  GUI previews were rendered/reviewed, including minimum-size and normal states.
+- GitHub repository renamed in place, same immutable repository ID 1413097416,
+  retaining Draft PR13. Origin uses the new canonical URL. All twelve published
+  release IDs and asset IDs/names/sizes/digests were verified unchanged; main
+  remains 4b5bd87ae7c7bec590fbf0af69762baa21732039; v1.0.0 is still absent.
+- Fresh remote checkpoint/CI and downloadable final-branded candidate follow;
+  the older candidate's green CI does not test this checkpoint. No main merge,
+  release/tag or Windows Setup operation is part of the branding update.
+
+## Previous candidate: first stable V1 closeout
 
 Owner approved preparing V1, completing checks, main merge and official release.
 Owner selected freeware-use-only (option 2), not MIT/open source, and provided

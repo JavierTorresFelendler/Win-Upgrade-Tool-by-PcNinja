@@ -29,12 +29,15 @@ internal static class ApplicationUpdateChecks
 
     private static void CheckVersionsAndManifests()
     {
+        Require(AppUpdateIdentity.Product == "Windows Upgrade Tool by PcNinja" &&
+            AppUpdateIdentity.Repository == "JavierTorresFelendler/Win-Upgrade-Tool-by-PcNinja",
+            "Final product/repository branding changed.");
         foreach (var (version, name) in new[]
         {
-            ("1.0.0", "WinUpgradeToolByPcNinja.v.1.exe"),
-            ("1.1.0", "WinUpgradeToolByPcNinja.v.1.1.exe"),
-            ("1.0.1", "WinUpgradeToolByPcNinja.v.1.0.1.exe"),
-            ("2.0.0", "WinUpgradeToolByPcNinja.v.2.exe"),
+            ("1.0.0", "Win-Upgrade-Tool-by-PcNinja-v.1.exe"),
+            ("1.1.0", "Win-Upgrade-Tool-by-PcNinja-v.1.1.exe"),
+            ("1.0.1", "Win-Upgrade-Tool-by-PcNinja-v.1.0.1.exe"),
+            ("2.0.0", "Win-Upgrade-Tool-by-PcNinja-v.2.exe"),
             ("1.1.0-beta.5", "Windows-Upgrade-Assistant-By-PcNinja-V1.1-Beta5.exe"),
             ("1.1.0-rc.8", "Windows-Upgrade-Assistant-By-PcNinja-V1.1-RC8.exe")
         }) Require(AppUpdateIdentity.AssetNameFor(version) == name, "Stable-short/legacy-preview filename mapping changed.");
@@ -56,6 +59,10 @@ internal static class ApplicationUpdateChecks
         AppUpdateClient.ValidateManifest(valid);
         const string legacyStableName = "Windows-Upgrade-Assistant-By-PcNinja-V1.1.exe";
         MustRejectManifest(valid with { AssetName = legacyStableName, AssetUrl = AssetUrl(valid.Tag, legacyStableName) });
+        const string supersededCandidateName = "WinUpgradeToolByPcNinja.v.1.1.exe";
+        MustRejectManifest(valid with { AssetName = supersededCandidateName, AssetUrl = AssetUrl(valid.Tag, supersededCandidateName) });
+        MustRejectManifest(valid with { Product = "Windows Upgrade Assistant By PcNinja" });
+        MustRejectManifest(valid with { Repository = "JavierTorresFelendler/Windows-Upgrade-Assistant-by-PcNinja" });
         MustRejectManifest(Manifest("1.1.0+unpublished"));
         foreach (var invalid in new[]
         {
@@ -78,10 +85,10 @@ internal static class ApplicationUpdateChecks
     private static async Task CheckDiscoveryAsync()
     {
         var firstStable = await CheckFixtureAsync(Manifest("1.0.0"), "1.0.0-rc.1");
-        Require(firstStable.State == AppUpdateCheckState.Available && firstStable.Release?.AssetName == "WinUpgradeToolByPcNinja.v.1.exe",
+        Require(firstStable.State == AppUpdateCheckState.Available && firstStable.Release?.AssetName == "Win-Upgrade-Tool-by-PcNinja-v.1.exe",
             "First stable V1 did not bind its exact short-name asset.");
         var nextStable = await CheckFixtureAsync(Manifest("1.1.0"), "1.0.0");
-        Require(nextStable.State == AppUpdateCheckState.Available && nextStable.Release?.AssetName == "WinUpgradeToolByPcNinja.v.1.1.exe",
+        Require(nextStable.State == AppUpdateCheckState.Available && nextStable.Release?.AssetName == "Win-Upgrade-Tool-by-PcNinja-v.1.1.exe",
             "Stable V1 -> V1.1 did not bind the next short-name asset.");
         Require((await CheckFixtureAsync(Manifest("1.0.0"), "1.1.0-beta.5")).State == AppUpdateCheckState.NoBetaRelease,
             "First stable silently downgraded/switched an existing Beta.");

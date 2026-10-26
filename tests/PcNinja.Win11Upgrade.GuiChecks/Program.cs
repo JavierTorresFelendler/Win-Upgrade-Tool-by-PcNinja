@@ -29,7 +29,7 @@ internal static class Program
             .SelectMany(control => new[] { control }.Concat(Descendants(control)));
         ResizeChecks.Run(form, Descendants(form).OfType<Panel>()
             .Where(panel => panel.Padding == new Padding(20)).ToArray());
-        if (form.Text != "Windows Upgrade Assistant By PcNinja" ||
+        if (form.Text != "Windows Upgrade Tool by PcNinja" ||
             Descendants(form).Any(control => control.Text.Contains("Version 1.1.0-rc.")))
             throw new Exception("Product branding exposed an obsolete name or release label.");
         var captions = Descendants(form).Select(control => control.Text).ToHashSet();
@@ -47,6 +47,16 @@ internal static class Program
             UpgradeEngine.PcNinjaBrowserFallbackPage != "https://iso.pcninja.pro" ||
             UpgradeEngine.MicrosoftDownloadPage != "https://www.microsoft.com/software-download/windows11")
             throw new Exception("Branding or public download links changed during the copy review.");
+        var website = Descendants(form).OfType<LinkLabel>().Single(link => link.Name == "PcNinjaWebsite");
+        if (website.Font.SizeInPoints != 11F || !website.AutoSize)
+            throw new Exception("The approved website branding must use an autosized 11-point font.");
+        string? websiteTarget = null;
+        SetField("_launchBrowser", new Action<string>(url => websiteTarget = url));
+        typeof(LinkLabel).GetMethod("OnLinkClicked", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .Invoke(website, [new LinkLabelLinkClickedEventArgs(website.Links[0])]);
+        if (websiteTarget != "https://www.pcninja.pro")
+            throw new Exception("The enlarged website brand no longer opens the exact PcNinja site.");
+        SetField("_launchBrowser", new Action<string>(_ => throw new Exception("Unexpected real browser request in GUI fixture.")));
         if (Descendants(form).OfType<PictureBox>().Count(picture => picture.Image is not null) != 1)
             throw new Exception("The single PcNinja header logo is missing or duplicated.");
         using (var mascot = assembly.GetManifestResourceStream("PcNinja.Win11UpgradeAssistant.Assets.PcNinja-mascot.png")!)

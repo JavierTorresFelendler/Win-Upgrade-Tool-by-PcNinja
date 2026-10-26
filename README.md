@@ -1,4 +1,4 @@
-# Windows Upgrade Assistant By PcNinja
+# Windows Upgrade Tool by PcNinja
 
 Free-to-use standalone Windows application for guiding advanced home users through an
 in-place Windows upgrade on x64 hardware, including an experimental Windows 11
@@ -19,21 +19,21 @@ project-specific decisions and working procedures across assistants and machines
 ## Download
 
 V1 is being prepared for official publication. Download a published build only
-from this repository's [Releases](https://github.com/JavierTorresFelendler/Windows-Upgrade-Assistant-by-PcNinja/releases)
+from this repository's [Releases](https://github.com/JavierTorresFelendler/Win-Upgrade-Tool-by-PcNinja/releases)
 page; a PR artifact is a test build, not an official release. The first stable
 download uses this short name:
 
 ```text
-WinUpgradeToolByPcNinja.v.1.exe
+Win-Upgrade-Tool-by-PcNinja-v.1.exe
 ```
 
 The portable x64 EXE contains both the graphical application and the CLI. No
 PowerShell or CMD files are required.
 
 Public V1 is technical version `1.0.0`; V1.1 is `1.1.0` and uses
-`WinUpgradeToolByPcNinja.v.1.1.exe`. Full version/commit metadata remains in
+`Win-Upgrade-Tool-by-PcNinja-v.1.1.exe`. Full version/commit metadata remains in
 file properties, diagnostic logs, `version` and `status --json`. The GUI title
-stays **Windows Upgrade Assistant By PcNinja**. Historical RC/Beta assets keep
+stays **Windows Upgrade Tool by PcNinja**. Historical RC/Beta assets keep
 their original names and bytes. See [product identity](docs/PRODUCT-IDENTITY.md).
 
 V1 includes [portable application updates](docs/APPLICATION-UPDATES.md).
@@ -211,23 +211,23 @@ See the [complete CLI guide](docs/CLI.md) for mounted ISO drives, automatic
 downloads, validation-only runs, JSON output, confirmations, and exit codes.
 
 ```powershell
-.\WinUpgradeToolByPcNinja.v.1.exe help
-.\WinUpgradeToolByPcNinja.v.1.exe help all
-.\WinUpgradeToolByPcNinja.v.1.exe help upgrade
-.\WinUpgradeToolByPcNinja.v.1.exe status --json
-.\WinUpgradeToolByPcNinja.v.1.exe scan
-.\WinUpgradeToolByPcNinja.v.1.exe downloads --json
-.\WinUpgradeToolByPcNinja.v.1.exe validate --iso "D:\Windows11.iso"
-.\WinUpgradeToolByPcNinja.v.1.exe validate --mounted E:\
-.\WinUpgradeToolByPcNinja.v.1.exe upgrade --iso "D:\Windows11.iso" --no-restart
-.\WinUpgradeToolByPcNinja.v.1.exe upgrade --mounted E:\ --no-restart
-.\WinUpgradeToolByPcNinja.v.1.exe upgrade --download --destination "E:\PcNinja Downloads"
+.\Win-Upgrade-Tool-by-PcNinja-v.1.exe help
+.\Win-Upgrade-Tool-by-PcNinja-v.1.exe help all
+.\Win-Upgrade-Tool-by-PcNinja-v.1.exe help upgrade
+.\Win-Upgrade-Tool-by-PcNinja-v.1.exe status --json
+.\Win-Upgrade-Tool-by-PcNinja-v.1.exe scan
+.\Win-Upgrade-Tool-by-PcNinja-v.1.exe downloads --json
+.\Win-Upgrade-Tool-by-PcNinja-v.1.exe validate --iso "D:\Windows11.iso"
+.\Win-Upgrade-Tool-by-PcNinja-v.1.exe validate --mounted E:\
+.\Win-Upgrade-Tool-by-PcNinja-v.1.exe upgrade --iso "D:\Windows11.iso" --no-restart
+.\Win-Upgrade-Tool-by-PcNinja-v.1.exe upgrade --mounted E:\ --no-restart
+.\Win-Upgrade-Tool-by-PcNinja-v.1.exe upgrade --download --destination "E:\PcNinja Downloads"
 ```
 
 Enable PowerShell completion for the current session:
 
 ```powershell
-& .\WinUpgradeToolByPcNinja.v.1.exe completion powershell | Out-String | Invoke-Expression
+& .\Win-Upgrade-Tool-by-PcNinja-v.1.exe completion powershell | Out-String | Invoke-Expression
 ```
 
 Mount, validation, download-and-mount, and upgrade operations must be launched
@@ -385,7 +385,7 @@ the code or rebranding the tool. Check the license for the actual permission ter
 Third-party software, installation media and trademarks retain their own terms.
 
 Report ordinary reproducible defects through the repository's
-[issue tracker](https://github.com/JavierTorresFelendler/Windows-Upgrade-Assistant-by-PcNinja/issues),
+[issue tracker](https://github.com/JavierTorresFelendler/Win-Upgrade-Tool-by-PcNinja/issues),
 with sensitive information removed. Send security vulnerabilities privately to
 **javier@pcninja.pro**, following [SECURITY.md](SECURITY.md); do not publish exploit
 details or customer logs in an issue.

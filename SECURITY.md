@@ -3,7 +3,7 @@
 Please report suspected vulnerabilities privately to **javier@pcninja.pro**.
 Do not post exploit details, credentials, customer data, or unredacted customer
 logs in a public issue. For ordinary non-sensitive bugs, use this repository's
-[issue tracker](https://github.com/JavierTorresFelendler/Windows-Upgrade-Assistant-by-PcNinja/issues).
+[issue tracker](https://github.com/JavierTorresFelendler/Win-Upgrade-Tool-by-PcNinja/issues).
 
 ## What to include
 

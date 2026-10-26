@@ -123,9 +123,11 @@ try {
     $rc = Get-PcNinjaVersionIdentity '1.1.0-rc.8'
     $stable = Get-PcNinjaVersionIdentity '1.1.0'
     $beta = Get-PcNinjaVersionIdentity '1.1.0-beta.1'
+    Require ($stable.Product -ceq 'Windows Upgrade Tool by PcNinja' -and
+        $stable.Repository -ceq 'JavierTorresFelendler/Win-Upgrade-Tool-by-PcNinja') 'Final product/repository publisher branding mismatch.'
     foreach ($pair in @(
-        @('1.0.0', 'WinUpgradeToolByPcNinja.v.1.exe'), @('1.1.0', 'WinUpgradeToolByPcNinja.v.1.1.exe'),
-        @('1.0.1', 'WinUpgradeToolByPcNinja.v.1.0.1.exe'), @('2.0.0', 'WinUpgradeToolByPcNinja.v.2.exe'),
+        @('1.0.0', 'Win-Upgrade-Tool-by-PcNinja-v.1.exe'), @('1.1.0', 'Win-Upgrade-Tool-by-PcNinja-v.1.1.exe'),
+        @('1.0.1', 'Win-Upgrade-Tool-by-PcNinja-v.1.0.1.exe'), @('2.0.0', 'Win-Upgrade-Tool-by-PcNinja-v.2.exe'),
         @('1.1.0-rc.8', 'Windows-Upgrade-Assistant-By-PcNinja-V1.1-RC8.exe')
     )) {
         Require ((Get-PcNinjaVersionIdentity $pair[0]).AssetName -ceq $pair[1]) 'Stable-short/legacy-preview publisher filename mapping mismatch.'

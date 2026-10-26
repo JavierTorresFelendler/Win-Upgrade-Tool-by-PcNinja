@@ -9,10 +9,10 @@
     <ApplicationIcon>Assets\PcNinja.ico</ApplicationIcon>
     <AssemblyName>Windows-Upgrade-Assistant-By-PcNinja</AssemblyName>
     <RootNamespace>PcNinja.Win11UpgradeAssistant</RootNamespace>
-    <Product>Windows Upgrade Assistant By PcNinja</Product>
+    <Product>Windows Upgrade Tool by PcNinja</Product>
     <Company>PcNinja</Company>
     <Authors>PcNinja</Authors>
-    <Description>Standalone Windows upgrade assistant for advanced home users.</Description>
+    <Description>Portable Windows Upgrade Tool by PcNinja for advanced home users.</Description>
     <Copyright>Copyright © 2026 PcNinja</Copyright>
     <PublishSingleFile>true</PublishSingleFile>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
