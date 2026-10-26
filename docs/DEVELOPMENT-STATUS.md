@@ -35,9 +35,20 @@ remain 1.0.0/v1.0.0; 1.1.0 maps to -v.1.1 and 1.0.1 to -v.1.0.1.
   retaining Draft PR13. Origin uses the new canonical URL. All twelve published
   release IDs and asset IDs/names/sizes/digests were verified unchanged; main
   remains 4b5bd87ae7c7bec590fbf0af69762baa21732039; v1.0.0 is still absent.
-- Fresh remote checkpoint/CI and downloadable final-branded candidate follow;
-  the older candidate's green CI does not test this checkpoint. No main merge,
-  release/tag or Windows Setup operation is part of the branding update.
+- Source checkpoint 392cba07121d484906c149f448f5f6502cc30191 committed under owner,
+  pushed and remote-SHA verified. Exact-source CI 40279583913 PASSED all steps,
+  including privileged updater fixtures. Artifact 12631452798 is a test build,
+  not a release; tested merge 50e5b3535d83bb7fde92527cd687e9c9959cc651.
+- Independently downloaded Win-Upgrade-Tool-by-PcNinja-v.1.exe: 73,088,959 bytes,
+  FileVersion 1.0.0.0, ProductVersion 1.0.0 plus tested merge, NotSigned, SHA-256
+  0d0fe17389c8d2a181e89441711afe11472a222ccc601bc52da279f5ba7b8140.
+  Exact source/provenance/SHA256SUMS/Product metadata and actual portable CLI
+  checks PASS. Real metadata-only check against the renamed repository returns
+  APP_UPDATE_NO_STABLE_RELEASE, with applicationUpdated/setupStarted/
+  readyForRestart false. No app transfer/helper or Windows Setup was run.
+- Await owner short VM acceptance of this final-branded artifact. Earlier green
+  CI applies only to its respective source. No main merge, release/tag or Windows
+  Setup operation is part of the branding update.
 
 ## Previous candidate: first stable V1 closeout
 
