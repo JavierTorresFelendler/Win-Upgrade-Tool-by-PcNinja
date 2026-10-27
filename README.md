@@ -18,6 +18,9 @@ project-specific decisions and working procedures across assistants and machines
 
 ## Download
 
+[Download V1 portable EXE](https://github.com/JavierTorresFelendler/Win-Upgrade-Tool-by-PcNinja/releases/download/v1.0.0/Win-Upgrade-Tool-by-PcNinja-v.1.exe)
+or view its [release notes and checksums](https://github.com/JavierTorresFelendler/Win-Upgrade-Tool-by-PcNinja/releases/tag/v1.0.0).
+
 The first official stable line is V1 (`1.0.0`). Download a published build only
 from this repository's [Releases](https://github.com/JavierTorresFelendler/Win-Upgrade-Tool-by-PcNinja/releases)
 page; a PR artifact is a test build, not an official release. The first stable
@@ -42,8 +45,9 @@ Files or overwrites the old EXE. After the new GUI confirms startup, only the
 exact predecessor is marked `OLD-`, or `OLD.V1-`, `OLD.V2-`, etc. if occupied.
 A regular/critical offer shows the release summary and exact GitHub notes;
 only **Download and run the new version** authorizes EXE transfer.
-Stable discovers stable only; Beta discovers numbered Betas only. **Beta users
-must download and open the first stable V1 manually once.** The old
+Stable discovers stable only; Beta discovers numbered Betas only. **Beta and test
+candidate users must download and open the official V1 manually once**, including
+earlier test candidates reporting 1.0.0. The old
 `1.1.0-beta.5` cannot switch channels or downgrade itself to stable `1.0.0`.
 Future stable-to-stable updates use the normal consent-based updater. Windows
 restart flags and external Setup do not gate updates to this application.
