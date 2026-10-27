@@ -6,7 +6,36 @@ Reusable architecture, diagnosis and verification know-how lives in
 [AI maintenance playbook](AI-MAINTENANCE-PLAYBOOK.md), independently of any
 assistant's personal memory or skills installation.
 
-## Published: first official stable V1
+## Current authorized work: free repository/publication hardening
+
+Owner accepted the free security recommendations and explicitly excluded account
+2FA changes because it is already enabled. Implement GitHub-side protection and
+prepare a dedicated PR; independent update signing remains a later feature. No
+new EXE/version/Release or modification of published V1 is authorized by this work.
+
+- Enabled and re-read secret scanning/push protection, mandatory full-SHA Action
+  pinning and repository immutability for future releases. Existing assets do not
+  become immutable retroactively. Added active no-bypass update/deletion rules
+  for version tags (`Protect release tags`, ID 25937119).
+- Created `release` environment: owner User ID 153079326 is the sole reviewer,
+  self-review deliberately allowed, admin bypass disabled, only custom tag `v*`.
+  Account authentication, recovery and credentials were not changed.
+- Split the release workflow into read-only build and owner-approved tag-only
+  write publisher. Exact SHA checkout/no persisted credentials; exact current-run
+  artifact ID/digest; API run/repository/head-source binding; pinned v8 downloader
+  with digest mismatch error. Revalidate live policy again after approval and
+  retain existing main/Beta ancestry and draft-first publication checks.
+- Pure policy/module fixtures and source-contract negative mutations pass locally,
+  as do existing offline publication tests. Live policy and real known artifact
+  metadata validation pass. Independent review found no blocking defect; added
+  an ordering regression for provenance/download/ancestry/publication.
+- Runtime, ISO/Setup engine, application updater, version and V1 artifacts remain
+  unchanged. No dummy tag/Release, approval, real app update or Setup was used.
+  Source checkpoint, Draft PR and CI evidence follow; no main merge assumed.
+- Remaining risk: V1 is unsigned and trusts GitHub/TLS. GitHub hardening is not
+  independent signed metadata. Human owner review must not be automated away.
+
+## Published baseline: first official stable V1
 
 Published on 2026-10-27 after owner acceptance and explicit release approval.
 

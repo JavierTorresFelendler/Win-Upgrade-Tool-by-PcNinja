@@ -20,8 +20,8 @@ publication of sensitive findings privately with PcNinja.
 
 ## Release and update policy
 
-The newest stable release is the recommended production baseline once V1 is
-published. Beta builds are a separate testing channel; historical builds remain
+The newest stable release is the recommended production baseline. Beta builds
+are a separate testing channel; historical builds remain
 available for traceability, not a promise of security maintenance for each build.
 Download official builds and verify the exact release's SHA256SUMS. A checksum
 does not independently authenticate a publisher; current builds are unsigned.
@@ -30,6 +30,14 @@ Application-update discovery reads GitHub metadata. Downloading/running a new
 EXE requires user consent. A critical-update notice recommends action but does
 not authorize silent installation, Windows Setup or an OS restart. Pending OS
 restart flags do not prevent updating this tool.
+
+## Repository and publication hardening
+
+See [release security](docs/RELEASE-SECURITY.md) for secret scanning/push protection,
+full-SHA action pinning, protected version tags, future-release immutability and
+the read-only build / owner-approved write publisher boundary. These controls do
+not add a signing key or independent publisher authentication to existing V1.
+Do not automatically approve or bypass the owner's release-environment review.
 
 ## Upgrade safety
 
