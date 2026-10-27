@@ -385,6 +385,10 @@ mismatch. Never regenerate trusted bytes/metadata or execute the artifact in the
 privileged publisher. Current GitHub immutability applies only to future releases,
 not retroactively to V1. These controls do not provide an independent signing
 root against owner-account compromise. See RELEASE-SECURITY.md and its fixtures.
+Normalize synthetic multiline workflow fixtures before exact string mutations:
+Git's Windows checkout may use CRLF even when the source is committed as LF.
+Normalize inside the checker as well, and retain a CRLF positive fixture so a
+platform-format failure cannot masquerade as a missing security mutation target.
 
 For each meaningful change, record:
 

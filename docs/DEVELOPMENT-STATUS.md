@@ -6,7 +6,7 @@ Reusable architecture, diagnosis and verification know-how lives in
 [AI maintenance playbook](AI-MAINTENANCE-PLAYBOOK.md), independently of any
 assistant's personal memory or skills installation.
 
-## Current authorized work: free repository/publication hardening
+## Implemented: free repository/publication hardening
 
 Owner accepted the free security recommendations and explicitly excluded account
 2FA changes because it is already enabled. Implement GitHub-side protection and
@@ -31,7 +31,16 @@ new EXE/version/Release or modification of published V1 is authorized by this wo
   an ordering regression for provenance/download/ancestry/publication.
 - Runtime, ISO/Setup engine, application updater, version and V1 artifacts remain
   unchanged. No dummy tag/Release, approval, real app update or Setup was used.
-  Source checkpoint, Draft PR and CI evidence follow; no main merge assumed.
+  Owner explicitly approved merging PR24 after passing checks.
+- Source checkpoint b1c9372c338d26210be5ef45c9c0f7f4a1320eda pushed/remote-SHA
+  verified. PR CI 40461885305 PASSED. Branch-only release workflow trial
+  40461897755 PASSED: read-only build succeeded and publisher was SKIPPED.
+  No new tag, Release or protected-environment approval was performed. The first
+  real owner-approved tag publication remains a future lifecycle check.
+- Initial CI caught CRLF-sensitive exact mutation targeting in the test fixture,
+  not an application defect. Normalize synthetic fixtures before mutation and
+  explicitly test CRLF input. Both corrected hosted runs passed without weakening
+  the publication gates. Documentation-only evidence does not change the workflow.
 - Remaining risk: V1 is unsigned and trusts GitHub/TLS. GitHub hardening is not
   independent signed metadata. Human owner review must not be automated away.
 
