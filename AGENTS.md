@@ -74,6 +74,14 @@ access to prior chats, local Codex skills, personal memories, or machine paths.
   `/product server` workaround with a generic required real-Server switch.
 - Keep versioned release artifacts unchanged while the owner tests them. CI test
   artifacts are not product releases or permission to upgrade a machine.
+- Release builds are read-only. Only the protected, owner-approved tag publisher
+  receives write permission and consumes the exact verified current-run artifact.
+  Never approve/bypass the release environment on the owner's behalf, rebuild or
+  regenerate metadata in the publisher, or add a publishing PAT. Recheck owner/
+  tag policy and artifact provenance. See docs/RELEASE-SECURITY.md.
+- Preserve the owner's existing account authentication. Do not modify 2FA or
+  recovery credentials as part of repository hardening. Independent update
+  signing remains a separate approved product feature; V1 is still unsigned.
 
 See `docs/GITHUB-WORKFLOW.md` for workflow/recovery details and
 `docs/DEVELOPMENT-STATUS.md` for the current handoff.

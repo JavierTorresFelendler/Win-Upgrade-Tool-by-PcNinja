@@ -29,6 +29,12 @@ jobs:
         shell: pwsh
         run: ./tests/Verify-AppUpdatePackaging.ps1
 
+      - name: Offline publication permission and provenance fixtures
+        shell: pwsh
+        run: |
+          ./tests/Verify-ReleaseWorkflow.ps1
+          ./tests/Verify-PublicationPolicy.ps1
+
       - name: Run Core smoke tests (no Windows Setup)
         shell: pwsh
         run: |

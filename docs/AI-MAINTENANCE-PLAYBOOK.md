@@ -376,6 +376,20 @@ packaging fixtures with PowerShell 7, as CI does (they use System.Text.Json).
 
 ## Maintain the knowledge, not just the patch
 
+Repository publication hardening is separate from the EXE updater. Keep build
+tokens read-only and gate the write publisher on the human owner's protected
+release environment. Validate live policy before tag builds and after approval;
+an implicitly recreated environment must not become an unprotected release path.
+Bind artifact ID/run/repository/source and upload digest; fail on download digest
+mismatch. Never regenerate trusted bytes/metadata or execute the artifact in the
+privileged publisher. Current GitHub immutability applies only to future releases,
+not retroactively to V1. These controls do not provide an independent signing
+root against owner-account compromise. See RELEASE-SECURITY.md and its fixtures.
+Normalize synthetic multiline workflow fixtures before exact string mutations:
+Git's Windows checkout may use CRLF even when the source is committed as LF.
+Normalize inside the checker as well, and retain a CRLF positive fixture so a
+platform-format failure cannot masquerade as a missing security mutation target.
+
 For each meaningful change, record:
 
 1. The symptom and evidence, separating observation from hypothesis.
