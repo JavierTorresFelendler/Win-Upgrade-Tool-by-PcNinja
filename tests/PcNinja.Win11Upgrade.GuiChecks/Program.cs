@@ -6,13 +6,18 @@ internal static class Program
     [STAThread]
     private static int Main(string[] args)
     {
-        ApplicationConfiguration.Initialize();
+        // Explicit initialization avoids the two friend assemblies' generated
+        // internal ApplicationConfiguration types colliding in this harness.
+        Application.SetHighDpiMode(HighDpiMode.SystemAware);
+        Application.EnableVisualStyles();
+        Application.SetCompatibleTextRenderingDefault(false);
         var assembly = Assembly.Load("Windows-Upgrade-Assistant-By-PcNinja");
         var type = assembly.GetType("PcNinja.Win11UpgradeAssistant.MainForm", true)!;
         using var form = (Form)Activator.CreateInstance(type, nonPublic: true)!;
         object Field(string name) => type.GetField(name, BindingFlags.NonPublic | BindingFlags.Instance)!.GetValue(form)!;
         void SetField(string name, object? value) => type.GetField(name, BindingFlags.NonPublic | BindingFlags.Instance)!.SetValue(form, value);
         void Invoke(string name, params object[] values) => type.GetMethod(name, BindingFlags.NonPublic | BindingFlags.Instance)!.Invoke(form, values);
+        SetField("_automaticAppUpdateCheck", false);
         form.Show();
         Application.DoEvents();
         var actualLanguage = CurrentWindows.Read().Language;
@@ -20,11 +25,20 @@ internal static class Program
         var start = (Button)Field("_start");
         if (!start.Enabled) throw new Exception("Start is disabled after startup on the test machine.");
         var choices = new[] { "_autoDownload", "_existingMedia" }.Select(name => (RadioButton)Field(name)).ToArray();
+        foreach (var profile in new[] {
+            new DownloadSystem("ProfessionalN", "en-US", 28000, 0, "x64", "Client"),
+            new DownloadSystem("Education", "en-US", 99999, 0, "x64", "Client") })
+        {
+            Invoke("ApplyDownloadSystem", profile);
+            if (!choices[0].Enabled)
+                throw new Exception("GUI applied a fixed ISO build to eligible OEM download coverage.");
+        }
+        Invoke("ApplyDownloadLanguagePolicy", "en-US");
         IEnumerable<Control> Descendants(Control parent) => parent.Controls.Cast<Control>()
             .SelectMany(control => new[] { control }.Concat(Descendants(control)));
         ResizeChecks.Run(form, Descendants(form).OfType<Panel>()
             .Where(panel => panel.Padding == new Padding(20)).ToArray());
-        if (form.Text != "Windows Upgrade Assistant By PcNinja" ||
+        if (form.Text != "Windows Upgrade Tool by PcNinja" ||
             Descendants(form).Any(control => control.Text.Contains("Version 1.1.0-rc.")))
             throw new Exception("Product branding exposed an obsolete name or release label.");
         var captions = Descendants(form).Select(control => control.Text).ToHashSet();
@@ -42,6 +56,16 @@ internal static class Program
             UpgradeEngine.PcNinjaBrowserFallbackPage != "https://iso.pcninja.pro" ||
             UpgradeEngine.MicrosoftDownloadPage != "https://www.microsoft.com/software-download/windows11")
             throw new Exception("Branding or public download links changed during the copy review.");
+        var website = Descendants(form).OfType<LinkLabel>().Single(link => link.Name == "PcNinjaWebsite");
+        if (website.Font.SizeInPoints != 11F || !website.AutoSize)
+            throw new Exception("The approved website branding must use an autosized 11-point font.");
+        string? websiteTarget = null;
+        SetField("_launchBrowser", new Action<string>(url => websiteTarget = url));
+        typeof(LinkLabel).GetMethod("OnLinkClicked", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .Invoke(website, [new LinkLabelLinkClickedEventArgs(website.Links[0])]);
+        if (websiteTarget != "https://www.pcninja.pro")
+            throw new Exception("The enlarged website brand no longer opens the exact PcNinja site.");
+        SetField("_launchBrowser", new Action<string>(_ => throw new Exception("Unexpected real browser request in GUI fixture.")));
         if (Descendants(form).OfType<PictureBox>().Count(picture => picture.Image is not null) != 1)
             throw new Exception("The single PcNinja header logo is missing or duplicated.");
         using (var mascot = assembly.GetManifestResourceStream("PcNinja.Win11UpgradeAssistant.Assets.PcNinja-mascot.png")!)
@@ -286,6 +310,7 @@ internal static class Program
 
         ImageSelectionChecks.Run(form);
         DownloadGuidanceChecks.Run();
+        AppUpdateGuiChecks.Run();
 
         if (args.Length > 0)
         {

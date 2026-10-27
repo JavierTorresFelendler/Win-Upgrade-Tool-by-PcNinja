@@ -33,6 +33,7 @@ All paths below are relative to the repository root.
 | Installation safety | `src/PcNinja.Win11Upgrade.Core/InstallationSafety.cs` | Selected/secondary answer files and final prelaunch gate |
 | Image/language policy | `src/PcNinja.Win11Upgrade.Core/InstallationImage.cs`, `AutomaticDownloadPolicy.cs` | Actual image metadata, compatible selection and automatic-language gate |
 | Outcome evidence | `src/PcNinja.Win11Upgrade.Core/UpgradeHistory.cs` | Persisted attempt and post-restart observations |
+| Application updates | `src/PcNinja.Win11Upgrade.Core/AppUpdates/`, `src/PcNinja.Win11UpgradeAssistant/AppUpdateInstaller.cs` | Stable release discovery, protected staging, operation gate and app-only helper/recovery |
 | Tests and delivery | `tests/`, `.github/workflows/` | Safe fixtures, client GUI checks, CLI checks and separate PR/release builds |
 
 ## Validated engineering lessons
@@ -234,7 +235,7 @@ dotnet build tests/PcNinja.Win11Upgrade.SmokeTests/PcNinja.Win11Upgrade.SmokeTes
 dotnet run --project tests/PcNinja.Win11Upgrade.SmokeTests/PcNinja.Win11Upgrade.SmokeTests.csproj -c Debug --no-build
 dotnet build tests/PcNinja.Win11Upgrade.GuiChecks/PcNinja.Win11Upgrade.GuiChecks.csproj -c Debug -warnaserror
 dotnet run --project tests/PcNinja.Win11Upgrade.GuiChecks/PcNinja.Win11Upgrade.GuiChecks.csproj -c Debug --no-build
-& ./tests/Verify-Cli.ps1 -ExePath ./tests/PcNinja.Win11Upgrade.GuiChecks/bin/Debug/net8.0-windows/win-x64/Windows-Upgrade-Assistant-By-PcNinja.exe -ExpectedVersion '1.1.0-rc.8'
+& ./tests/Verify-Cli.ps1 -ExePath ./tests/PcNinja.Win11Upgrade.GuiChecks/bin/Debug/net8.0-windows/win-x64/Windows-Upgrade-Assistant-By-PcNinja.exe -ExpectedVersion '1.1.0-beta.1'
 git diff --check
 ```
 
@@ -261,6 +262,14 @@ Own-source eligibility and browser fallback must share the full profile across
 GUI/CLI, not just an en-US test. Keep general Consumer coverage independent of
 the ordered owner-source list, so adding a future source cannot change package
 classification. Do not order unrelated release families by numeric build alone.
+The owner-approved V1 OEM route https://winoemiso.pcninja.pro/ has no fixed target
+build: match edition/language/x64/client/non-LTSC coverage and the existing base
+host policy only, not IsSupportedClient's external-catalog release whitelist.
+Do not invent TargetVersion or repair/newer claims before media inspection.
+Download eligibility is not installation authorization: preserve final current
+host and actual image/build/edition/language/signature/storage/answer-file checks.
+The external catalog still uses its own release-family rules. Do not globally
+remove those rules or application-update version checks as part of ISO routing.
 
 Treat an external HTML catalog as untrusted, changing input. Bound size/time,
 cross-check per-table heading/build and exact filename/culture/package, allowlist
@@ -276,6 +285,94 @@ source/index and answer-file safety, quote/reject unsafe CMD paths, label the sh
 explain supported-path/licensing limits, and keep clipboard untouched on failure
 or cancellation. Use fake browser/clipboard/preparation callbacks in GUI fixtures.
 No recommendation or synthetic command proves a supported real Server upgrade.
+
+## Application updates are not Windows upgrades
+
+Read `Core/AppUpdates/`, `MainForm.AppUpdates.cs`, `CliAppUpdates.cs` and
+`AppUpdateInstaller.cs` together. Discovery may run in the background, but
+downloading/replacing the application always needs explicit consent. Never reuse
+ISO provider cookies/redirect rules, accept an arbitrary update feed/target, replay
+upgrade arguments, or authorize a Windows restart from an app-update result.
+
+An exact release-pinned manifest/hash/size binds bytes, not a publisher identity.
+Unsigned builds explicitly depend on the project GitHub/TLS trust boundary.
+Preserve a valid existing signing certificate when signing is enabled; do not
+silently downgrade to unsigned or disable trust checks on a network error.
+
+The owner chose side-by-side versioned EXEs, not privileged in-place replacement
+or Program Files relocation. The owner later approved an OLD- prefix for the exact
+predecessor only after successor GUI readiness, with no overwrite or deletion.
+Keep private same-folder staging, anchored ancestors,
+exact executable verification and a verified successor helper. A held no-write/
+no-delete executable guard must cover the final verification and launch; a path
+hash followed by an unlocked CreateProcess permits swapping bytes in a writable
+Desktop/Downloads folder. Never overwrite unknown existing version-named files.
+CopyFile can preserve a user-writable source ACL: explicitly secure reused
+candidate/helper copies before validation/execution. Existing unsafe staging ACLs
+are refused, not taken over. The exact parent handle and READY/GO transfer keep
+the non-thread-affine operation barrier through handoff. Never replace that
+protocol with a sleep, thread-affine mutex or stale history file.
+
+Keep this application's own operations serialized, but never gate an application
+update on Windows restart flags or external Setup state. The owner explicitly
+separated these concerns after repeated Beta 1 blocks survived a VM restart.
+An important tool fix must not require completing an unrelated Windows update.
+Do not port an OS-updater's reboot policy into the portable EXE updater, even if
+it discriminates generic file renames. Do not mutate/reset flags or stop services.
+The source-contract regression protects both parent and helper from reintroduced
+OS probes; native fixtures exercise real helper apply with only a fake launch.
+Failure/cancellation before handoff leaves the current
+app unchanged; after handoff, keep the original EXE and diagnostic files and correlate helper status by
+operation ID. Native publish/reuse/launch-lock tests use disposable files;
+they do not prove signing, elevation, handoff or relaunch on a customer's VM.
+
+For OLD housekeeping, authenticate the shown/painted successor's readiness to its
+native process identity over a bounded same-user nonce channel. Process.Start is
+not a readiness acknowledgement. Never scan for older EXEs or trust a public
+history file/environment path as rename authority. Use the private parent-bound
+request and rehash/rename the exact predecessor through the same DELETE-capable
+source handle, with anchored ancestors and ReplaceIfExists=false. Release the
+old read/no-delete guard only after new GUI readiness, then revalidate through
+the new handle. Archive collisions advance a bounded OLD.V1-/V2- sequence;
+never overwrite or rename a preexisting archive. Mismatches/locks/other failures skip housekeeping, never fail an
+already successful update. No ready GUI/CLI relaunch means no OLD rename.
+
+Stable release packaging must verify exact product/version/source commit and
+final bytes before publishing. Upload immutable assets to a draft, verify them,
+then publish stable/latest last; never clobber assets or mutate a published tag.
+The first stable line uses short Win-Upgrade-Tool-by-PcNinja-v.1.exe (1.0.0), then
+-v.1.1.exe (1.1.0), keeping significant zeroes for patches such as -v.1.0.1.exe.
+Keep C# and PowerShell formatters, manifest checks and embedded-help examples in
+sync. Historical Beta/RC names and bytes stay unchanged. Existing 1.1.0 Betas
+cannot select/downgrade to stable 1.0.0: document one-time manual bootstrap, never
+weaken channel/version checks. Freeware permission and upstream licenses are
+separate; public source visibility is not an open-source/reuse grant.
+The final visible product is Windows Upgrade Tool by PcNinja; canonical GitHub
+repository is JavierTorresFelendler/Win-Upgrade-Tool-by-PcNinja. Change C# identity,
+EXE Product metadata, PowerShell publishing identity, embedded help and tests
+together: manifest/file checks deliberately reject superseded identities. Keep
+internal assembly names and all prior published artifacts intact. First stable
+requires manual bootstrap from the old-identity candidates, not relaxed checks.
+RCs publish no update manifest. Beta has its own explicit numbered preview
+channel and may publish an exact PR-CI-passed unmerged commit when the owner
+authorizes that test. Stable/RC still require main ancestry. Test Beta 1 before
+publishing Beta 2; do not advance stable/latest or merge merely to demonstrate
+an update. Regular/critical badges and plain-text release messages never replace
+consent or digital signing. Notes links point to the exact GitHub release and
+must not imply download consent.
+
+After creating a draft, inspect it by the returned immutable release ID, not only
+the published-by-tag endpoint. Search authenticated release records for an existing
+draft before creating anything. GitHub draft assets can temporarily use an
+`untagged-*` URL: allow only the exact repository/filename before publication,
+while still requiring unique IDs, uploaded state, exact sizes and SHA-256 digests.
+After publication require the final pinned tag URL again. Never relax the client
+download policy to compensate for publisher API behavior. If publication stops
+after upload, verify the existing draft/artifacts and recover it under owner
+authority; do not rerun with clobber, move tags, or replace published bytes.
+Offline fixtures must cover hidden-by-tag drafts and temporary URLs, including
+rejection if a temporary URL remains after publication. Run these PowerShell
+packaging fixtures with PowerShell 7, as CI does (they use System.Text.Json).
 
 ## Maintain the knowledge, not just the patch
 

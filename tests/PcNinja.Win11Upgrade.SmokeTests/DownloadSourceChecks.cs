@@ -23,10 +23,13 @@ internal static class DownloadSourceChecks
         Require(DownloadSourcePolicy.Sources.Count >= 1 && DownloadSourcePolicy.Sources[0].Id == "pcninja-oem",
             "Own source priority was lost.");
         var editions = DownloadSourcePolicy.Sources[0].Editions;
+        Require(DownloadSourcePolicy.OemPage == "https://winoemiso.pcninja.pro/" &&
+            UpgradeEngine.DownloadEndpoint == DownloadSourcePolicy.OemPage,
+            "Automatic transport and own-source browser fallback must use the final OEM link.");
         Require(editions.Count == 11 && editions.Distinct(StringComparer.OrdinalIgnoreCase).Count() == 11,
             "The configured OEM edition set changed.");
         foreach (var edition in editions)
-        foreach (var build in new[] { 19045, 22000, 22631, 26100, 26200, 26300 })
+        foreach (var build in new[] { 19045, 22000, 22631, 26100, 26200, 26300, 26220, 28000, 99999 })
         {
             var system = SystemFor("en-US", edition, build);
             Require(DownloadSourcePolicy.GetAutomaticSource(system)?.Id == "pcninja-oem" &&
@@ -35,8 +38,8 @@ internal static class DownloadSourceChecks
         }
         foreach (var system in new[]
         {
-            SystemFor(), SystemFor("en-US", "Enterprise"), SystemFor("en-US", "UnknownEdition"),
-            SystemFor("en-US", build: 28000), SystemFor("en-US", build: 26220), SystemFor("en-US", build: 99999),
+            SystemFor(), SystemFor("en-US", "Enterprise"), SystemFor("en-US", "EnterpriseN"), SystemFor("en-US", "UnknownEdition"),
+            SystemFor("en-US", build: 9600), SystemFor("en-US", build: 20000),
             SystemFor("en-US", architecture: "arm64"), SystemFor("en-US", architecture: "x86"),
             SystemFor("en-US", "EnterpriseS"), SystemFor("en-US", ltsc: true),
             SystemFor("en-US", "ServerStandard", 26100, installation: "Server"),
@@ -53,18 +56,29 @@ internal static class DownloadSourceChecks
             DownloadSourcePolicy.GetMicrosoftBrowserPage(SystemFor(installation: "Server")) == DownloadSourcePolicy.MicrosoftServerDownloadPage,
             "The Microsoft alternative crossed client/Server product families.");
         Require(!SystemFor(build: 28000).IsSupportedClient && !SystemFor(build: 26220).IsSupportedClient,
-            "26H1 or preview build became an ordinary client route.");
+            "External catalog feature-family restrictions changed with own-source download coverage.");
+        var olderImage = new InstallationImage(7, "Pro N fixture", "ProfessionalN", "x64", "10.0.26100.1", "Client", "en-US");
+        var olderMedia = new MountedSource(@"X:\fixture", @"X:\fixture\setup.exe", @"X:\fixture\sources\install.wim", [olderImage]);
+        var newerHost = new CurrentWindows("ProfessionalN", "en-US", 28000);
+        Require(DownloadSourcePolicy.GetAutomaticSource(SystemFor("en-US", "ProfessionalN", 28000)) is not null &&
+            InstallationImages.Compatible(olderMedia, newerHost).Count == 0 &&
+            InstallationImages.GetIncompatibility(olderImage, newerHost)!.Contains("equal-or-newer"),
+            "Download eligibility bypassed actual Windows 11 downgrade protection.");
+        foreach (var mismatch in new[] { olderImage with { Edition = "Professional" },
+            olderImage with { Language = "es-ES" }, olderImage with { Architecture = "arm64" } })
+            Require(InstallationImages.GetIncompatibility(mismatch, newerHost) is not null,
+                "OEM coverage bypassed actual edition/language/architecture validation.");
     }
 
     private static async Task CheckPreDownloadRejectionAsync()
     {
         foreach (var profile in new[]
         {
-            SystemFor(), SystemFor("en-GB"), SystemFor("he-IL"), SystemFor("en-US", "Enterprise"),
+            SystemFor(), SystemFor("en-GB"), SystemFor("he-IL"), SystemFor("en-US", "Enterprise"), SystemFor("en-US", "EnterpriseN"),
             SystemFor("en-US", "EnterpriseS", ltsc: true), SystemFor("en-US", "EnterpriseSN", ltsc: true),
             SystemFor("en-US", "ServerStandard", 26100, installation: "Server"),
             SystemFor("en-US", architecture: "arm64"), SystemFor("en-US", architecture: "x86"),
-            SystemFor("en-US", build: 28000), SystemFor("en-US", build: 99999),
+            SystemFor("en-US", build: 9600), SystemFor("en-US", build: 20000),
             SystemFor("en-US", "Unknown"), SystemFor("en-US", installation: "Unknown")
         })
         {
@@ -184,9 +198,14 @@ internal static class DownloadSourceChecks
     {
         using var ownHandler = new FixtureHandler((_, _) => throw new Exception("An own-source match contacted the external catalog."));
         using var ownHttp = new HttpClient(ownHandler);
-        var own = await IsoDownloadCatalog.ResolveAsync(ownHttp, SystemFor("en-US", build: 26300), CancellationToken.None);
-        Require(own.ExactMatch && own.Source == "pcninja-oem" && ownHandler.Calls == 0 && own.Message.Contains("repair"),
-            "Own source priority/repair semantics changed.");
+        foreach (var profile in new[] { SystemFor("en-US", build: 26300), SystemFor("en-US", "ProfessionalN", 28000) })
+        {
+            var own = await IsoDownloadCatalog.ResolveAsync(ownHttp, profile, CancellationToken.None);
+            Require(own.ExactMatch && own.Source == "pcninja-oem" && ownHandler.Calls == 0 &&
+                own.PageUrl == DownloadSourcePolicy.OemPage && own.TargetVersion is null &&
+                own.TargetRelease == "PcNinja Windows OEM" && own.Message.Contains("not known"),
+                "Own source priority invented an unvalidated target version or lost profile coverage.");
+        }
 
         var html = Section("consumer", "26H2", 26300, 9457, ["es-ES"]);
         using var handler = new FixtureHandler((request, _) =>

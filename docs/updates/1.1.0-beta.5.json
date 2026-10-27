@@ -1,0 +1,4 @@
+{
+  "importance": "normal",
+  "message": "Beta 5: after the new window opens, the exact previous EXE is marked OLD-. Existing archives are preserved using OLD.V1-, OLD.V2- and so on. Your files are not deleted; locked or changed files are left alone. No Windows upgrade or restart is required."
+}

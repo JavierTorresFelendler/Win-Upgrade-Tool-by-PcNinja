@@ -2,6 +2,10 @@ using System.Reflection;
 using System.Text.Json;
 using PcNinja.Win11Upgrade.Core;
 
+await AppUpdateCliChecks.RunAsync();
+await AppUpdateReadinessChecks.RunAsync();
+AppUpdateHelperChecks.Run();
+
 var assembly = Assembly.Load("Windows-Upgrade-Assistant-By-PcNinja");
 var runner = assembly.GetType("PcNinja.Win11UpgradeAssistant.CliRunner", true)!;
 var options = assembly.GetType("PcNinja.Win11UpgradeAssistant.CliOptions", true)!;
@@ -122,14 +126,19 @@ var downloadBlock = runner.GetMethod("GetAutomaticDownloadBlock", BindingFlags.N
 var matchingProfile = new DownloadSystem("Professional", "en-US", 19045, 0, "x64", "Client");
 if (downloadBlock.Invoke(null, [matchingProfile]) is not null)
     throw new Exception("CLI blocked the matching configured client source.");
+foreach (var profile in new[] { matchingProfile with { Edition = "ProfessionalN", Build = 28000 },
+    matchingProfile with { Build = 99999 } })
+    if (downloadBlock.Invoke(null, [profile]) is not null)
+        throw new Exception("CLI applied a fixed ISO build to eligible OEM download coverage.");
 foreach (var profile in new[]
 {
     matchingProfile with { Language = "he-IL" },
     matchingProfile with { Edition = "Enterprise" },
+    matchingProfile with { Edition = "EnterpriseN" },
     matchingProfile with { Architecture = "arm64" },
     matchingProfile with { InstallationType = "Server", Edition = "ServerStandard" },
     matchingProfile with { IsLtsc = true },
-    matchingProfile with { Build = 99999 }
+    matchingProfile with { Build = 9600 }
 })
 {
     var reason = downloadBlock.Invoke(null, [profile]) as string;

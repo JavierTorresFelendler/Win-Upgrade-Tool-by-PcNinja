@@ -1,5 +1,98 @@
 # Changelog
 
+## 1.0.0 — first stable V1
+
+- Use the general winoemiso.pcninja.pro OEM route for transport and browser
+  fallback. Own-source coverage no longer pins a target build; retain all eleven
+  en-US/x64 Home/Pro/Education variants and actual-media prelaunch compatibility.
+  Do not claim a target version or repair/newer status before inspection.
+
+- Prepare the owner-approved official line with technical 1.0.0 and short public
+  filename Win-Upgrade-Tool-by-PcNinja-v.1.exe; next 1.1.0 maps to -v.1.1.exe. Keep
+  internal assembly naming and every historical Beta/RC asset unchanged.
+- Preserve the field-tested Beta 5 upgrade/update behavior. Update only stable
+  asset identity, packaging, current help/completion examples and product docs.
+- Final branding: Windows Upgrade Tool by PcNinja; repository
+  Win-Upgrade-Tool-by-PcNinja. Increase the linked header website from 9pt to 11pt,
+  keeping its target, logo, ISO download links and Windows upgrade behavior.
+- Add explicit freeware-use-only LICENSE, private security reporting at
+  javier@pcninja.pro, substantial Massgrave credits and third-party boundaries.
+- Document one-time manual Beta-to-first-stable bootstrap, with no downgrade or
+  channel-check bypass. Test exact short-name stable 1.0.0 -> 1.1.0 via fake HTTP.
+- This entry describes the candidate; official publication awaits the final
+  owner VM check and reviewed green-checked main release.
+
+## 1.1.0-beta.5 — identify the previous EXE after startup
+
+- Acknowledge shown/painted GUI startup over a bounded same-user random channel,
+  authenticated to the native PID of the exact launched successor.
+- Rename only the hash-verified predecessor to OLD- using a pinned source handle
+  after GUI readiness. Never overwrite/delete/sweep or archive before readiness.
+- Archive-name collisions advance OLD.V1-, OLD.V2-, etc. without overwriting any
+  existing archive; lock/mismatch/other rename failure retains the original name.
+  CLI has no GUI readiness and does not rename. Record archive status/path.
+- Owner-approved Beta-channel VM trial; no Windows upgrade/reboot dependency.
+
+## 1.1.0-beta.4 — independent application update trial
+
+- Owner opened the fixed Beta 3 PR build in a VM; publish its separately versioned
+  Beta 4 successor for real download/verification/close/relaunch acceptance.
+- Version and regular-update notice only; runtime source identical to fixed Beta 3.
+  Preserve app-update independence from Windows restart/external Setup state.
+- Beta-only/non-latest. No main merge, stable/RC9, Beta 3 release tag or changes
+  to any existing published binaries/assets.
+
+## Unreleased 1.1.0-beta.3 — independent application updating
+
+- Remove Windows pending-restart and external Setup probes from both app-update
+  parent and successor helper. Updating this tool is independent of updating Windows.
+- Keep explicit consent, own-operation serialization, permissions, exact verified
+  bytes, safe sibling publication and parent-bound no-argument relaunch.
+- Remove the obsolete OS preflight hook rather than leave an unused bypass.
+  Add a source-contract regression and exercise the real helper apply path with
+  temporary verified bytes and an injected launch callback, never a real launch.
+- Development/PR test build only. Published Beta 1, Beta 2, RC8 and main unchanged.
+
+## 1.1.0-beta.2 — live application update trial
+
+- Owner opened Beta 1 in a VM; prepare the separately versioned successor for a
+  real consent/download/verification/close/relaunch trial in the Beta channel.
+- Version and regular-update notice only; runtime source and Windows upgrade
+  behavior remain identical to Beta 1. Includes the tested publisher-only draft
+  lookup/URL recovery fix. No main merge, stable/RC9 or Beta 1 asset changes.
+
+## 1.1.0-beta.1 — application update trial
+
+- Replace the unshipped Program Files/in-place updater design with version-named
+  EXEs beside the running tool. Preserve the original; never overwrite a collision
+  or create Copy N. Reuse only an exact verified existing version.
+- Isolate numbered Beta discovery from stable/RC. Metadata checks do not download
+  an EXE; GUI Download and run the new version / Not now and CLI run --yes govern it.
+- Add Regular/Critical badges, bounded publisher messages and exact GitHub notes.
+  Critical is advisory, not forced download. Release notice is version-controlled.
+- Keep private same-folder staging, signed-publisher continuity, parent-bound
+  protocol-v2 helper, machine-wide Windows-operation exclusion and launch byte locks.
+- Publish only Beta 1 after exact CI verification. Beta 2 waits for owner testing;
+  RC8/main/older releases remain unchanged. No stable publication or live Windows
+  upgrade is part of this trial.
+
+## Unreleased - application updates (Draft PR #13)
+
+- Add stable-only, product/repository-pinned GitHub application-update discovery,
+  explicit GUI consent and `app-update check|status|install` CLI/JSON. This updates
+  the assistant, never Windows; all updater results deny restart authorization.
+- Verify exact pinned release bytes, size, SHA-256 and EXE identity. Use private
+  fixed-local-NTFS staging, a machine-wide Windows/app-operation gate and a
+  revalidating helper for recoverable Program Files portable-copy installation.
+  An original outside the protected destination remains unchanged; CLI does not
+  relaunch a GUI or replay upgrade arguments. Unsigned trust limitations remain.
+- Centralize build identity in `Directory.Build.props`; add fail-closed future
+  stable manifest/publication support with draft-first verified immutable assets
+  and latest-last publication. RCs retain three assets/prerelease/no manifest.
+- Add safe HTTP/CLI/GUI/operation/path/packaging fixtures and updater guides.
+  Development source only: no new version/tag/release or replacement RC8 asset.
+  End-to-end two-stable-version disposable-VM acceptance is still pending.
+
 ## 1.1.0-rc.8 - 2026-10-24
 
 - Prefer the configured owner ISO for eleven matching en-US/x64 client editions;

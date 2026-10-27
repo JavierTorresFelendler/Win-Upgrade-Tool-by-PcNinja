@@ -13,6 +13,13 @@ $version = Invoke-Assistant @('--version')
 if ($LastCode -ne 0 -or $version.Trim() -ne $ExpectedVersion) { throw 'Version mismatch.' }
 $help = Invoke-Assistant @('help', 'all')
 if ($LastCode -ne 0) { throw 'Offline help failed.' }
+if ($ExpectedVersion -eq '1.0.0' -and -not $help.Contains('Win-Upgrade-Tool-by-PcNinja-v.1.exe')) {
+    throw 'Offline V1 help omitted the short public executable name.'
+}
+if (-not $help.Contains('do not block application updates') -or -not $help.Contains('OLD.V1-') -or
+    $help.Contains('pending Windows restart block running an update')) {
+    throw 'Offline updater help contradicts OS independence or OLD archive policy.'
+}
 if (-not $help.Contains('manualRestartRequired') -or -not $help.Contains('restart manually to continue')) {
     throw 'Offline help omitted successful manual-restart guidance.'
 }
@@ -29,7 +36,22 @@ if ($status.schemaVersion -ne 1 -or $status.resultCode -ne 'STATUS_REPORTED' -or
     $status.readyForRestart -ne $false -or $status.exitCode -ne 0) { throw 'Status result could authorize a restart or lacks the automation contract.' }
 if (-not $status.build -or -not $status.build.StartsWith($ExpectedVersion)) { throw 'Build provenance missing.' }
 if (-not $help.Contains('RollbackObserved') -or -not $help.Contains('SetupFailure')) { throw 'Rollback help missing.' }
-if ((Get-Item -LiteralPath $exe).VersionInfo.ProductName -ne 'Windows Upgrade Assistant By PcNinja') {
+if (-not $help.Contains('COMMAND: app-update') -or -not $help.Contains('APP_UPDATE_HANDOFF_STARTED') -or
+    -not $help.Contains('NOT running yet')) { throw 'Offline application-update contract missing.' }
+$appHelp = Invoke-Assistant @('app-update', 'run', '--help')
+if ($LastCode -ne 0 -or -not $appHelp.Contains('COMMAND: app-update')) { throw 'App-update subcommand help failed.' }
+# These updater probes MUST stay offline and stop before any installation effect.
+$appStatus = (Invoke-Assistant @('app-update', 'status', '--json')) | ConvertFrom-Json
+if ($LastCode -ne 0 -or $appStatus.resultCode -ne 'APP_UPDATE_STATUS' -or
+    $appStatus.readyForRestart -ne $false -or $appStatus.setupStarted -ne $false -or $appStatus.applicationUpdated -ne $false) {
+    throw 'App-update status lost its offline/app-only result contract.'
+}
+$appDeclined = (Invoke-Assistant @('app-update', 'run', '--json')) | ConvertFrom-Json
+if ($LastCode -ne 6 -or $appDeclined.resultCode -ne 'APP_UPDATE_CONSENT_REQUIRED' -or
+    $appDeclined.readyForRestart -ne $false -or $appDeclined.setupStarted -ne $false) {
+    throw 'App update without consent did not stop before network/install.'
+}
+if ((Get-Item -LiteralPath $exe).VersionInfo.ProductName -ne 'Windows Upgrade Tool by PcNinja') {
     throw 'Product metadata branding mismatch.'
 }
 if (-not $status.systemUiLanguage -or $null -eq $status.automaticDownloadAvailable) { throw 'Language availability missing from status.' }
@@ -62,13 +84,14 @@ $knownOwnEditions = @('Core', 'CoreN', 'CoreSingleLanguage', 'Education', 'Educa
     'ProfessionalWorkstation', 'ProfessionalWorkstationN')
 $knownOwnProfile = $profile.language -ieq 'en-US' -and $profile.architecture -ieq 'x64' -and
     $profile.installationType -ieq 'Client' -and -not $profile.isServer -and -not $profile.isLtsc -and
-    $profile.isSupportedClient -and $profile.edition -in $knownOwnEditions -and
-    $profile.build -ge 10240 -and $profile.build -le 26300
+    $profile.edition -in $knownOwnEditions -and
+    ($profile.build -ge 10240 -and ($profile.build -le 19045 -or $profile.build -ge 22000))
 if ($automaticExpected -and $knownOwnProfile) {
     $recommendation = (Invoke-Assistant @('downloads', '--json')) | ConvertFrom-Json
     if ($LastCode -ne 0 -or $recommendation.resultCode -ne 'DOWNLOAD_RECOMMENDATION' -or
         $recommendation.readyForRestart -ne $false -or $recommendation.automaticTransferStarted -ne $false -or
-        $recommendation.setupStarted -ne $false -or -not $recommendation.recommendation.PageUrl -or
+        $recommendation.setupStarted -ne $false -or $null -ne $recommendation.recommendation.TargetVersion -or
+        -not $recommendation.recommendation.PageUrl -or
         $recommendation.recommendation.PageUrl.TrimEnd('/') -ine $status.pcNinjaDownloadPage.TrimEnd('/')) {
         throw 'Own-source read-only download recommendation failed.'
     }
@@ -87,6 +110,8 @@ foreach ($case in @(
     @('validate', '--mounted', 'Z:\not-used', '--quiet', '--json'),
     @('upgrade', '--quiet', '--quiet', '--yes', '--json'),
     @('status', '--image-index', '1', '--json'),
+    @('app-update', 'run', '--yes', '--download', '--json'),
+    @('app-update', 'check', '--yes', '--json'),
     @('upgrade', '--iso', 'first.iso', '--iso', 'second.iso', '--json'),
     @('upgrade', '--iso', 'not-used.iso', '--image-index', '0', '--json'),
     @('validate', '--mounted', 'Z:\not-used', '--image-index', '-1', '--json'),
@@ -104,7 +129,8 @@ if ($LastCode -ne 6 -or $quietDeclined.resultCode -ne 'CANCELLED' -or $quietDecl
     throw 'Quiet without explicit consent did not stop before transfer/Setup.'
 }
 $completion = Invoke-Assistant @('completion', 'powershell')
-if ($LastCode -ne 0 -or -not $completion.Contains('--image-index') -or -not $completion.Contains("'downloads'")) { throw 'Completion options missing.' }
+if ($LastCode -ne 0 -or -not $completion.Contains('--image-index') -or -not $completion.Contains("'downloads'") -or
+    -not $completion.Contains("'app-update'")) { throw 'Completion options missing.' }
 [scriptblock]::Create($completion) | Out-Null
 Invoke-Expression $completion
 $inputLine = "& '$($exe.Replace("'", "''"))' upgrade --image-"
@@ -116,6 +142,9 @@ if ('--quiet' -notin $quietMatches.CompletionMatches.CompletionText) { throw 'Qu
 $downloadsLine = "& '$($exe.Replace("'", "''"))' downloads --j"
 $downloadsMatches = [System.Management.Automation.CommandCompletion]::CompleteInput($downloadsLine, $downloadsLine.Length, $null)
 if ('--json' -notin $downloadsMatches.CompletionMatches.CompletionText) { throw 'Download guidance Tab completion failed.' }
+$appLine = "& '$($exe.Replace("'", "''"))' app-update ru"
+$appMatches = [System.Management.Automation.CommandCompletion]::CompleteInput($appLine, $appLine.Length, $null)
+if ('run' -notin $appMatches.CompletionMatches.CompletionText) { throw 'App-update subcommand Tab completion failed.' }
 $bytes = [IO.File]::ReadAllBytes($exe)
 $peOffset = [BitConverter]::ToInt32($bytes, 0x3c)
 if ([BitConverter]::ToUInt16($bytes, $peOffset + 24 + 68) -ne 2) { throw 'The EXE has a Console subsystem.' }

@@ -37,7 +37,7 @@ public sealed record DownloadSystem(string Edition, string Language, int Build, 
 }
 
 public sealed record PcNinjaIsoSource(string Id, string Name, string Language, string Architecture,
-    int Build, string BrowserPage, IReadOnlyList<string> Editions);
+    string BrowserPage, IReadOnlyList<string> Editions);
 
 public sealed record DownloadRecommendation(string Source, string PageUrl, string? FileName,
     string? TargetRelease, string? TargetVersion, bool ExactMatch, string Message);
@@ -45,7 +45,7 @@ public sealed record DownloadRecommendation(string Source, string PageUrl, strin
 public static class DownloadSourcePolicy
 {
     public const string PcNinjaCatalogPage = "https://iso.pcninja.pro";
-    public const string OemPage = "https://11oem.pcninja.pro/";
+    public const string OemPage = "https://winoemiso.pcninja.pro/";
     public const string MicrosoftServerDownloadPage = "https://www.microsoft.com/evalcenter/";
 
     internal static IReadOnlyList<string> ConsumerEditions { get; } = Array.AsReadOnly(new[]
@@ -57,14 +57,17 @@ public static class DownloadSourcePolicy
     // Priority is explicit and extensible. These public pages are not transport/download APIs.
     public static IReadOnlyList<PcNinjaIsoSource> Sources { get; } = Array.AsReadOnly(new[]
     {
-        new PcNinjaIsoSource("pcninja-oem", "PcNinja Windows 11 OEM 26H2", "en-US", "x64", 26300, OemPage,
+        new PcNinjaIsoSource("pcninja-oem", "PcNinja Windows OEM", "en-US", "x64", OemPage,
             ConsumerEditions)
     });
 
-    public static PcNinjaIsoSource? GetAutomaticSource(DownloadSystem system) => !system.IsSupportedClient ? null :
+    // Source coverage permits a download attempt, never permission to run Setup.
+    // Do not infer target version from this mutable URL. Final media checks stay mandatory.
+    public static PcNinjaIsoSource? GetAutomaticSource(DownloadSystem system) =>
+        ManualUpgradePolicy.GetUnavailableReason(system) is not null || system.IsLtsc || IsLtscEdition(system.Edition) ? null :
         Sources.FirstOrDefault(source => source.Language.Equals(system.Language, StringComparison.OrdinalIgnoreCase) &&
             (source.Architecture.Equals(system.Architecture, StringComparison.OrdinalIgnoreCase) ||
-                source.Architecture == "x64" && system.IsX64) && source.Build >= system.Build &&
+                source.Architecture == "x64" && system.IsX64) &&
             source.Editions.Contains(system.Edition, StringComparer.OrdinalIgnoreCase));
 
     public static string GetPcNinjaBrowserPage(DownloadSystem system) =>
@@ -79,7 +82,7 @@ public static class DownloadSourcePolicy
         var detail = system.IsServer ? "Windows Server requires matching Server media and a separate supported upgrade decision." :
             !system.IsX64 ? $"The automatic PcNinja source is x64; this system is {system.Architecture}." :
             system.IsLtsc || IsLtscEdition(system.Edition) ? "Automatic transfer is unavailable for LTSC/LTSB. Select matching LTSC media manually, with the exact edition and system UI language." :
-            !system.IsSupportedClient ? "This Windows release is unknown, preview-only, or not an ordinary Windows 10/11 client upgrade route." :
+            ManualUpgradePolicy.GetUnavailableReason(system) is { } hostReason ? hostReason :
             $"No automatic PcNinja source matches {system.Edition}, {system.Language}, {system.Architecture}.";
         return detail + " Configured automatic media: en-US, x64. Use the matching public ISO recommendation or select matching existing media. " +
             "The downloaded image must still pass signature, image, language, storage and answer-file safety checks.";

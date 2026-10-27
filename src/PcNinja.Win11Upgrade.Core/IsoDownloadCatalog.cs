@@ -59,10 +59,10 @@ public static class IsoDownloadCatalog
         ArgumentNullException.ThrowIfNull(http);
         cancellationToken.ThrowIfCancellationRequested();
         if (DownloadSourcePolicy.GetAutomaticSource(system) is { } own)
-            return new(own.Id, own.BrowserPage, null, own.Name, $"10.0.{own.Build}", true,
-                own.Build == system.Build
-                    ? "Matching PcNinja same-feature repair candidate. Its revision may be older; this is not a newer Windows feature release. Actual media validation remains required."
-                    : "Matching PcNinja Windows 11 source. Download and actual image validation remain required; a matching link does not prove upgrade compatibility.");
+            return new(own.Id, own.BrowserPage, null, own.Name, null, true,
+                "PcNinja Windows OEM download matches this edition, language and architecture. " +
+                "The target version is not known until the actual media is validated. " +
+                "Download availability does not prove upgrade compatibility; older or mismatched media will not start Setup.");
 
         if (UnsupportedReason(system) is { } unsupported) return Fallback(system, unsupported);
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);

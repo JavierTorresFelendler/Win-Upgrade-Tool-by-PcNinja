@@ -132,7 +132,7 @@ The following RC6 sections describe the published baseline where wording differs
 
 ## Branding and outcome evidence
 
-- GUI/product name: **Windows Upgrade Assistant By PcNinja**; footer **View log**.
+- GUI/product name: **Windows Upgrade Tool by PcNinja**; footer **View log**.
   Version/build identity remains metadata and explicit diagnostics, not visible
   release branding. No additional popup is added by outcome reconciliation.
 - Correlated completed rollback shows its summary, actual result/extended codes

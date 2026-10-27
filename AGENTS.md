@@ -41,6 +41,15 @@ access to prior chats, local Codex skills, personal memories, or machine paths.
 
 ## Product and safety boundaries
 
+- The application is free to use under the repository's freeware LICENSE, not an
+  open-source permission grant. Do not replace it with MIT/GPL or imply source
+  reuse/rebranding rights without an explicit owner decision. Preserve upstream
+  third-party terms; report security issues privately to javier@pcninja.pro.
+- Stable V1 uses technical 1.0.0 and Win-Upgrade-Tool-by-PcNinja-v.1.exe; 1.1.0 uses
+  -v.1.1.exe. Display Windows Upgrade Tool by PcNinja; canonical repository is
+  JavierTorresFelendler/Win-Upgrade-Tool-by-PcNinja. Keep C# and publisher filename mappings identical and preserve all
+  historical Beta/RC names. Beta-to-first-stable is a manual bootstrap, not an
+  excuse to bypass newer-version or channel checks.
 - Keep the standalone application separate from future WinUpdate Tool integration.
 - GUI and CLI must use the same Core validation, download and upgrade operations.
 - Manual x64 Windows 10/11 client LTSC upgrades use `ManualUpgradePolicy` and
@@ -51,8 +60,12 @@ access to prior chats, local Codex skills, personal memories, or machine paths.
 - Do not launch Windows Setup or upgrade the development machine during tests.
 - Keep automatic-provider transport/session details internal. Prefer the full-profile
   matching owner source, including all eleven configured OEM editions. Its browser
-  fallback uses `https://11oem.pcninja.pro/`; unmatched users keep the broader
+  fallback uses `https://winoemiso.pcninja.pro/`; unmatched users keep the broader
   `https://iso.pcninja.pro` and Microsoft's official alternative.
+- Own OEM download coverage is edition/language/x64/client/LTSC based, not a
+  pinned target build or released-build allowlist. Keep external catalog feature
+  rules separate. Unknown target version stays unknown until actual media
+  validation; never remove final host/image/build/storage/answer-file checks.
 - External catalog guidance resolves public landing pages only, on explicit request.
   Never substitute a language/edition/architecture or automate host challenges.
   Actual media must still pass Core validation. See `docs/MATCHED-ISO-DOWNLOADS.md`.

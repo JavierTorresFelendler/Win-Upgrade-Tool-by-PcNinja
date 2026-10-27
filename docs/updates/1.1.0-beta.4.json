@@ -1,0 +1,4 @@
+{
+  "importance": "normal",
+  "message": "Beta 4: test the application update from the fixed Beta 3. Windows restart flags no longer block updating this tool. The new EXE stays beside your current copy, which remains unchanged. This update does not upgrade Windows or restart your computer."
+}

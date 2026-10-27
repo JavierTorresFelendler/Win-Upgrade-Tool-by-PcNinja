@@ -1,6 +1,48 @@
 # Roadmap
 
-## Current owner scope: stability, then application updates
+## Current: first official V1 product closeout
+
+Freeze features and finish the existing product. The owner selected free-use-only
+licensing (not an open-source grant), private security contact
+**javier@pcninja.pro**, shorter stable download names and preparation of an official
+release after verification. This section supersedes the historical plans below.
+
+- First official V1: technical/tag `1.0.0` / `v1.0.0`, public EXE
+  `Win-Upgrade-Tool-by-PcNinja-v.1.exe`. Next V1.1 uses `1.1.0` and `-v.1.1.exe`.
+  Nonzero patch components stay explicit. Product/UI is Windows Upgrade Tool by
+  PcNinja; repository is Win-Upgrade-Tool-by-PcNinja. Internal assembly basename,
+  logo, website target and ISO links remain; the website font increases to 11pt.
+- Preserve every prior RC/Beta filename and byte. Beta remains an isolated
+  non-latest trial channel. Existing `1.1.0-beta.5` requires a one-time manual
+  official V1 bootstrap, not a downgrade/channel bypass; stable follows stable.
+- Carry forward the verified GUI/CLI/media safety and the Beta 5 portable updater:
+  explicit consent, same-folder verified successor, no OS-reboot/Setup dependency,
+  own-task serialization and exact predecessor OLD-/OLD.Vn- marking after native
+  PID-authenticated new GUI readiness. CLI without GUI relaunch does not rename.
+- Owner evidence includes successful Windows-upgrade field tests and real Beta
+  4 -> Beta 5 GUI startup/OLD rename/UpToDate. Preserve honest limits: not every
+  language/device/failure matrix or stable-to-stable lifecycle has been field-tested.
+- Close documentation/CLI examples, [Massgrave credits](CREDITS.md),
+  [LICENSE](../LICENSE), [SECURITY.md](../SECURITY.md), exact filename/manifest tests,
+  build provenance and final candidate verification. Merge/publication gates stay
+  explicit; do not treat a PR artifact as the official release.
+- Keep media extraction/copy/sanitization preparation outside V1. A later, separate
+  integration into PcNinja WinUpdate Tool should reuse Core, not duplicate the UI.
+
+No additional feature expansion is needed just to finish the first release.
+
+## Historical: owner-approved Beta updater trial (superseded)
+
+This section supersedes the older Program Files/first-stable test plan below.
+See [portable updates](APPLICATION-UPDATES.md) for the implemented contract.
+Prepare/publish Beta 1 only after safe local/CI/artifact checks; wait for the owner
+to open it before publishing Beta 2. Two version-named EXEs beside each other,
+explicit download/run consent, Regular/Critical summary and GitHub notes, no
+original overwrite/rename and no Program Files. Beta is an isolated non-latest
+preview channel. After the live demo and field acceptance, consider RC9 and
+then a separately approved official V1.1. Do not merge or publish stable now.
+
+## Historical owner scope: stability, then application updates
 
 The owner reaffirmed this scope on 2026-10-24:
 
@@ -9,17 +51,22 @@ The owner reaffirmed this scope on 2026-10-24:
 - Keep media extraction/copy/sanitization preparation (design PR #9) outside this
   delivery. Existing answer-file safety blocks and narrowly scoped selected-source
   cleanup remain; this deferral is not permission to weaken those safeguards.
-- The next new capability is **application self-update through GitHub**, separate
-  from downloading a Windows ISO or upgrading the operating system. Design PR #13
-  already describes the proposed manifest/release pattern used in WinUpdate V2
-  and Smart Office Installer. It is design only and needs refreshing against the
-  current code before implementation; do not merge it merely to claim an updater.
-- Plan one first stable version that already contains the updater, followed by a
+- **Application self-update through GitHub** is implemented in development Draft
+  PR #13, separately from downloading an ISO or upgrading Windows. The published
+  RC8 and older binaries remain unchanged and have no updater. Stable discovery,
+  explicit GUI/CLI consent, verified private staging, protected Program Files
+  portable-copy installation and draft-first publication support are development
+  capabilities, not a published stable feed or completed VM acceptance. See the
+  [user guide](APPLICATION-UPDATES.md) and [implementation contract](design/APPLICATION-UPDATES.md).
+- The remaining acceptance needs one first stable already containing the updater,
+  followed by a
   higher stable version to test discovery, consent, download verification,
   recoverable replacement/relaunch and failure recovery. The second version may
   have no functional changes beyond correct release/binary version identity.
-  Stable tags/releases require separate explicit approval. Never update the app
-  during ISO work or active Windows Setup, and never let app updates start Setup.
+  Both stable tags/releases require separate explicit approval; neither is
+  created by this PR. Verify the original outside copy, helper/gate and recovery
+  on a disposable VM. Never update the app during active ISO work/Windows Setup,
+  and never let app updates start Setup or authorize an OS restart.
 - Credit Massgrave's alternative ISO catalogs in the README and source docs.
   Credits do not change source priority, validation or the product's licensing scope.
 
