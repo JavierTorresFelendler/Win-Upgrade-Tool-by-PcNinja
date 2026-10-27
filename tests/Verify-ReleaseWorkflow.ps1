@@ -211,7 +211,12 @@ jobs:
     steps:
       - uses: actions/checkout@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 '@
+# Git checkout can materialize this script as CRLF on hosted Windows runners.
+# Normalize before exact mutation targeting, not only inside the checker.
+$fixture = $fixture.Replace("`r", '')
+$prFixture = $prFixture.Replace("`r", '')
 Assert-ReleaseWorkflow $fixture $prFixture
+Assert-ReleaseWorkflow ($fixture.Replace("`n", "`r`n")) ($prFixture.Replace("`n", "`r`n"))
 foreach ($mutation in @(
     @("  build:`n    permissions:`n      contents: read", "  build:`n    permissions:`n      contents: write", 'write token in build'),
     @('    environment: release', '    environment: unprotected', 'missing protected environment'),
