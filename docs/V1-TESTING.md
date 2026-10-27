@@ -6,6 +6,10 @@ the official GitHub Release/tag/hash identifies the published product.
 ## Automated gates
 
 - Core, headless CLI, Windows-client GUI and offline publication tests pass.
+- OEM transport/browser share the new URL; all eleven covered editions including
+  Pro N match without a fixed build. Enterprise/N/LTSC, Server, non-en-US and
+  non-x64 profiles keep manual matching guidance. No guessed target version is
+  reported; actual older or mismatched Windows 11 media stays blocked.
 - Exact stable filename mappings: 1.0.0 -> v.1, 1.1.0 -> v.1.1, 1.0.1 -> v.1.0.1.
   C# updater and PowerShell publisher agree; old Beta/RC names stay unchanged.
 - Fake GitHub discovery/manifest checks prove stable 1.0.0 -> 1.1.0 selects the

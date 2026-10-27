@@ -1,7 +1,7 @@
 # Matched ISO download guidance
 
-Included in RC8 after merging the exact-ISO session-reuse and matched-download
-PRs. Previous test/release binaries remain unchanged. Matching recommendations
+Included in RC8 and refined for V1. Previous test/release binaries remain
+unchanged. Matching recommendations
 are separate from actual-media validation and permission to run Windows Setup.
 
 ## Approved scope and flow
@@ -12,8 +12,12 @@ are separate from actual-media validation and permission to run Windows Setup.
 2. Prefer a matching configured PcNinja source. All eleven existing OEM editions
    are retained: Home, Home N, Home Single Language, Education, Education N, Pro,
    Pro N, Pro Education, Pro Education N, Pro for Workstations and its N edition.
-   The configured source is en-US/x64 Windows 11 build 26300 (26H2). Windows 10
-   and earlier ordinary Windows 11 client families are eligible. Automatic Start
+   The configured source is en-US/x64 PcNinja Windows OEM, at
+   https://winoemiso.pcninja.pro/. Own-source eligibility uses client type,
+   architecture, edition, language and LTSC status, not a pinned target build or
+   per-release host-build list. This permits a download attempt, not a promise of
+   newer/repair media. TargetVersion remains unknown until actual inspection.
+   External catalog feature/build rules stay separate and unchanged. Automatic Start
    still uses the real download/validation/upgrade flow, not browser-only guidance.
 3. Otherwise **Find matching ISO** reads the appropriate public catalog on demand.
    It matches the exact culture (for example es-ES is not es-MX), architecture,
@@ -38,7 +42,7 @@ existing explicit browser fallback and invalidate unattended consent.
 
 The owner's automatic PcNinja route/secure provider fallback remains unchanged.
 Eligibility is checked from the current edition, system UI language, architecture,
-client/LTSC/Server type and known build family **before** destination creation or
+client/LTSC/Server type **before** destination creation or
 an ISO HTTP request, in shared Core. The GUI also rechecks before asking for
 automatic-flow consent. All eleven configured owner editions remain covered;
 the existing own-source download/validation/upgrade flow has no added manual step.
@@ -48,6 +52,9 @@ a fail-if-called HTTP handler, asserting zero requests and no destination create
 The internal constructor seam is test-only, not a public CLI eligibility override.
 Normal HTTP redirect/cookie/TLS/user-agent/provider behavior and transfer callbacks
 are unchanged. Existing policy fixtures retain all eleven allowed edition IDs.
+Version-independent own-source fixtures include Pro N/newer and preview build
+numbers without enabling Enterprise/LTSC/Server/other-language routes. They also
+prove that actual older/mismatched Windows 11 image metadata remains incompatible.
 
 This preflight trusts the owner's configured ISO coverage; it cannot prove that
 a mutable remote link still contains that media. Post-download actual-image,

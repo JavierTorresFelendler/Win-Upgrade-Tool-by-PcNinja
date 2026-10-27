@@ -60,8 +60,12 @@ access to prior chats, local Codex skills, personal memories, or machine paths.
 - Do not launch Windows Setup or upgrade the development machine during tests.
 - Keep automatic-provider transport/session details internal. Prefer the full-profile
   matching owner source, including all eleven configured OEM editions. Its browser
-  fallback uses `https://11oem.pcninja.pro/`; unmatched users keep the broader
+  fallback uses `https://winoemiso.pcninja.pro/`; unmatched users keep the broader
   `https://iso.pcninja.pro` and Microsoft's official alternative.
+- Own OEM download coverage is edition/language/x64/client/LTSC based, not a
+  pinned target build or released-build allowlist. Keep external catalog feature
+  rules separate. Unknown target version stays unknown until actual media
+  validation; never remove final host/image/build/storage/answer-file checks.
 - External catalog guidance resolves public landing pages only, on explicit request.
   Never substitute a language/edition/architecture or automate host challenges.
   Actual media must still pass Core validation. See `docs/MATCHED-ISO-DOWNLOADS.md`.

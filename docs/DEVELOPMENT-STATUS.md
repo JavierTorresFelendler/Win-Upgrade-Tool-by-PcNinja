@@ -1,12 +1,46 @@
 # Development handoff
 
-Updated: 2026-10-26. This is sanitized project context, not a backup of Codex chats.
+Updated: 2026-10-27. This is sanitized project context, not a backup of Codex chats.
 
 Reusable architecture, diagnosis and verification know-how lives in
 [AI maintenance playbook](AI-MAINTENANCE-PLAYBOOK.md), independently of any
 assistant's personal memory or skills installation.
 
-## Current authorization: final V1 branding
+## Current authorization: first official V1 publication
+
+Owner accepted the final-branded candidate, approved the general OEM URL and
+version-independent own-source download coverage, and explicitly authorized a
+final pass, main merge and first official stable publication if no critical
+blocker remains. This supersedes the earlier VM/release holds below.
+
+- Shared OEM endpoint/browser fallback is https://winoemiso.pcninja.pro/.
+  Source coverage remains eleven en-US/x64 Home/Pro/Education variants, excluding
+  Enterprise/N/LTSC, Server, other architectures/languages and unsupported host
+  types. Own-source routing no longer pins a target build or host-release list.
+  The base manual host gate remains. External catalog family/version rules and
+  all application-update version/channel rules remain unchanged.
+- Remove the unused configured source Build field rather than inventing a
+  version. Own recommendations report TargetVersion=null and generic PcNinja
+  Windows OEM, without claiming newer/repair media before inspecting its bytes.
+- Fresh final Setup launch still rereads host/Windows data, signatures/image
+  metadata, selected image, Windows 11 equal-or-newer build, storage and unsafe
+  answer files. Core is shared by GUI/CLI; actual Windows 10 POC rules unchanged.
+- New fake-metadata fixtures cover all eleven editions on released/newer/preview
+  build numbers, Pro N downgrade rejection and edition/language/architecture
+  mismatches. Unsupported-profile Core entry still proves zero HTTP/destination
+  creation; Enterprise N has explicit negative coverage.
+- Read-only GET-header probes with the application's normal user-agent returned
+  HTTP200 at the provider through both old and new short-link hosts. No ISO body
+  was downloaded, no TLS bypass, real helper/Windows Setup or reboot was invoked.
+- Local Core, offline packaging, Windows-client GUI and headless CLI checks pass
+  with zero build warnings/errors. GUI and CLI explicitly cover Pro N/newer-build
+  routing as well as denied profiles. Privileged native fixtures skip locally
+  and must pass hosted CI. Final checkpoint/CI, reviewed main ancestry and
+  draft-first release verification follow. Preserve
+  every existing release asset, tag and prior test EXE; first stable stays 1.0.0
+  with Win-Upgrade-Tool-by-PcNinja-v.1.exe, freeware licensing and original branding.
+
+## Previous accepted checkpoint: final V1 branding
 
 Owner finalized the exact public filename **Win-Upgrade-Tool-by-PcNinja-v.1.exe**
 and requested a slightly larger website brand. Current product/UI is

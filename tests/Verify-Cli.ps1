@@ -84,13 +84,14 @@ $knownOwnEditions = @('Core', 'CoreN', 'CoreSingleLanguage', 'Education', 'Educa
     'ProfessionalWorkstation', 'ProfessionalWorkstationN')
 $knownOwnProfile = $profile.language -ieq 'en-US' -and $profile.architecture -ieq 'x64' -and
     $profile.installationType -ieq 'Client' -and -not $profile.isServer -and -not $profile.isLtsc -and
-    $profile.isSupportedClient -and $profile.edition -in $knownOwnEditions -and
-    $profile.build -ge 10240 -and $profile.build -le 26300
+    $profile.edition -in $knownOwnEditions -and
+    ($profile.build -ge 10240 -and ($profile.build -le 19045 -or $profile.build -ge 22000))
 if ($automaticExpected -and $knownOwnProfile) {
     $recommendation = (Invoke-Assistant @('downloads', '--json')) | ConvertFrom-Json
     if ($LastCode -ne 0 -or $recommendation.resultCode -ne 'DOWNLOAD_RECOMMENDATION' -or
         $recommendation.readyForRestart -ne $false -or $recommendation.automaticTransferStarted -ne $false -or
-        $recommendation.setupStarted -ne $false -or -not $recommendation.recommendation.PageUrl -or
+        $recommendation.setupStarted -ne $false -or $null -ne $recommendation.recommendation.TargetVersion -or
+        -not $recommendation.recommendation.PageUrl -or
         $recommendation.recommendation.PageUrl.TrimEnd('/') -ine $status.pcNinjaDownloadPage.TrimEnd('/')) {
         throw 'Own-source read-only download recommendation failed.'
     }

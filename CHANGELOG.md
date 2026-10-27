@@ -1,6 +1,11 @@
 # Changelog
 
-## 1.0.0 — first stable V1 candidate
+## 1.0.0 — first stable V1
+
+- Use the general winoemiso.pcninja.pro OEM route for transport and browser
+  fallback. Own-source coverage no longer pins a target build; retain all eleven
+  en-US/x64 Home/Pro/Education variants and actual-media prelaunch compatibility.
+  Do not claim a target version or repair/newer status before inspection.
 
 - Prepare the owner-approved official line with technical 1.0.0 and short public
   filename Win-Upgrade-Tool-by-PcNinja-v.1.exe; next 1.1.0 maps to -v.1.1.exe. Keep

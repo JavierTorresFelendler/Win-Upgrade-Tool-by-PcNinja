@@ -262,6 +262,14 @@ Own-source eligibility and browser fallback must share the full profile across
 GUI/CLI, not just an en-US test. Keep general Consumer coverage independent of
 the ordered owner-source list, so adding a future source cannot change package
 classification. Do not order unrelated release families by numeric build alone.
+The owner-approved V1 OEM route https://winoemiso.pcninja.pro/ has no fixed target
+build: match edition/language/x64/client/non-LTSC coverage and the existing base
+host policy only, not IsSupportedClient's external-catalog release whitelist.
+Do not invent TargetVersion or repair/newer claims before media inspection.
+Download eligibility is not installation authorization: preserve final current
+host and actual image/build/edition/language/signature/storage/answer-file checks.
+The external catalog still uses its own release-family rules. Do not globally
+remove those rules or application-update version checks as part of ISO routing.
 
 Treat an external HTML catalog as untrusted, changing input. Bound size/time,
 cross-check per-table heading/build and exact filename/culture/package, allowlist

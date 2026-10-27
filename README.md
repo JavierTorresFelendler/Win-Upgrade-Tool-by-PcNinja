@@ -18,7 +18,7 @@ project-specific decisions and working procedures across assistants and machines
 
 ## Download
 
-V1 is being prepared for official publication. Download a published build only
+The first official stable line is V1 (`1.0.0`). Download a published build only
 from this repository's [Releases](https://github.com/JavierTorresFelendler/Win-Upgrade-Tool-by-PcNinja/releases)
 page; a PR artifact is a test build, not an official release. The first stable
 download uses this short name:
@@ -103,10 +103,15 @@ full details/log remain available. See [session reuse](docs/ISO-VALIDATION-REUSE
 
 Automatic download currently supplies **English (en-US), x64 Windows 11** media
 for eleven configured Home/Pro/Education-family editions. The installed edition,
-language, architecture, client/LTSC/Server type and known build family are checked
-before an ISO transfer or destination creation. An unsupported profile, including
+language, architecture and client/LTSC/Server type are checked before an ISO
+transfer or destination creation. Own-source download eligibility does not depend
+on a pinned ISO build or a per-release host-build list. An unsupported profile, including
 en-GB, keeps manual media selection available with an explanation. Eligibility
 uses configured media coverage; the actual downloaded bytes must still validate.
+The target version is unknown until media inspection. An older or mismatched ISO
+can therefore be downloaded, but cannot bypass final Windows 11 build, edition,
+language, signature, storage or unattended-media checks before Setup. The shared
+OEM route is https://winoemiso.pcninja.pro; general manual downloads stay separate.
 Matching manually supplied media is not restricted to English. Edition, x64,
 Windows 11 build and all other safety checks still apply; this is not a claim
 that every language/media combination has been field-tested.

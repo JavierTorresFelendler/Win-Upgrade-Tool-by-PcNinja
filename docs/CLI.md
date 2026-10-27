@@ -228,14 +228,18 @@ Start an upgrade from that ISO:
 ## Download an ISO automatically
 
 Automatic download requires a match against the **full detected system profile**:
-edition, system-default UI language, architecture, client family, LTSC status and
-released feature build. Language alone is not sufficient. The current configured
-PcNinja OEM source is Windows 11 26H2, **en-US/x64**, for the approved Home,
+edition, system-default UI language, architecture, client type and LTSC status.
+Language alone is not sufficient. The configured PcNinja Windows OEM source is
+**en-US/x64**, for the approved Home,
 Pro and Education editions, including their N/Single Language/Pro Education/
-Workstation variants. Matching released Windows 10/11 clients retain this source's
-priority; Enterprise, Server, LTSC, unknown/preview and ordinary 26H1 profiles do
-not inherit it. An equal feature build may be a repair candidate; the configured
-media revision is not independently known to be newer.
+Workstation variants. Matching clients retain this source's priority without a
+pinned ISO-build comparison or released-build list for own-source routing.
+Enterprise, Server, LTSC, other languages/architectures and unknown editions do
+not inherit it. The target version remains unknown until actual media inspection;
+`downloads` returns `TargetVersion=null` for this source, not a repair/newer claim.
+The final host/image/version/storage/answer-file checks are unchanged. The
+`isSupportedClient` diagnostic still describes known external-catalog client
+families; use `automaticDownloadAvailable` for own-source availability.
 
 Nonmatching profiles, including en-GB, return validation exit code **3** before a
 transfer. Run `downloads` or `downloads --json` for matching manual guidance; the

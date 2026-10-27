@@ -1,6 +1,6 @@
 # V1 — Windows Upgrade Tool by PcNinja
 
-First stable release candidate prepared from the field-tested Beta 5 code.
+First stable release, based on the field-tested Beta 5 code and accepted V1 branding.
 The GitHub Release page is authoritative for actual publication status.
 
 - Public portable EXE: `Win-Upgrade-Tool-by-PcNinja-v.1.exe`, technical version
@@ -8,6 +8,10 @@ The GitHub Release page is authoritative for actual publication status.
 - Same tested Windows 10/11 x64 client upgrade flow, own matching ISO priority,
   manual ISO/mounted/folder sources, actual image inspection, language/edition
   gates, unattended-media checks, storage checks and explicit restart/quiet policy.
+- General OEM route: https://winoemiso.pcninja.pro/. Download eligibility matches
+  en-US/x64 and the eleven Home/Pro/Education variants without a fixed target
+  build. The target version is read from actual media; final compatibility,
+  Windows 11 downgrade protection and all prelaunch safety checks remain.
 - Consent-based GitHub application updates, independent of Windows restart flags
   and external Setup. New verified version stays beside the running copy.
 - After shown/painted GUI readiness authenticated to the exact new process, mark

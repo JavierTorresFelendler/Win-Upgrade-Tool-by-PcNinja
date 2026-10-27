@@ -11,7 +11,7 @@ namespace PcNinja.Win11Upgrade.Core;
 
 public sealed class UpgradeEngine
 {
-    public const string DownloadEndpoint = "https://11oem.pcninja.pro";
+    public const string DownloadEndpoint = DownloadSourcePolicy.OemPage;
     public const string PcNinjaBrowserFallbackPage = "https://iso.pcninja.pro";
     private const string AutomaticDownloadProviderPage =
         "https://technionmail-my.sharepoint.com/:u:/g/personal/techsup_technion_ac_il/IQB4hCE2DRrGRqQuQYDafLdfAYjrr8R8MAqD4efXPsI-epA?e=aqZwxY";

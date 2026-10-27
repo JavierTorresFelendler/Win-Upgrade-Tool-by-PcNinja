@@ -25,6 +25,15 @@ internal static class Program
         var start = (Button)Field("_start");
         if (!start.Enabled) throw new Exception("Start is disabled after startup on the test machine.");
         var choices = new[] { "_autoDownload", "_existingMedia" }.Select(name => (RadioButton)Field(name)).ToArray();
+        foreach (var profile in new[] {
+            new DownloadSystem("ProfessionalN", "en-US", 28000, 0, "x64", "Client"),
+            new DownloadSystem("Education", "en-US", 99999, 0, "x64", "Client") })
+        {
+            Invoke("ApplyDownloadSystem", profile);
+            if (!choices[0].Enabled)
+                throw new Exception("GUI applied a fixed ISO build to eligible OEM download coverage.");
+        }
+        Invoke("ApplyDownloadLanguagePolicy", "en-US");
         IEnumerable<Control> Descendants(Control parent) => parent.Controls.Cast<Control>()
             .SelectMany(control => new[] { control }.Concat(Descendants(control)));
         ResizeChecks.Run(form, Descendants(form).OfType<Panel>()
