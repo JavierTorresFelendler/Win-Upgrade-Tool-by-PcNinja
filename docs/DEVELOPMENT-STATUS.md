@@ -6,7 +6,43 @@ Reusable architecture, diagnosis and verification know-how lives in
 [AI maintenance playbook](AI-MAINTENANCE-PLAYBOOK.md), independently of any
 assistant's personal memory or skills installation.
 
-## Current authorization: first official V1 publication
+## Published: first official stable V1
+
+Published on 2026-10-27 after owner acceptance and explicit release approval.
+
+- [Official v1.0.0 release](https://github.com/JavierTorresFelendler/Win-Upgrade-Tool-by-PcNinja/releases/tag/v1.0.0),
+  release ID 425060495, non-draft/non-prerelease and verified as latest stable.
+- [PR13](https://github.com/JavierTorresFelendler/Win-Upgrade-Tool-by-PcNinja/pull/13)
+  squash-merged without bypassing main protection. Immutable tag/source:
+  f0f03237053e26962ab0b4cf7d91380565b147dc. Main's release tree exactly matched
+  reviewed source 9599704f4be2625079a4072c615ef4333a7b1f77.
+- Exact-source PR CI 40454104446 and tag release workflow 40454392458 PASSED.
+  Local Core, headless CLI, client GUI and offline publisher checks passed with
+  zero build warnings/errors. Privileged native fixtures skipped locally and
+  passed in hosted CI; hosted Server does not replace client GUI/VM acceptance.
+- Official EXE Win-Upgrade-Tool-by-PcNinja-v.1.exe, asset ID 680540458,
+  73,088,775 bytes, FileVersion 1.0.0.0, ProductVersion 1.0.0 plus tagged source,
+  Authenticode NotSigned. SHA-256:
+  5cec1102e4d10e39fcb3581a839a5d76f54fea1853dee67be49d51b743f1b781.
+- Independently re-downloaded all four published assets. API digest/size,
+  SHA256SUMS, BUILD-INFO source, EXE Product/version/size and stable manifest's
+  exact EXE binding/normal notice verified. Actual portable read-only CLI suite
+  passed; live app-update check returns APP_UPDATE_CURRENT with
+  applicationUpdated/setupStarted/readyForRestart false.
+- All twelve preceding releases and their asset IDs/names/sizes/digests remain
+  unchanged. No real Windows Setup, ISO body download/mount, app helper/relaunch,
+  reboot, flag/service reset or customer-log publication occurred in this closeout.
+- Download/open the official V1 manually once from any Beta or earlier test
+  candidate, including candidates already reporting 1.0.0. Version equality is
+  not proof of identical source/bytes; do not bypass update version/channel guards.
+- Stable-to-stable fixtures pass; a later live V1-to-newer-stable lifecycle test
+  remains future acceptance, not an implied result of Beta trials. Unsigned-build
+  GitHub/TLS trust limits and experimental OS paths remain documented.
+- Documentation-only follow-up may advance main, never move this tag, replace
+  these assets or republish different code as v1.0.0. Future code changes require
+  a new reviewed version. Earlier authorization/hold sections below are history.
+
+## Accepted release preparation: first official V1 publication
 
 Owner accepted the final-branded candidate, approved the general OEM URL and
 version-independent own-source download coverage, and explicitly authorized a
