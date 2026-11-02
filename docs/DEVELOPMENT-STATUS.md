@@ -1,5 +1,21 @@
 # Development handoff
 
+## Issue #26: compact display layout proof of concept
+
+The GUI now fits its initial window to the current monitor's working area and
+offers an outer scrolling viewport when the existing two-card layout needs more
+space. The inner card scrolling and existing operation logic remain in place.
+The viewport keeps a 1000 x 660 logical-pixel layout canvas at 96 DPI; smaller
+working areas rely on horizontal and vertical scrolling. This is a POC, not a
+claim that a minimum display size or the full DPI matrix has been certified.
+
+Local GUI fixtures exercise compact scrolling, resize, source selection, busy
+and Setup lockout with fake inputs; Core smoke tests use no Windows Setup.
+VM checks remain necessary for 1024x768, 1280x720 and 1366x768 at 100%, 125%
+and 150% scaling, taskbar, keyboard navigation, long messages, mixed DPI and
+remote sessions. Record actual display and scaling for each result. Test build
+only; no release or merge is authorized by this POC.
+
 Updated: 2026-10-27. This is sanitized project context, not a backup of Codex chats.
 
 Reusable architecture, diagnosis and verification know-how lives in

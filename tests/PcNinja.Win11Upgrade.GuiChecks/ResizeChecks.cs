@@ -46,7 +46,8 @@ internal static class ResizeChecks
                 form.Size = size;
                 Application.DoEvents();
                 for (var i = 0; i < cards.Length; i++)
-                    if (cards[i].Size != before[i] &&
+                    if (cards[i].Size != before[i] && form.ClientRectangle.IntersectsWith(
+                            form.RectangleToClient(cards[i].RectangleToScreen(cards[i].ClientRectangle))) &&
                         (!fullInvalidations.Contains(cards[i]) || !paints.Contains(cards[i])))
                         throw new Exception("Resizing did not invalidate and repaint the complete dashboard card.");
             }

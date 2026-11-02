@@ -83,7 +83,7 @@ internal sealed partial class MainForm : Form
     {
         Text = ProductIdentity.Name;
         StartPosition = FormStartPosition.CenterScreen;
-        MinimumSize = new Size(1020, 700);
+        MinimumSize = new Size(480, 320);
         Size = new Size(1160, 800);
         AutoScaleMode = AutoScaleMode.Dpi;
         Font = new Font("Segoe UI", 9.5F);
@@ -97,6 +97,7 @@ internal sealed partial class MainForm : Form
         _resolveDownloadRecommendation = token => _engine.GetDownloadRecommendationAsync(token);
         _prepareServerCommand = (source, index, token) => _engine.GetManualServerCommandAsync(source, index, token);
         BuildUi();
+        Load += (_, _) => FitToWorkingArea();
         Shown += async (_, _) => { RefreshSources(true); if (_automaticAppUpdateCheck) await CheckAppUpdatesAsync(false); };
         FormClosed += (_, _) => { _appUpdateCheck?.Cancel(); _applicationUpdates.Dispose(); };
         FormClosing += (_, e) =>
@@ -109,13 +110,21 @@ internal sealed partial class MainForm : Form
         };
     }
 
+    private void FitToWorkingArea()
+    {
+        var area = Screen.FromControl(this).WorkingArea;
+        Size = new Size(Math.Min(Width, area.Width), Math.Min(Height, area.Height));
+        Location = new Point(area.Left + (area.Width - Width) / 2, area.Top + (area.Height - Height) / 2);
+    }
+
     private void BuildUi()
     {
         SuspendLayout();
 
+        var viewport = new Panel { Dock = DockStyle.Fill, AutoScroll = true, BackColor = Background };
+        Controls.Add(viewport);
         var page = new TableLayoutPanel
         {
-            Dock = DockStyle.Fill,
             Padding = new Padding(24, 18, 24, 14),
             ColumnCount = 1,
             RowCount = 4,
@@ -125,7 +134,18 @@ internal sealed partial class MainForm : Form
         page.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         page.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         page.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        Controls.Add(page);
+        viewport.Controls.Add(page);
+        void SizePage()
+        {
+            // Keep the established two-card layout usable at high DPI. When the
+            // screen is smaller, the outer viewport exposes the entire layout.
+            var scale = DeviceDpi / 96f;
+            page.Size = new Size(Math.Max(viewport.ClientSize.Width, (int)Math.Ceiling(1000 * scale)),
+                Math.Max(viewport.ClientSize.Height, (int)Math.Ceiling(660 * scale)));
+        }
+        viewport.Resize += (_, _) => SizePage();
+        DpiChanged += (_, _) => SizePage();
+        SizePage();
 
         page.Controls.Add(BuildHeader(), 0, 0);
 

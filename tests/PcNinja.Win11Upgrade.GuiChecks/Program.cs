@@ -38,6 +38,25 @@ internal static class Program
             .SelectMany(control => new[] { control }.Concat(Descendants(control)));
         ResizeChecks.Run(form, Descendants(form).OfType<Panel>()
             .Where(panel => panel.Padding == new Padding(20)).ToArray());
+        var viewport = form.Controls.OfType<Panel>().Single();
+        if (!viewport.AutoScroll) throw new Exception("The window has no outer scrolling fallback.");
+        var previousSize = form.Size;
+        form.Size = new Size(640, 480);
+        Application.DoEvents();
+        if (!viewport.HorizontalScroll.Visible || !viewport.VerticalScroll.Visible)
+            throw new Exception("The compact window did not expose both scrollbars.");
+        foreach (var name in new[] { "_refresh", "_start", "_browse", "_browseInstallationFolder", "_inspectSource", "_autoRestart", "_quietSetup" })
+        {
+            var control = (Control)Field(name);
+            viewport.ScrollControlIntoView(control);
+            Application.DoEvents();
+            var bounds = viewport.RectangleToClient(control.RectangleToScreen(control.ClientRectangle));
+            if (!viewport.ClientRectangle.IntersectsWith(bounds))
+                throw new Exception($"{name} is unreachable through scrolling.");
+        }
+        form.Size = previousSize;
+        viewport.AutoScrollPosition = Point.Empty;
+        Application.DoEvents();
         if (form.Text != "Windows Upgrade Tool by PcNinja" ||
             Descendants(form).Any(control => control.Text.Contains("Version 1.1.0-rc.")))
             throw new Exception("Product branding exposed an obsolete name or release label.");
