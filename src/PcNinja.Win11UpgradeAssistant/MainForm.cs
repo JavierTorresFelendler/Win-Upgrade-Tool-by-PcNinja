@@ -31,6 +31,7 @@ internal sealed partial class MainForm : Form
     private readonly Label _restartSummary = new();
     private readonly RadioButton _autoDownload = new();
     private Label _automaticDownloadInfo = null!;
+    private Label _sourceIntroduction = null!;
     private Label _existingMediaInfo = null!;
     private bool _automaticDownloadAvailable;
     private readonly RadioButton _existingMedia = new();
@@ -276,7 +277,8 @@ internal sealed partial class MainForm : Form
         scrollHost.Controls.Add(content);
 
         content.Controls.Add(SectionHeading("Choose your installation source"));
-        content.Controls.Add(BodyText("Download automatically, or select an ISO, drive or folder."));
+        _sourceIntroduction = BodyText("Download automatically, or select an ISO, drive or folder.");
+        content.Controls.Add(_sourceIntroduction);
 
         _autoDownload.Text = "Download Windows 11 automatically";
         StyleRadio(_autoDownload, true);
@@ -291,6 +293,7 @@ internal sealed partial class MainForm : Form
         _automaticDownloadInfo = ConfigureSourcePanel(_autoSourcePanel, _autoDownload,
             "English (en-US). The ISO is checked before the upgrade starts.", destinationRow);
         content.Controls.Add(_autoSourcePanel);
+        for (var row = 0; row < 3; row++) content.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
         _existingMedia.Text = "Use an ISO, drive or folder";
         StyleRadio(_existingMedia);
@@ -1276,6 +1279,16 @@ internal sealed partial class MainForm : Form
         // Download-route discovery must not silently change the existing manual client upgrade policy.
         _upgradeAllowed = ManualUpgradePolicy.GetUnavailableReason(system) is null;
         _automaticDownloadAvailable = AutomaticDownloadPolicy.IsAvailable(system);
+        var sourceLayout = (TableLayoutPanel)_autoSourcePanel.Parent!;
+        sourceLayout.SuspendLayout();
+        _autoSourcePanel.Visible = _automaticDownloadAvailable;
+        var automaticRow = sourceLayout.RowStyles[sourceLayout.GetPositionFromControl(_autoSourcePanel).Row];
+        automaticRow.SizeType = _automaticDownloadAvailable ? SizeType.AutoSize : SizeType.Absolute;
+        automaticRow.Height = 0;
+        _sourceIntroduction.Text = _automaticDownloadAvailable
+            ? "Download automatically, or select an ISO, drive or folder."
+            : "Select an ISO, drive or folder.";
+        sourceLayout.ResumeLayout(true);
         _automaticDownloadInfo.Text = _automaticDownloadAvailable
             ? $"English ({system.Language}). The ISO is checked before the upgrade starts."
             : AutomaticDownloadPolicy.GetUnavailableReason(system) + " Use Find matching ISO for browser download guidance.";

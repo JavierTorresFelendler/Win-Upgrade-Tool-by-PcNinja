@@ -102,7 +102,7 @@ not popup flow, download providers, validation, Setup commands or CLI contracts.
 | --- | --- |
 | Header subtitle | Upgrade Windows 10 or Windows 11 while keeping your apps and files. |
 | Source heading | Choose your installation source |
-| Source description | Download automatically, or select an ISO, drive or folder. |
+| Source description | Eligible: Download automatically, or select an ISO, drive or folder. Otherwise: Select an ISO, drive or folder. |
 | Automatic choice | Download Windows 11 automatically |
 | Automatic description (available) | English (en-US). The ISO is checked before the upgrade starts. |
 | Existing-media choice | Use an ISO, drive or folder |

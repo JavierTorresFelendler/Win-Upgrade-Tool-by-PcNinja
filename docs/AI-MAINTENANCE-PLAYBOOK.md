@@ -154,6 +154,10 @@ All paths below are relative to the repository root.
 - Refresh must preserve the exact source, index and restart policy when valid.
   Changing source invalidates the old index. Failure/cancel messages must survive
   the final refresh and explain what to do, not disappear as a brief flash.
+- For unavailable automatic sources, collapse the TableLayoutPanel row as well as
+  hiding its child: visibility alone can leave the old row height. Restore the
+  auto-sized row when eligibility returns; busy state is independent of eligibility.
+  Verify row geometry and both transitions with synthetic profiles on a client GUI.
 - An empty image-selector cue is presentation, not an InstallationImage or index.
   Distinguish not validated, awaiting a choice and no compatible image. Reuse Core
   rejection reasons after successful enumeration; do not mislabel mount/read

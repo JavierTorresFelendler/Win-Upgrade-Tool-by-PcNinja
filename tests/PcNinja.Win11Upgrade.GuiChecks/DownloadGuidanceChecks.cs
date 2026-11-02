@@ -58,6 +58,28 @@ internal static class DownloadGuidanceChecks
             var validate = Field<Button>("_inspectSource");
             var browse = Field<Button>("_browse");
             var imageFrame = Field<Panel>("_imageChoiceFrame");
+            var autoPanel = Field<TableLayoutPanel>("_autoSourcePanel");
+            var introduction = Field<Label>("_sourceIntroduction");
+            var sourceLayout = (TableLayoutPanel)autoPanel.Parent!;
+            void CheckVisibility(bool expected)
+            {
+                sourceLayout.PerformLayout();
+                Application.DoEvents();
+                var row = sourceLayout.GetPositionFromControl(autoPanel).Row;
+                if (autoPanel.Visible != expected || (!expected && sourceLayout.GetRowHeights()[row] != 0) ||
+                    introduction.Text != (expected ? "Download automatically, or select an ISO, drive or folder." : "Select an ISO, drive or folder."))
+                    throw new Exception($"Automatic source visibility, collapsed row or introduction is incorrect: visible={autoPanel.Visible}, expected={expected}, row={row}, height={sourceLayout.GetRowHeights()[row]}, text={introduction.Text}.");
+            }
+            CheckVisibility(false);
+            foreach (var profile in new[] {
+                new DownloadSystem("ProfessionalN", "en-US", 22631, 1, "x64", "Client"),
+                new DownloadSystem("Enterprise", "en-US", 22631, 1, "x64", "Client"),
+                new DownloadSystem("EnterpriseS", "en-US", 19044, 1288, "x64", "Client", true),
+                client with { Architecture = "arm64", Language = "en-US" }, server, client })
+            {
+                Call("ApplyDownloadSystem", profile);
+                CheckVisibility(AutomaticDownloadPolicy.IsAvailable(profile));
+            }
             if (automatic.Enabled || automatic.Checked || !existing.Checked || !match.Enabled ||
                 !Field<Button>("_browse").Enabled || !Field<Button>("_browseInstallationFolder").Enabled ||
                 !Field<Button>("_pcNinjaDownload").Enabled || !Field<Button>("_microsoft").Enabled)
@@ -89,6 +111,22 @@ internal static class DownloadGuidanceChecks
                     throw new Exception("Download/manual command operation did not return to idle.");
                 AssertNoSetup();
             }
+
+            Populate(clientSource, clientImage);
+            var restart = Field<CheckBox>("_autoRestart");
+            var restartChoice = restart.Checked;
+            var eligible = new DownloadSystem("ProfessionalN", "en-US", 22631, 1, "x64", "Client");
+            Call("ApplyDownloadSystem", eligible);
+            CheckVisibility(true);
+            Call("ApplyDownloadSystem", client);
+            Call("ApplyDownloadSystem", client);
+            CheckVisibility(false);
+            if (!existing.Checked || sources.Text != clientSource.Root ||
+                !ReferenceEquals(Field<MountedSource>("_preparedSource"), clientSource) ||
+                !ReferenceEquals(images.SelectedItem, clientImage) || restart.Checked != restartChoice)
+                throw new Exception("Eligibility transitions changed manual media, image or restart selection.");
+            sources.Text = "";
+            Call("ExistingPathChanged");
 
             if (validate.Enabled || browse.FlatAppearance.BorderSize != 2)
                 throw new Exception("Empty manual source did not cue ISO browsing or disabled Validate.");

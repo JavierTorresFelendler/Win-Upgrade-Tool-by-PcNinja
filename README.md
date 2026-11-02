@@ -75,7 +75,7 @@ LTSC download, edition/channel conversion or Server execution.
 The application shows the current Windows version, storage state, and source
 choices on one screen:
 
-1. **Download Windows 11 automatically.** Choose a download drive/folder.
+1. **Download Windows 11 automatically.** On eligible systems, choose a download drive/folder. This option is hidden when unavailable; use matching manual media instead.
 2. **Use an ISO, drive or folder.** Select an ISO, mounted drive, extracted
    Setup folder or network folder in one path field, using **ISO...** or **Folder...**.
 

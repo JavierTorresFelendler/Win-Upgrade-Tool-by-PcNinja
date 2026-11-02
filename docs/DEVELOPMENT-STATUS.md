@@ -2,6 +2,17 @@
 
 Updated: 2026-10-27. This is sanitized project context, not a backup of Codex chats.
 
+## In progress: issue #25 automatic-source visibility
+
+The GUI hides and collapses the automatic source when the existing Core policy
+denies it, while preserving manual selection and Server guidance. This is a test
+candidate only: owner VM acceptance is pending. No merge, version bump, RC,
+release, tag or replacement of published assets is authorized by this change.
+Local Core smoke, GUI fixtures, CLI fixtures, offline publication checks and the
+portable EXE read-only CLI smoke passed. Local privileged updater/journal fixtures
+were skipped; hosted CI and owner visual checks at 100/125/150% remain necessary.
+No real download, mount, Windows Setup or restart was exercised.
+
 Reusable architecture, diagnosis and verification know-how lives in
 [AI maintenance playbook](AI-MAINTENANCE-PLAYBOOK.md), independently of any
 assistant's personal memory or skills installation.
