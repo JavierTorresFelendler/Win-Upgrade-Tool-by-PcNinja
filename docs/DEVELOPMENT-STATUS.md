@@ -12,6 +12,11 @@ Local Core smoke, GUI fixtures, CLI fixtures, offline publication checks and the
 portable EXE read-only CLI smoke passed. Local privileged updater/journal fixtures
 were skipped; hosted CI and owner visual checks at 100/125/150% remain necessary.
 No real download, mount, Windows Setup or restart was exercised.
+Owner's first Server 2025 VM screenshot exposed a clipped manual source panel:
+implicit cell placement moved it into the collapsed automatic row. Explicit cell
+assignments fix the regression; a rendered-bounds fixture reproduces failure on
+the previous implementation and passes after the fix, including synthetic Server
+2025 (build 26100), client transitions and resizing. Owner VM retest is pending.
 
 Reusable architecture, diagnosis and verification know-how lives in
 [AI maintenance playbook](AI-MAINTENANCE-PLAYBOOK.md), independently of any

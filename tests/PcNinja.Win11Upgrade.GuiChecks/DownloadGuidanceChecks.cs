@@ -28,7 +28,7 @@ internal static class DownloadGuidanceChecks
             }
 
             var client = new DownloadSystem("Professional", "es-ES", 22631, 1, "x64", "Client");
-            var server = new DownloadSystem("ServerStandard", "en-US", 20348, 1, "x64", "Server");
+            var server = new DownloadSystem("ServerStandard", "en-US", 26100, 1, "x64", "Server");
             var browser = new List<string>();
             var copied = new List<string>();
             var confirmations = 0;
@@ -66,6 +66,16 @@ internal static class DownloadGuidanceChecks
                 sourceLayout.PerformLayout();
                 Application.DoEvents();
                 var row = sourceLayout.GetPositionFromControl(autoPanel).Row;
+                var manualPanel = Field<TableLayoutPanel>("_existingSourcePanel");
+                var manualRow = sourceLayout.GetPositionFromControl(manualPanel).Row;
+                foreach (Control control in new Control[] { sources, browse, Field<Button>("_browseInstallationFolder") })
+                {
+                    var bounds = control.RectangleToScreen(control.ClientRectangle);
+                    for (Control? parent = control.Parent; parent is not null; parent = parent.Parent)
+                        bounds.Intersect(parent.RectangleToScreen(parent.ClientRectangle));
+                    if (!control.Visible || bounds.Width < control.Width - 4 || bounds.Height < control.Height - 4)
+                        throw new Exception($"Manual source control is clipped: {control.GetType().Name}, row={manualRow}, height={sourceLayout.GetRowHeights()[manualRow]}.");
+                }
                 if (autoPanel.Visible != expected || (!expected && sourceLayout.GetRowHeights()[row] != 0) ||
                     introduction.Text != (expected ? "Download automatically, or select an ISO, drive or folder." : "Select an ISO, drive or folder."))
                     throw new Exception($"Automatic source visibility, collapsed row or introduction is incorrect: visible={autoPanel.Visible}, expected={expected}, row={row}, height={sourceLayout.GetRowHeights()[row]}, text={introduction.Text}.");
@@ -79,6 +89,21 @@ internal static class DownloadGuidanceChecks
             {
                 Call("ApplyDownloadSystem", profile);
                 CheckVisibility(AutomaticDownloadPolicy.IsAvailable(profile));
+                var originalSize = form.Size;
+                foreach (var size in new[] { new Size(1140, 790), form.MinimumSize })
+                {
+                    form.Size = size;
+                    CheckVisibility(AutomaticDownloadPolicy.IsAvailable(profile));
+                }
+                form.Size = originalSize;
+                var captureDirectory = Environment.GetEnvironmentVariable("PCNINJA_GUI_CAPTURE");
+                if (captureDirectory is not null && (profile == server || profile.Edition == "ProfessionalN"))
+                {
+                    Directory.CreateDirectory(captureDirectory);
+                    using var capture = new Bitmap(form.Width, form.Height);
+                    form.DrawToBitmap(capture, new Rectangle(Point.Empty, form.Size));
+                    capture.Save(Path.Combine(captureDirectory, profile.IsServer ? "Server2025.png" : "Eligible-client.png"));
+                }
             }
             if (automatic.Enabled || automatic.Checked || !existing.Checked || !match.Enabled ||
                 !Field<Button>("_browse").Enabled || !Field<Button>("_browseInstallationFolder").Enabled ||

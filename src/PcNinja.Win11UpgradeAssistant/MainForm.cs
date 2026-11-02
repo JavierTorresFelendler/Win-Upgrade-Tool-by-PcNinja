@@ -352,6 +352,11 @@ internal sealed partial class MainForm : Form
         _serverCommandPreview.Visible = false;
         content.Controls.Add(_serverCommandPreview);
 
+        // Keep hidden rows assigned: implicit placement otherwise moves manual
+        // controls into the automatic row when that row is collapsed.
+        for (var row = 0; row < content.Controls.Count; row++)
+            content.SetCellPosition(content.Controls[row], new TableLayoutPanelCellPosition(0, row));
+
         var footer = new TableLayoutPanel
         {
             AutoSize = true,
