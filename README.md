@@ -18,9 +18,10 @@ project-specific decisions and working procedures across assistants and machines
 
 ## Download
 
-[Download the published portable EXE, release notes and checksums](https://github.com/JavierTorresFelendler/Win-Upgrade-Tool-by-PcNinja/releases/latest).
+[Download 1.2 portable EXE](https://github.com/JavierTorresFelendler/Win-Upgrade-Tool-by-PcNinja/releases/download/v1.2.0/Win-Upgrade-Tool-by-PcNinja-v.1.2.exe)
+or view its [release notes and checksums](https://github.com/JavierTorresFelendler/Win-Upgrade-Tool-by-PcNinja/releases/tag/v1.2.0).
 
-This source prepares stable 1.2 (`1.2.0`). The Releases page is authoritative for
+The current stable line is 1.2 (`1.2.0`). The Releases page is authoritative for
 publication status. Download a published build only
 from this repository's [Releases](https://github.com/JavierTorresFelendler/Win-Upgrade-Tool-by-PcNinja/releases)
 page; a PR artifact is a test build, not an official release. Version 1.2 uses:

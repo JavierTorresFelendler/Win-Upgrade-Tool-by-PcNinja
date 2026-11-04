@@ -385,6 +385,12 @@ Offline fixtures must cover hidden-by-tag drafts and temporary URLs, including
 rejection if a temporary URL remains after publication. Run these PowerShell
 packaging fixtures with PowerShell 7, as CI does (they use System.Text.Json).
 
+Cloud-synced fixture directories may mark downloaded ordinary files as cloud
+reparse points. Do not relax the release checker to accept them: copy the exact
+bytes into newly created regular files in a separate local fixture directory,
+then repeat metadata/hash/manifest checks and bind them to the same immutable
+Actions artifact. Preserve the original download for independent comparison.
+
 ## Maintain the knowledge, not just the patch
 
 Repository publication hardening is separate from the EXE updater. Keep build

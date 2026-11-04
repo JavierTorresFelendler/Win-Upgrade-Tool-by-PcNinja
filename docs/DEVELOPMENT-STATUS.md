@@ -2,7 +2,36 @@
 
 Updated: 2026-11-04. This is sanitized project context, not a backup of Codex chats.
 
-## Authorized: prepare and publish stable 1.2
+## Published and verified: stable 1.2
+
+Owner authorized release and personally approved the protected `release`
+deployment in GitHub. [Stable 1.2](https://github.com/JavierTorresFelendler/Win-Upgrade-Tool-by-PcNinja/releases/tag/v1.2.0)
+is published, non-draft/non-prerelease, latest and immutable (release ID 433513459).
+
+- PR27 merged normally after exact-source PR CI 41772130613 passed. Immutable
+  tag/source: `4d64563762b9daea32ced40c216bbee326f85dfd`. Main's release tree
+  matched the reviewed branch exactly. Release workflow 41772434201 passed after
+  human owner approval; no environment approval or protection was bypassed.
+- Final EXE `Win-Upgrade-Tool-by-PcNinja-v.1.2.exe`, asset ID 708219730,
+  73,089,915 bytes, product version 1.2.0 and FileVersion 1.2.0.0. SHA-256:
+  `5692a1d8bbfa60457cd141c6e482c397d8e94cb5045c34762dec69ecc217ef43`.
+- Independently downloaded all four published files. API digest/size, local
+  SHA-256, checksums, manifest's exact EXE binding and product/version/source
+  metadata matched the approved build. Published-EXE read-only CLI suite passed.
+- The actual published V1 EXE (original hash verified) reports
+  `APP_UPDATE_AVAILABLE` for 1.2.0 from the live feed, with the exact versioned
+  target asset. The published 1.2 EXE reports `APP_UPDATE_CURRENT`. Both checks
+  retain applicationUpdated/setupStarted/readyForRestart=false. This proves live
+  discovery, not a completed user installation/relaunch lifecycle.
+- All 13 earlier release states and asset IDs/names/sizes/digests remain unchanged.
+  No Windows Setup, ISO download/mount, app replacement/helper launch or reboot
+  occurred. The EXE remains unsigned. GUI interaction checks passed on a client
+  with synthetic Server/client profiles; full display-scaling coverage remains
+  a field-test limitation.
+- Documentation closeout may advance main; runtime/version/tag/assets stay at
+  the verified immutable release source. Future runtime changes need a new release.
+
+## Release preparation history: stable 1.2
 
 Owner accepted the UI direction and explicitly requested publication after all
 checks, including an update offer to existing stable users. This supersedes the
