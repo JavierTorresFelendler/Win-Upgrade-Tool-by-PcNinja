@@ -1,6 +1,23 @@
 # Development handoff
 
-Updated: 2026-10-27. This is sanitized project context, not a backup of Codex chats.
+Updated: 2026-11-04. This is sanitized project context, not a backup of Codex chats.
+
+## In progress: final manual-source presentation review
+
+Owner reports the fixed Server flow works, but requests less visual clutter and
+stronger matching-ISO discovery before progressing toward an official release.
+Group the Server command heading/Copy action, show the compact read-only preview
+only after copying, and remove repeated selected-image metadata from the nearby
+hint. Keep actual mismatch reasons and every operational guard. Put matching ISO
+first and highlight it for manual-only profiles, clearing emphasis during busy
+operations. Core/CLI/provider/Setup behavior and product version remain unchanged.
+An updated test EXE and owner VM review are required before release authorization.
+Local warning-as-error GUI/Core/CLI suites passed. GUI fixtures check matching-ISO
+emphasis/first position/busy reset, optional-preview expansion/collapse and visible
+Copy/preview bounds, alongside existing fake clipboard/revalidation/cancellation
+and Server execution blockers. Synthetic GUI screenshots were inspected locally.
+Privileged journal/updater fixtures still skip locally; hosted CI covers those.
+Actual display scaling at 100/125/150% and owner VM acceptance remain pending.
 
 ## In progress: issue #25 automatic-source visibility
 

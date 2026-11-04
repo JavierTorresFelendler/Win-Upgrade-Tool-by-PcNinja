@@ -1,5 +1,18 @@
 # User-message catalog
 
+## Pending: manual-source and Server presentation
+
+- **Find matching ISO** is first in the manual-download row and highlighted for
+  profiles without automatic download. Busy state removes the highlight and
+  disables it. Existing browser guidance and providers are unchanged.
+- Server keeps the image selector and Validate action. Compatible selections say
+  **Image N selected. Copy the command to review and run it manually.** Actual
+  mismatch reasons retain the detected Server edition/language/type context.
+- A compact **Manual upgrade command** section aligns the Copy action with its
+  heading. No empty preview box is reserved. A successful explicit Copy displays
+  the read-only wrapped command; clearing/changing the source or image hides it.
+  Media rechecking, clipboard/cancellation guards and manual-only advisory remain.
+
 ## RC8: visual next action and ISO browsing
 
 - ISO browsing defaults to the current user's registered Windows Downloads known

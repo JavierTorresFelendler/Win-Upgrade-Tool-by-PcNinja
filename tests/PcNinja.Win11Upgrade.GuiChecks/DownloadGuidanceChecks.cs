@@ -61,6 +61,16 @@ internal static class DownloadGuidanceChecks
             var autoPanel = Field<TableLayoutPanel>("_autoSourcePanel");
             var introduction = Field<Label>("_sourceIntroduction");
             var sourceLayout = (TableLayoutPanel)autoPanel.Parent!;
+            void Capture(string name)
+            {
+                var directory = Environment.GetEnvironmentVariable("PCNINJA_GUI_CAPTURE");
+                if (directory is null) return;
+                Directory.CreateDirectory(directory);
+                Application.DoEvents();
+                using var bitmap = new Bitmap(form.Width, form.Height);
+                form.DrawToBitmap(bitmap, new Rectangle(Point.Empty, form.Size));
+                bitmap.Save(Path.Combine(directory, name + ".png"));
+            }
             void CheckVisibility(bool expected)
             {
                 sourceLayout.PerformLayout();
@@ -79,8 +89,12 @@ internal static class DownloadGuidanceChecks
                 if (autoPanel.Visible != expected || (!expected && sourceLayout.GetRowHeights()[row] != 0) ||
                     introduction.Text != (expected ? "Download automatically, or select an ISO, drive or folder." : "Select an ISO, drive or folder."))
                     throw new Exception($"Automatic source visibility, collapsed row or introduction is incorrect: visible={autoPanel.Visible}, expected={expected}, row={row}, height={sourceLayout.GetRowHeights()[row]}, text={introduction.Text}.");
+                if (match.FlatAppearance.BorderSize != (expected ? 1 : 2) ||
+                    match.Parent!.Controls.GetChildIndex(match) != 0)
+                    throw new Exception("Matching ISO lost its first position or manual-only emphasis.");
             }
             CheckVisibility(false);
+            Capture("Manual-client");
             foreach (var profile in new[] {
                 new DownloadSystem("ProfessionalN", "en-US", 22631, 1, "x64", "Client"),
                 new DownloadSystem("Enterprise", "en-US", 22631, 1, "x64", "Client"),
@@ -96,6 +110,15 @@ internal static class DownloadGuidanceChecks
                     CheckVisibility(AutomaticDownloadPolicy.IsAvailable(profile));
                 }
                 form.Size = originalSize;
+                using (var busy = new CancellationTokenSource())
+                {
+                    Set("_operation", busy);
+                    Call("UpdateSourceControls");
+                    if (match.Enabled || match.FlatAppearance.BorderSize != 1)
+                        throw new Exception("Busy state retained an active matching-download cue.");
+                    Set("_operation", null);
+                    Call("UpdateSourceControls");
+                }
                 var captureDirectory = Environment.GetEnvironmentVariable("PCNINJA_GUI_CAPTURE");
                 if (captureDirectory is not null && (profile == server || profile.Edition == "ProfessionalN"))
                 {
@@ -303,8 +326,9 @@ internal static class DownloadGuidanceChecks
             Call("SetBusy", true);
             Call("SetBusy", false);
             if (start.Enabled || Field<CheckBox>("_quietSetup").Enabled || Field<CheckBox>("_autoRestart").Enabled ||
-                automatic.Enabled || automatic.Checked || !copy.Visible || !preview.Visible || copy.Enabled)
+                automatic.Enabled || automatic.Checked || !copy.Visible || preview.Visible || copy.Enabled)
                 throw new Exception("Server guidance re-enabled client Setup/restart controls or copying without a selected image.");
+            Capture("Server-empty");
 
             var serverImage = new InstallationImage(2, "Server Standard fixture", "ServerStandard", "x64",
                 "10.0.26100.1", "Server", "en-US");
@@ -317,6 +341,7 @@ internal static class DownloadGuidanceChecks
             Call("UpdateImageInfo");
             if (!copy.Enabled || start.Enabled)
                 throw new Exception("A matching explicit Server image did not enable manual copying exclusively.");
+            Capture("Server-image-selected");
 
             var order = new List<string>();
             var command = ManualServerUpgrade.BuildCommand(serverSource, serverImage, server);
@@ -330,9 +355,25 @@ internal static class DownloadGuidanceChecks
             Set("_copyCommandToClipboard", new Action<string>(value => { order.Add("copy"); copied.Add(value); }));
             Pump(Begin("CopyServerCommandAsync"));
             if (!order.SequenceEqual(["prepare", "copy"]) || !copied.SequenceEqual([command]) ||
-                preview.Text != command || !status.Text.Contains("not executed") || start.Enabled)
+                preview.Text != command || !preview.Visible || !status.Text.Contains("not executed") || start.Enabled)
                 throw new Exception("Server command was not freshly prepared before the explicit fake clipboard write.");
             AssertIdle();
+            var commandSection = Field<TableLayoutPanel>("_serverCommandSection");
+            Application.DoEvents();
+            Capture("Server-command-copied");
+            var expandedHeight = commandSection.Height;
+            foreach (var control in new Control[] { copy, preview })
+            {
+                var visibleBounds = control.RectangleToScreen(control.ClientRectangle);
+                for (Control? parent = control.Parent; parent is not null; parent = parent.Parent)
+                    visibleBounds.Intersect(parent.RectangleToScreen(parent.ClientRectangle));
+                if (visibleBounds.Width < control.ClientSize.Width - 4 || visibleBounds.Height < control.ClientSize.Height - 4)
+                    throw new Exception($"Server command section clips {control.GetType().Name}: size={control.Size}, visible={visibleBounds.Size}.");
+            }
+            preview.Clear();
+            Application.DoEvents();
+            if (preview.Visible || commandSection.Height >= expandedHeight)
+                throw new Exception("Empty Server command preview retained its reserved space.");
 
             // Both button availability and handler entry must reject stale or
             // foreign selections, even when a foreign record shares a valid index.
@@ -384,6 +425,9 @@ internal static class DownloadGuidanceChecks
             Call("ExistingPathChanged");
             if (Field<MountedSource?>("_preparedSource") is not null || images.Items.Count != 0 || preview.Text != "" || copy.Enabled)
                 throw new Exception("Changing Server source retained a stale image/preview/copy action.");
+            Call("ApplyDownloadSystem", client);
+            if (commandSection.Visible || copy.Visible || preview.Visible)
+                throw new Exception("Client mode retained Server command controls.");
             AssertNoSetup();
             Console.WriteLine("PASS: Independent GUI browser guidance, Spanish manual alternatives, persistent instructions, cancellation/failure recovery and Server manual-copy-only source/index/clipboard guards. All network/browser/clipboard/command preparation effects mocked; no media/Setup used.");
         }
