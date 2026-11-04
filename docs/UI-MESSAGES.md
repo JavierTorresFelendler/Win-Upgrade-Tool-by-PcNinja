@@ -1,6 +1,6 @@
 # User-message catalog
 
-## Pending: manual-source and Server presentation
+## 1.2: manual-source and Server presentation
 
 - **Find matching ISO** is first in the manual-download row and highlighted for
   profiles without automatic download. Busy state removes the highlight and
