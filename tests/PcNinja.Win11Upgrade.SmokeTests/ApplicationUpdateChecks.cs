@@ -36,6 +36,7 @@ internal static class ApplicationUpdateChecks
         {
             ("1.0.0", "Win-Upgrade-Tool-by-PcNinja-v.1.exe"),
             ("1.1.0", "Win-Upgrade-Tool-by-PcNinja-v.1.1.exe"),
+            ("1.2.0", "Win-Upgrade-Tool-by-PcNinja-v.1.2.exe"),
             ("1.0.1", "Win-Upgrade-Tool-by-PcNinja-v.1.0.1.exe"),
             ("2.0.0", "Win-Upgrade-Tool-by-PcNinja-v.2.exe"),
             ("1.1.0-beta.5", "Windows-Upgrade-Assistant-By-PcNinja-V1.1-Beta5.exe"),
@@ -90,6 +91,19 @@ internal static class ApplicationUpdateChecks
         var nextStable = await CheckFixtureAsync(Manifest("1.1.0"), "1.0.0");
         Require(nextStable.State == AppUpdateCheckState.Available && nextStable.Release?.AssetName == "Win-Upgrade-Tool-by-PcNinja-v.1.1.exe",
             "Stable V1 -> V1.1 did not bind the next short-name asset.");
+        var v12 = Manifest("1.2.0");
+        var v1Upgrade = await CheckFixtureAsync(v12, "1.0.0");
+        Require(v1Upgrade.State == AppUpdateCheckState.Available && v1Upgrade.Release?.Version == "1.2.0" &&
+            v1Upgrade.Release.AssetName == "Win-Upgrade-Tool-by-PcNinja-v.1.2.exe",
+            "Installed V1 did not offer the exact V1.2 stable update.");
+        Require((await CheckFixtureAsync(v12, "1.2.0")).State == AppUpdateCheckState.UpToDate,
+            "V1.2 offered itself as an update.");
+        Require((await CheckFixtureAsync(v12, "1.3.0")).State == AppUpdateCheckState.UpToDate,
+            "V1.2 offered a downgrade to a newer installed client.");
+        var wrongV1Name = v12 with { AssetName = "Win-Upgrade-Tool-by-PcNinja-v.1.exe",
+            AssetUrl = AssetUrl(v12.Tag, "Win-Upgrade-Tool-by-PcNinja-v.1.exe") };
+        Require((await CheckFixtureAsync(wrongV1Name, "1.0.0")).State == AppUpdateCheckState.Unavailable,
+            "A V1.2 release using only the V1 filename silently changed the updater contract.");
         Require((await CheckFixtureAsync(Manifest("1.0.0"), "1.1.0-beta.5")).State == AppUpdateCheckState.NoBetaRelease,
             "First stable silently downgraded/switched an existing Beta.");
         var beta = Manifest("1.1.0-beta.2");

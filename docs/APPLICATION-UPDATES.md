@@ -64,6 +64,12 @@ output remains Windows-Upgrade-Assistant-By-PcNinja.exe; published assets are:
 | 1.0.0 (V1) | Win-Upgrade-Tool-by-PcNinja-v.1.exe | Stable only |
 | 1.0.1 | Win-Upgrade-Tool-by-PcNinja-v.1.0.1.exe | Stable only |
 | 1.1.0 (V1.1) | Win-Upgrade-Tool-by-PcNinja-v.1.1.exe | Stable only |
+| 1.2.0 (1.2) | Win-Upgrade-Tool-by-PcNinja-v.1.2.exe | Stable only |
+
+For 1.2 the owner selected the versioned filename for all downloads. This also
+preserves the exact filename contract compiled into stable V1. Publishing only
+the old `-v.1.exe` name under `v1.2.0` would make that client reject the update.
+Do not change the old binary or relax its manifest/asset checks.
 
 Beta discovery checks up to three pages of five recent release records, bounded
 by metadata/time limits, and selects the highest numbered published Beta. It

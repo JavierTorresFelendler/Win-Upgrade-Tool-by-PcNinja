@@ -2,6 +2,25 @@
 
 Updated: 2026-11-04. This is sanitized project context, not a backup of Codex chats.
 
+## Authorized: prepare and publish stable 1.2
+
+Owner accepted the UI direction and explicitly requested publication after all
+checks, including an update offer to existing stable users. This supersedes the
+earlier merge/release holds below. Owner clarified that all downloads should use
+`Win-Upgrade-Tool-by-PcNinja-v.1.2.exe`, preserving the V1 updater filename contract.
+Product version is 1.2.0; FileVersion is 1.2.0.0; product branding is unchanged.
+Complete reviewed PR checks, merge normally, tag the reviewed main commit and use
+the existing protected publisher. Never approve the human-only release deployment
+on the owner's behalf. Published V1 and every historical release remain untouched.
+Fake-HTTP fixtures cover V1 -> 1.2 Available, 1.2 UpToDate, downgrade refusal and
+rejection of a V1.2 manifest with only the V1 filename. Verify actual published
+V1 read-only discovery again against the new live release after publication.
+Local 1.2 Core smoke, GUI interaction, packaging/policy/workflow fixtures passed;
+privileged filesystem/journal coverage requires hosted CI. The downloaded official
+V1 matches its published SHA-256 and its read-only live check reports CURRENT
+before publication. Updater runtime source is identical to the V1 tag; the new
+compatibility fixtures exercise its existing version/asset contract.
+
 ## In progress: final manual-source presentation review
 
 Owner reports the fixed Server flow works, but requests less visual clutter and

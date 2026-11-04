@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.2.0 — clearer manual source and Server guidance
+
+- Hide unavailable automatic-download controls without losing manual source fields.
+- Highlight Find matching ISO for manual-only profiles and place it first.
+- Replace the idle Server header action with Copy upgrade command. Keep an
+  optional compact preview and the existing source/index/revalidation/Cancel guards.
+- Preserve the product branding, Core/CLI/Setup behavior and historical releases.
+  File version is 1.2.0.0; the owner selected -v.1.2.exe for all new downloads,
+  retaining compatibility with the updater already installed in stable V1.
+- Release-pinned update metadata and an ordinary consent-based update offer.
+
 ## 1.0.0 — first stable V1
 
 - Use the general winoemiso.pcninja.pro OEM route for transport and browser
