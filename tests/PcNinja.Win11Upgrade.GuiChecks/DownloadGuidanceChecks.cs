@@ -61,6 +61,13 @@ internal static class DownloadGuidanceChecks
             var autoPanel = Field<TableLayoutPanel>("_autoSourcePanel");
             var introduction = Field<Label>("_sourceIntroduction");
             var sourceLayout = (TableLayoutPanel)autoPanel.Parent!;
+            void CheckPrimaryAction()
+            {
+                var isServer = Field<DownloadSystem>("_downloadSystem").IsServer;
+                if (copy.Visible != isServer || start.Visible == isServer ||
+                    copy.Parent != Field<Button>("_refresh").Parent)
+                    throw new Exception("Server Copy did not replace the main header action exclusively.");
+            }
             void Capture(string name)
             {
                 var directory = Environment.GetEnvironmentVariable("PCNINJA_GUI_CAPTURE");
@@ -73,6 +80,7 @@ internal static class DownloadGuidanceChecks
             }
             void CheckVisibility(bool expected)
             {
+                CheckPrimaryAction();
                 sourceLayout.PerformLayout();
                 Application.DoEvents();
                 var row = sourceLayout.GetPositionFromControl(autoPanel).Row;
@@ -158,6 +166,7 @@ internal static class DownloadGuidanceChecks
                 if (Field<CancellationTokenSource?>("_operation") is not null || !match.Enabled)
                     throw new Exception("Download/manual command operation did not return to idle.");
                 AssertNoSetup();
+                CheckPrimaryAction();
             }
 
             Populate(clientSource, clientImage);
@@ -325,7 +334,7 @@ internal static class DownloadGuidanceChecks
             Call("ApplyDownloadSystem", server);
             Call("SetBusy", true);
             Call("SetBusy", false);
-            if (start.Enabled || Field<CheckBox>("_quietSetup").Enabled || Field<CheckBox>("_autoRestart").Enabled ||
+            if (start.Enabled || start.Visible || Field<CheckBox>("_quietSetup").Enabled || Field<CheckBox>("_autoRestart").Enabled ||
                 automatic.Enabled || automatic.Checked || !copy.Visible || preview.Visible || copy.Enabled)
                 throw new Exception("Server guidance re-enabled client Setup/restart controls or copying without a selected image.");
             Capture("Server-empty");
@@ -353,7 +362,8 @@ internal static class DownloadGuidanceChecks
                 return Task.FromResult(command);
             }));
             Set("_copyCommandToClipboard", new Action<string>(value => { order.Add("copy"); copied.Add(value); }));
-            Pump(Begin("CopyServerCommandAsync"));
+            copy.PerformClick();
+            Application.DoEvents();
             if (!order.SequenceEqual(["prepare", "copy"]) || !copied.SequenceEqual([command]) ||
                 preview.Text != command || !preview.Visible || !status.Text.Contains("not executed") || start.Enabled)
                 throw new Exception("Server command was not freshly prepared before the explicit fake clipboard write.");
@@ -361,7 +371,6 @@ internal static class DownloadGuidanceChecks
             var commandSection = Field<TableLayoutPanel>("_serverCommandSection");
             Application.DoEvents();
             Capture("Server-command-copied");
-            var expandedHeight = commandSection.Height;
             foreach (var control in new Control[] { copy, preview })
             {
                 var visibleBounds = control.RectangleToScreen(control.ClientRectangle);
@@ -372,7 +381,10 @@ internal static class DownloadGuidanceChecks
             }
             preview.Clear();
             Application.DoEvents();
-            if (preview.Visible || commandSection.Height >= expandedHeight)
+            var previewRow = sourceLayout.GetRow(commandSection);
+            var rowHeights = sourceLayout.GetRowHeights();
+            if (preview.Visible || commandSection.Visible ||
+                previewRow < rowHeights.Length && rowHeights[previewRow] != 0)
                 throw new Exception("Empty Server command preview retained its reserved space.");
 
             // Both button availability and handler entry must reject stale or
@@ -410,9 +422,10 @@ internal static class DownloadGuidanceChecks
             Set("_prepareServerCommand", new Func<MountedSource, int, CancellationToken, Task<string>>((_, _, token) =>
             { commandToken = token; return pendingCommand.Task; }));
             var copyTask = Begin("CopyServerCommandAsync");
-            if (copyTask.IsCompleted || !commandToken.CanBeCanceled || !start.Text.Contains("CANCEL", StringComparison.OrdinalIgnoreCase))
+            if (copyTask.IsCompleted || !commandToken.CanBeCanceled || !start.Visible || copy.Visible ||
+                !start.Text.Contains("CANCEL", StringComparison.OrdinalIgnoreCase))
                 throw new Exception("The asynchronous manual-command fixture did not start a cancellable operation.");
-            Field<CancellationTokenSource>("_operation").Cancel();
+            start.PerformClick();
             pendingCommand.SetResult(command);
             Pump(copyTask);
             if (!commandToken.IsCancellationRequested || copied.Count != 1 ||

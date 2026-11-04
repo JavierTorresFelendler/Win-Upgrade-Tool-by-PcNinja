@@ -6,8 +6,10 @@ Updated: 2026-11-04. This is sanitized project context, not a backup of Codex ch
 
 Owner reports the fixed Server flow works, but requests less visual clutter and
 stronger matching-ISO discovery before progressing toward an official release.
-Group the Server command heading/Copy action, show the compact read-only preview
-only after copying, and remove repeated selected-image metadata from the nearby
+Per owner refinement, move Server Copy to the main header in place of the idle
+MANUAL GUIDANCE ONLY action, remove the lower Copy button, and show the compact
+read-only preview only after copying. Preserve existing header Cancel while an
+operation is active. Remove repeated selected-image metadata from the nearby
 hint. Keep actual mismatch reasons and every operational guard. Put matching ISO
 first and highlight it for manual-only profiles, clearing emphasis during busy
 operations. Core/CLI/provider/Setup behavior and product version remain unchanged.
@@ -16,6 +18,10 @@ Local warning-as-error GUI/Core/CLI suites passed. GUI fixtures check matching-I
 emphasis/first position/busy reset, optional-preview expansion/collapse and visible
 Copy/preview bounds, alongside existing fake clipboard/revalidation/cancellation
 and Server execution blockers. Synthetic GUI screenshots were inspected locally.
+Header relocation also passed the full warning-as-error GUI suite: exactly one
+idle header action per mode, a real Copy button click with fake media/clipboard,
+and a real existing Cancel click during pending command preparation. Empty preview
+sections collapse completely; source-card Copy duplication is removed.
 Privileged journal/updater fixtures still skip locally; hosted CI covers those.
 Actual display scaling at 100/125/150% and owner VM acceptance remain pending.
 

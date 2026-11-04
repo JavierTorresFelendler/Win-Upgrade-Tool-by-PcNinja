@@ -81,8 +81,8 @@ choices on one screen:
 
 **Find matching ISO** appears first among manual download options and is
 highlighted when automatic download is unavailable. On Server, select a matching
-image after validation, then use **Copy upgrade command** in the compact manual
-command section. Its preview appears after copying; the assistant does not run it.
+image after validation, then use **Copy upgrade command** in the main header.
+Its compact preview appears after copying; the assistant does not run it.
 
 The tool also accepts a manually supplied **Windows 10 client x64**
 image on Windows 10, using the same image selector and `--image-index`. By owner

@@ -8,9 +8,12 @@
 - Server keeps the image selector and Validate action. Compatible selections say
   **Image N selected. Copy the command to review and run it manually.** Actual
   mismatch reasons retain the detected Server edition/language/type context.
-- A compact **Manual upgrade command** section aligns the Copy action with its
-  heading. No empty preview box is reserved. A successful explicit Copy displays
-  the read-only wrapped command; clearing/changing the source or image hides it.
+- On Server, **Copy upgrade command** replaces the idle main header action;
+  there is no duplicate Copy button inside the source card. Existing Cancel
+  takes that header position during a cancellable operation. Client Start and
+  Setup lockout retain their existing behavior.
+- A compact **Manual upgrade command** preview appears only after a successful
+  explicit Copy. Clearing/changing the source or image hides the preview section.
   Media rechecking, clipboard/cancellation guards and manual-only advisory remain.
 
 ## RC8: visual next action and ISO browsing

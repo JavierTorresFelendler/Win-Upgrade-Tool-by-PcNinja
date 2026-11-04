@@ -257,6 +257,10 @@ internal sealed partial class MainForm : Form
         StyleGoButton(_start, "START UPGRADE");
         _start.Click += async (_, _) => await StartOrCancelAsync();
         actions.Controls.Add(_start);
+        StyleGoButton(_copyServerCommand, "Copy upgrade command");
+        _copyServerCommand.Visible = false;
+        _copyServerCommand.Click += async (_, _) => await CopyServerCommandAsync();
+        actions.Controls.Add(_copyServerCommand);
         header.Controls.Add(actions, 1, 0);
         return header;
     }
@@ -340,22 +344,15 @@ internal sealed partial class MainForm : Form
         _imageInfo.Text = "A matching image is selected automatically when possible.";
         _imageInfo.Margin = new Padding(0, 7, 0, 0);
         content.Controls.Add(_imageInfo);
-        StyleSecondaryButton(_copyServerCommand, "Copy upgrade command");
-        _copyServerCommand.Click += async (_, _) => await CopyServerCommandAsync();
         _serverCommandSection.AutoSize = true;
         _serverCommandSection.Dock = DockStyle.Top;
         _serverCommandSection.ColumnCount = 1;
         _serverCommandSection.BackColor = SurfaceRaised;
         _serverCommandSection.Padding = new Padding(8);
         _serverCommandSection.Margin = new Padding(0, 10, 0, 0);
-        var commandHeader = BuildTwoColumnRow();
-        commandHeader.BackColor = SurfaceRaised;
         var commandTitle = Kicker("Manual upgrade command");
-        commandTitle.Anchor = AnchorStyles.Left;
         commandTitle.Margin = new Padding(0);
-        commandHeader.Controls.Add(commandTitle, 0, 0);
-        commandHeader.Controls.Add(_copyServerCommand, 1, 0);
-        _serverCommandSection.Controls.Add(commandHeader, 0, 0);
+        _serverCommandSection.Controls.Add(commandTitle, 0, 0);
         _serverCommandPreview.ReadOnly = true;
         _serverCommandPreview.Multiline = true;
         _serverCommandPreview.Height = 42;
@@ -367,8 +364,7 @@ internal sealed partial class MainForm : Form
         _serverCommandPreview.BackColor = SurfaceRaised;
         _serverCommandPreview.ForeColor = Foreground;
         _serverCommandPreview.Visible = false;
-        _serverCommandPreview.TextChanged += (_, _) =>
-            _serverCommandPreview.Visible = _downloadSystem.IsServer && _serverCommandPreview.TextLength > 0;
+        _serverCommandPreview.TextChanged += (_, _) => UpdateServerCommandPreview();
         _serverCommandSection.Controls.Add(_serverCommandPreview, 0, 1);
         _serverCommandSection.Visible = false;
         content.Controls.Add(_serverCommandSection);
@@ -1125,11 +1121,21 @@ internal sealed partial class MainForm : Form
 
     private void UpdateServerCommandState()
     {
+        var idle = _operation is null && !_setupHasStarted;
+        _copyServerCommand.Visible = _downloadSystem.IsServer && idle;
+        _start.Visible = !_downloadSystem.IsServer || !idle;
         _copyServerCommand.Enabled = _operation is null && _downloadSystem.IsServer &&
             _preparedSource is not null && _installationImages.SelectedItem is InstallationImage image &&
             (_preparedSource.Images ?? []).Contains(image) &&
             (_preparedSource.Images ?? []).Count(item => item.Index == image.Index) == 1 &&
             ManualServerUpgrade.GetIncompatibility(image, _downloadSystem) is null;
+    }
+
+    private void UpdateServerCommandPreview()
+    {
+        var visible = _downloadSystem.IsServer && _serverCommandPreview.TextLength > 0;
+        _serverCommandPreview.Visible = visible;
+        _serverCommandSection.Visible = visible;
     }
 
     private void UpdateServerImageInfo()
@@ -1321,8 +1327,7 @@ internal sealed partial class MainForm : Form
             ? $"English ({system.Language}). The ISO is checked before the upgrade starts."
             : AutomaticDownloadPolicy.GetUnavailableReason(system) + " Use Find matching ISO for browser download guidance.";
         _automaticDownloadInfo.ForeColor = _automaticDownloadAvailable ? Muted : Warning;
-        _serverCommandSection.Visible = system.IsServer;
-        _serverCommandPreview.Visible = system.IsServer && _serverCommandPreview.TextLength > 0;
+        UpdateServerCommandPreview();
         _existingMediaInfo.Text = system.IsServer
             ? "Windows Server media for inspection and manual command guidance only. This assistant will not run Server Setup."
             : "Windows 10 or 11 media, on this computer or your network.";
