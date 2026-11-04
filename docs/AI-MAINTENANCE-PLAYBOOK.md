@@ -154,6 +154,17 @@ All paths below are relative to the repository root.
 - Refresh must preserve the exact source, index and restart policy when valid.
   Changing source invalidates the old index. Failure/cancel messages must survive
   the final refresh and explain what to do, not disappear as a brief flash.
+- For unavailable automatic sources, collapse the TableLayoutPanel row as well as
+  hiding its child, and assign explicit cells to all source-card controls. With
+  implicit placement, hiding the automatic panel moves manual controls into the
+  zero-height row. Restore the auto-sized row when eligibility returns; busy state
+  is independent of eligibility. Verify rendered manual-control bounds through
+  every ancestor, not just Visible/Enabled or the automatic row height. Use
+  synthetic client/Server profiles and both transitions on a client GUI.
+- Optional command previews should expand only when populated and collapse again
+  on source/image invalidation. Check both transitions and rendered action bounds.
+  Compare clipped rectangles against ClientSize, which excludes textbox scrollbars,
+  rather than requiring the non-client scrollbar area to be part of ClientRectangle.
 - An empty image-selector cue is presentation, not an InstallationImage or index.
   Distinguish not validated, awaiting a choice and no compatible image. Reuse Core
   rejection reasons after successful enumeration; do not mislabel mount/read

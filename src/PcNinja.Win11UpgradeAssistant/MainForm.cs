@@ -31,6 +31,7 @@ internal sealed partial class MainForm : Form
     private readonly Label _restartSummary = new();
     private readonly RadioButton _autoDownload = new();
     private Label _automaticDownloadInfo = null!;
+    private Label _sourceIntroduction = null!;
     private Label _existingMediaInfo = null!;
     private bool _automaticDownloadAvailable;
     private readonly RadioButton _existingMedia = new();
@@ -45,6 +46,7 @@ internal sealed partial class MainForm : Form
     private readonly Label _downloadNotice = new();
     private readonly Button _copyServerCommand = new();
     private readonly TextBox _serverCommandPreview = new();
+    private readonly TableLayoutPanel _serverCommandSection = new();
     private DownloadSystem _downloadSystem = DownloadSystem.Read();
     private bool _upgradeAllowed = true;
     private Func<DownloadSystem> _readDownloadSystem = DownloadSystem.Read;
@@ -255,6 +257,10 @@ internal sealed partial class MainForm : Form
         StyleGoButton(_start, "START UPGRADE");
         _start.Click += async (_, _) => await StartOrCancelAsync();
         actions.Controls.Add(_start);
+        StyleGoButton(_copyServerCommand, "Copy upgrade command");
+        _copyServerCommand.Visible = false;
+        _copyServerCommand.Click += async (_, _) => await CopyServerCommandAsync();
+        actions.Controls.Add(_copyServerCommand);
         header.Controls.Add(actions, 1, 0);
         return header;
     }
@@ -276,7 +282,8 @@ internal sealed partial class MainForm : Form
         scrollHost.Controls.Add(content);
 
         content.Controls.Add(SectionHeading("Choose your installation source"));
-        content.Controls.Add(BodyText("Download automatically, or select an ISO, drive or folder."));
+        _sourceIntroduction = BodyText("Download automatically, or select an ISO, drive or folder.");
+        content.Controls.Add(_sourceIntroduction);
 
         _autoDownload.Text = "Download Windows 11 automatically";
         StyleRadio(_autoDownload, true);
@@ -291,6 +298,7 @@ internal sealed partial class MainForm : Form
         _automaticDownloadInfo = ConfigureSourcePanel(_autoSourcePanel, _autoDownload,
             "English (en-US). The ISO is checked before the upgrade starts.", destinationRow);
         content.Controls.Add(_autoSourcePanel);
+        for (var row = 0; row < 3; row++) content.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
         _existingMedia.Text = "Use an ISO, drive or folder";
         StyleRadio(_existingMedia);
@@ -336,18 +344,35 @@ internal sealed partial class MainForm : Form
         _imageInfo.Text = "A matching image is selected automatically when possible.";
         _imageInfo.Margin = new Padding(0, 7, 0, 0);
         content.Controls.Add(_imageInfo);
-        StyleSecondaryButton(_copyServerCommand, "Copy upgrade command");
-        _copyServerCommand.Visible = false;
-        _copyServerCommand.Click += async (_, _) => await CopyServerCommandAsync();
-        content.Controls.Add(_copyServerCommand);
+        _serverCommandSection.AutoSize = true;
+        _serverCommandSection.Dock = DockStyle.Top;
+        _serverCommandSection.ColumnCount = 1;
+        _serverCommandSection.BackColor = SurfaceRaised;
+        _serverCommandSection.Padding = new Padding(8);
+        _serverCommandSection.Margin = new Padding(0, 10, 0, 0);
+        var commandTitle = Kicker("Manual upgrade command");
+        commandTitle.Margin = new Padding(0);
+        _serverCommandSection.Controls.Add(commandTitle, 0, 0);
         _serverCommandPreview.ReadOnly = true;
         _serverCommandPreview.Multiline = true;
-        _serverCommandPreview.Height = 64;
+        _serverCommandPreview.Height = 42;
+        _serverCommandPreview.Font = new Font("Consolas", 9F);
         _serverCommandPreview.Dock = DockStyle.Top;
+        _serverCommandPreview.BorderStyle = BorderStyle.None;
+        _serverCommandPreview.ScrollBars = ScrollBars.Vertical;
+        _serverCommandPreview.Margin = new Padding(0, 6, 0, 0);
         _serverCommandPreview.BackColor = SurfaceRaised;
         _serverCommandPreview.ForeColor = Foreground;
         _serverCommandPreview.Visible = false;
-        content.Controls.Add(_serverCommandPreview);
+        _serverCommandPreview.TextChanged += (_, _) => UpdateServerCommandPreview();
+        _serverCommandSection.Controls.Add(_serverCommandPreview, 0, 1);
+        _serverCommandSection.Visible = false;
+        content.Controls.Add(_serverCommandSection);
+
+        // Keep hidden rows assigned: implicit placement otherwise moves manual
+        // controls into the automatic row when that row is collapsed.
+        for (var row = 0; row < content.Controls.Count; row++)
+            content.SetCellPosition(content.Controls[row], new TableLayoutPanelCellPosition(0, row));
 
         var footer = new TableLayoutPanel
         {
@@ -372,17 +397,17 @@ internal sealed partial class MainForm : Form
             Margin = new Padding(0, 7, 0, 0)
         };
         StyleSecondaryButton(_pcNinjaDownload, "PcNinja downloads");
-        _pcNinjaDownload.Margin = new Padding(0, 0, 8, 0);
+        _pcNinjaDownload.Margin = new Padding(8, 0, 8, 0);
         _pcNinjaDownload.Click += (_, _) => OpenPage(DownloadSourcePolicy.GetPcNinjaBrowserPage(_readDownloadSystem()));
         StyleSecondaryButton(_microsoft, "Microsoft downloads");
         _microsoft.Margin = new Padding(0);
         _microsoft.Click += (_, _) => OpenPage(DownloadSourcePolicy.GetMicrosoftBrowserPage(_readDownloadSystem()));
-        downloadActions.Controls.Add(_pcNinjaDownload);
-        downloadActions.Controls.Add(_microsoft);
         StyleSecondaryButton(_matchingDownload, "Find matching ISO");
-        _matchingDownload.Margin = new Padding(8, 0, 0, 0);
+        _matchingDownload.Margin = new Padding(0);
         _matchingDownload.Click += async (_, _) => await FindMatchingDownloadAsync();
         downloadActions.Controls.Add(_matchingDownload);
+        downloadActions.Controls.Add(_pcNinjaDownload);
+        downloadActions.Controls.Add(_microsoft);
         footer.Controls.Add(downloadActions);
         _downloadNotice.AutoSize = true;
         _downloadNotice.MaximumSize = new Size(550, 0);
@@ -1096,11 +1121,21 @@ internal sealed partial class MainForm : Form
 
     private void UpdateServerCommandState()
     {
+        var idle = _operation is null && !_setupHasStarted;
+        _copyServerCommand.Visible = _downloadSystem.IsServer && idle;
+        _start.Visible = !_downloadSystem.IsServer || !idle;
         _copyServerCommand.Enabled = _operation is null && _downloadSystem.IsServer &&
             _preparedSource is not null && _installationImages.SelectedItem is InstallationImage image &&
             (_preparedSource.Images ?? []).Contains(image) &&
             (_preparedSource.Images ?? []).Count(item => item.Index == image.Index) == 1 &&
             ManualServerUpgrade.GetIncompatibility(image, _downloadSystem) is null;
+    }
+
+    private void UpdateServerCommandPreview()
+    {
+        var visible = _downloadSystem.IsServer && _serverCommandPreview.TextLength > 0;
+        _serverCommandPreview.Visible = visible;
+        _serverCommandSection.Visible = visible;
     }
 
     private void UpdateServerImageInfo()
@@ -1112,8 +1147,8 @@ internal sealed partial class MainForm : Form
         _installationImages.Invalidate();
         var selected = _installationImages.SelectedItem as InstallationImage;
         var reason = selected is null ? null : ManualServerUpgrade.GetIncompatibility(selected, _downloadSystem);
-        _imageInfo.Text = $"This server: {_downloadSystem.Edition}, {_downloadSystem.Language}, {_downloadSystem.InstallationType}. " +
-            (selected is not null ? reason ?? $"Selected image {selected.Index}: {selected.Name}. Manual command only; Setup will not run here."
+        _imageInfo.Text = (reason is not null ? $"This server: {_downloadSystem.Edition}, {_downloadSystem.Language}, {_downloadSystem.InstallationType}. " : "") +
+            (selected is not null ? reason ?? $"Image {selected.Index} selected. Copy the command to review and run it manually."
                 : _preparedSource is null ? "Select media and Validate to prepare manual command guidance."
                 : available ? "Choose the exact Server image, then Copy upgrade command."
                 : "No matching Server image. Check edition, language, installation type and version.");
@@ -1205,6 +1240,8 @@ internal sealed partial class MainForm : Form
         _inspectSource.Enabled = idle && _existingMedia.Checked && !string.IsNullOrWhiteSpace(_sources.Text);
         _installationImages.Enabled = idle && _preparedSource is not null;
         _matchingDownload.Enabled = idle;
+        CueButton(_matchingDownload, !_automaticDownloadAvailable && idle);
+        _matchingDownload.AccessibleDescription = "Find an ISO matching this computer's edition, language and architecture.";
         UpdateServerCommandState();
         _autoSourcePanel.BackColor = _autoDownload.Checked ? AccentTint : SurfaceRaised;
         _existingSourcePanel.BackColor = _existingMedia.Checked ? AccentTint : SurfaceRaised;
@@ -1276,12 +1313,21 @@ internal sealed partial class MainForm : Form
         // Download-route discovery must not silently change the existing manual client upgrade policy.
         _upgradeAllowed = ManualUpgradePolicy.GetUnavailableReason(system) is null;
         _automaticDownloadAvailable = AutomaticDownloadPolicy.IsAvailable(system);
+        var sourceLayout = (TableLayoutPanel)_autoSourcePanel.Parent!;
+        sourceLayout.SuspendLayout();
+        _autoSourcePanel.Visible = _automaticDownloadAvailable;
+        var automaticRow = sourceLayout.RowStyles[sourceLayout.GetPositionFromControl(_autoSourcePanel).Row];
+        automaticRow.SizeType = _automaticDownloadAvailable ? SizeType.AutoSize : SizeType.Absolute;
+        automaticRow.Height = 0;
+        _sourceIntroduction.Text = _automaticDownloadAvailable
+            ? "Download automatically, or select an ISO, drive or folder."
+            : "Select an ISO, drive or folder.";
+        sourceLayout.ResumeLayout(true);
         _automaticDownloadInfo.Text = _automaticDownloadAvailable
             ? $"English ({system.Language}). The ISO is checked before the upgrade starts."
             : AutomaticDownloadPolicy.GetUnavailableReason(system) + " Use Find matching ISO for browser download guidance.";
         _automaticDownloadInfo.ForeColor = _automaticDownloadAvailable ? Muted : Warning;
-        _copyServerCommand.Visible = system.IsServer;
-        _serverCommandPreview.Visible = system.IsServer;
+        UpdateServerCommandPreview();
         _existingMediaInfo.Text = system.IsServer
             ? "Windows Server media for inspection and manual command guidance only. This assistant will not run Server Setup."
             : "Windows 10 or 11 media, on this computer or your network.";

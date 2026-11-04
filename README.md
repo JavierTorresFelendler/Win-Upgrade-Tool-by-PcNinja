@@ -18,23 +18,22 @@ project-specific decisions and working procedures across assistants and machines
 
 ## Download
 
-[Download V1 portable EXE](https://github.com/JavierTorresFelendler/Win-Upgrade-Tool-by-PcNinja/releases/download/v1.0.0/Win-Upgrade-Tool-by-PcNinja-v.1.exe)
-or view its [release notes and checksums](https://github.com/JavierTorresFelendler/Win-Upgrade-Tool-by-PcNinja/releases/tag/v1.0.0).
+[Download the published portable EXE, release notes and checksums](https://github.com/JavierTorresFelendler/Win-Upgrade-Tool-by-PcNinja/releases/latest).
 
-The first official stable line is V1 (`1.0.0`). Download a published build only
+This source prepares stable 1.2 (`1.2.0`). The Releases page is authoritative for
+publication status. Download a published build only
 from this repository's [Releases](https://github.com/JavierTorresFelendler/Win-Upgrade-Tool-by-PcNinja/releases)
-page; a PR artifact is a test build, not an official release. The first stable
-download uses this short name:
+page; a PR artifact is a test build, not an official release. Version 1.2 uses:
 
 ```text
-Win-Upgrade-Tool-by-PcNinja-v.1.exe
+Win-Upgrade-Tool-by-PcNinja-v.1.2.exe
 ```
 
 The portable x64 EXE contains both the graphical application and the CLI. No
 PowerShell or CMD files are required.
 
-Public V1 is technical version `1.0.0`; V1.1 is `1.1.0` and uses
-`Win-Upgrade-Tool-by-PcNinja-v.1.1.exe`. Full version/commit metadata remains in
+Public V1 remains technical version `1.0.0`; 1.2 uses `1.2.0` and file version
+`1.2.0.0`. Full version/commit metadata remains in
 file properties, diagnostic logs, `version` and `status --json`. The GUI title
 stays **Windows Upgrade Tool by PcNinja**. Historical RC/Beta assets keep
 their original names and bytes. See [product identity](docs/PRODUCT-IDENTITY.md).
@@ -46,7 +45,7 @@ exact predecessor is marked `OLD-`, or `OLD.V1-`, `OLD.V2-`, etc. if occupied.
 A regular/critical offer shows the release summary and exact GitHub notes;
 only **Download and run the new version** authorizes EXE transfer.
 Stable discovers stable only; Beta discovers numbered Betas only. **Beta and test
-candidate users must download and open the official V1 manually once**, including
+candidate users must download and open a published stable build manually once**, including
 earlier test candidates reporting 1.0.0. The old
 `1.1.0-beta.5` cannot switch channels or downgrade itself to stable `1.0.0`.
 Future stable-to-stable updates use the normal consent-based updater. Windows
@@ -75,9 +74,14 @@ LTSC download, edition/channel conversion or Server execution.
 The application shows the current Windows version, storage state, and source
 choices on one screen:
 
-1. **Download Windows 11 automatically.** Choose a download drive/folder.
+1. **Download Windows 11 automatically.** On eligible systems, choose a download drive/folder. This option is hidden when unavailable; use matching manual media instead.
 2. **Use an ISO, drive or folder.** Select an ISO, mounted drive, extracted
    Setup folder or network folder in one path field, using **ISO...** or **Folder...**.
+
+**Find matching ISO** appears first among manual download options and is
+highlighted when automatic download is unavailable. On Server, select a matching
+image after validation, then use **Copy upgrade command** in the main header.
+Its compact preview appears after copying; the assistant does not run it.
 
 The tool also accepts a manually supplied **Windows 10 client x64**
 image on Windows 10, using the same image selector and `--image-index`. By owner

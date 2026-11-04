@@ -1,6 +1,64 @@
 # Development handoff
 
-Updated: 2026-10-27. This is sanitized project context, not a backup of Codex chats.
+Updated: 2026-11-04. This is sanitized project context, not a backup of Codex chats.
+
+## Authorized: prepare and publish stable 1.2
+
+Owner accepted the UI direction and explicitly requested publication after all
+checks, including an update offer to existing stable users. This supersedes the
+earlier merge/release holds below. Owner clarified that all downloads should use
+`Win-Upgrade-Tool-by-PcNinja-v.1.2.exe`, preserving the V1 updater filename contract.
+Product version is 1.2.0; FileVersion is 1.2.0.0; product branding is unchanged.
+Complete reviewed PR checks, merge normally, tag the reviewed main commit and use
+the existing protected publisher. Never approve the human-only release deployment
+on the owner's behalf. Published V1 and every historical release remain untouched.
+Fake-HTTP fixtures cover V1 -> 1.2 Available, 1.2 UpToDate, downgrade refusal and
+rejection of a V1.2 manifest with only the V1 filename. Verify actual published
+V1 read-only discovery again against the new live release after publication.
+Local 1.2 Core smoke, GUI interaction, packaging/policy/workflow fixtures passed;
+privileged filesystem/journal coverage requires hosted CI. The downloaded official
+V1 matches its published SHA-256 and its read-only live check reports CURRENT
+before publication. Updater runtime source is identical to the V1 tag; the new
+compatibility fixtures exercise its existing version/asset contract.
+
+## In progress: final manual-source presentation review
+
+Owner reports the fixed Server flow works, but requests less visual clutter and
+stronger matching-ISO discovery before progressing toward an official release.
+Per owner refinement, move Server Copy to the main header in place of the idle
+MANUAL GUIDANCE ONLY action, remove the lower Copy button, and show the compact
+read-only preview only after copying. Preserve existing header Cancel while an
+operation is active. Remove repeated selected-image metadata from the nearby
+hint. Keep actual mismatch reasons and every operational guard. Put matching ISO
+first and highlight it for manual-only profiles, clearing emphasis during busy
+operations. Core/CLI/provider/Setup behavior and product version remain unchanged.
+An updated test EXE and owner VM review are required before release authorization.
+Local warning-as-error GUI/Core/CLI suites passed. GUI fixtures check matching-ISO
+emphasis/first position/busy reset, optional-preview expansion/collapse and visible
+Copy/preview bounds, alongside existing fake clipboard/revalidation/cancellation
+and Server execution blockers. Synthetic GUI screenshots were inspected locally.
+Header relocation also passed the full warning-as-error GUI suite: exactly one
+idle header action per mode, a real Copy button click with fake media/clipboard,
+and a real existing Cancel click during pending command preparation. Empty preview
+sections collapse completely; source-card Copy duplication is removed.
+Privileged journal/updater fixtures still skip locally; hosted CI covers those.
+Actual display scaling at 100/125/150% and owner VM acceptance remain pending.
+
+## In progress: issue #25 automatic-source visibility
+
+The GUI hides and collapses the automatic source when the existing Core policy
+denies it, while preserving manual selection and Server guidance. This is a test
+candidate only: owner VM acceptance is pending. No merge, version bump, RC,
+release, tag or replacement of published assets is authorized by this change.
+Local Core smoke, GUI fixtures, CLI fixtures, offline publication checks and the
+portable EXE read-only CLI smoke passed. Local privileged updater/journal fixtures
+were skipped; hosted CI and owner visual checks at 100/125/150% remain necessary.
+No real download, mount, Windows Setup or restart was exercised.
+Owner's first Server 2025 VM screenshot exposed a clipped manual source panel:
+implicit cell placement moved it into the collapsed automatic row. Explicit cell
+assignments fix the regression; a rendered-bounds fixture reproduces failure on
+the previous implementation and passes after the fix, including synthetic Server
+2025 (build 26100), client transitions and resizing. Owner VM retest is pending.
 
 Reusable architecture, diagnosis and verification know-how lives in
 [AI maintenance playbook](AI-MAINTENANCE-PLAYBOOK.md), independently of any

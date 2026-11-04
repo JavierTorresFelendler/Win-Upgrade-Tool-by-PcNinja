@@ -123,10 +123,12 @@ try {
     $rc = Get-PcNinjaVersionIdentity '1.1.0-rc.8'
     $stable = Get-PcNinjaVersionIdentity '1.1.0'
     $beta = Get-PcNinjaVersionIdentity '1.1.0-beta.1'
+    $stable12 = Get-PcNinjaVersionIdentity '1.2.0'
     Require ($stable.Product -ceq 'Windows Upgrade Tool by PcNinja' -and
         $stable.Repository -ceq 'JavierTorresFelendler/Win-Upgrade-Tool-by-PcNinja') 'Final product/repository publisher branding mismatch.'
     foreach ($pair in @(
         @('1.0.0', 'Win-Upgrade-Tool-by-PcNinja-v.1.exe'), @('1.1.0', 'Win-Upgrade-Tool-by-PcNinja-v.1.1.exe'),
+        @('1.2.0', 'Win-Upgrade-Tool-by-PcNinja-v.1.2.exe'),
         @('1.0.1', 'Win-Upgrade-Tool-by-PcNinja-v.1.0.1.exe'), @('2.0.0', 'Win-Upgrade-Tool-by-PcNinja-v.2.exe'),
         @('1.1.0-rc.8', 'Windows-Upgrade-Assistant-By-PcNinja-V1.1-RC8.exe')
     )) {
@@ -135,7 +137,8 @@ try {
     Require ($beta.Channel -ceq 'beta' -and $beta.AssetName -ceq 'Windows-Upgrade-Assistant-By-PcNinja-V1.1-Beta1.exe') 'Beta filename/channel mismatch.'
     Require (-not $rc.IsStable -and $rc.NotesPath -ceq 'docs/RELEASE-RC8.md' -and $rc.FileVersion -ceq '1.1.0.8') 'RC identity/notes contract changed.'
     Require ($stable.IsStable -and $stable.NotesPath -ceq 'docs/RELEASE-1.1.0.md' -and $stable.FileVersion -ceq '1.1.0.0') 'Stable identity/notes contract changed.'
-    foreach ($identity in @($rc, $stable, $beta)) {
+    Require ($stable12.FileVersion -ceq '1.2.0.0' -and $stable12.NotesPath -ceq 'docs/RELEASE-1.2.0.md') 'V1.2 file metadata/release notes mismatch.'
+    foreach ($identity in @($rc, $stable, $beta, $stable12)) {
         Assert-PcNinjaExecutableIdentity $identity $identity.Product $identity.FileVersion "$($identity.Version)+$fixtureCommit" 42 $fixtureCommit
         MustReject { Assert-PcNinjaExecutableIdentity $identity $identity.Product $identity.FileVersion "$($identity.Version)+$('b' * 40)" 42 $fixtureCommit } 'Stale same-version EXE source commit was accepted.'
         MustReject { Assert-PcNinjaExecutableIdentity $identity $identity.Product $identity.FileVersion $identity.Version 42 $fixtureCommit } 'Missing EXE source-commit metadata was accepted.'
