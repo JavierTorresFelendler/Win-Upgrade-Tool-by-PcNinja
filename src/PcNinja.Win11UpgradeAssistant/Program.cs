@@ -2,12 +2,16 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Security.Principal;
+using PcNinja.Shared;
 using PcNinja.Win11Upgrade.Core;
 
 namespace PcNinja.Win11UpgradeAssistant;
 
 internal static class Program
 {
+    /// <summary>Fixed shared single-instance id. Never version it.</summary>
+    internal const string SingleInstanceAppId = "WinUpgradeTool";
+
     [STAThread]
     private static int Main(string[] args)
     {
@@ -21,7 +25,16 @@ internal static class Program
             return CliRunner.RunAsync(args).GetAwaiter().GetResult();
         }
 
-        if (!IsAdministrator()) return RestartGuiAsAdministrator();
+        // GUI is single-instance per Windows session. A second launch focuses the
+        // running window instead (before UAC, so no needless elevation prompt).
+        if (!IsAdministrator())
+            return PcNinjaSingleInstance.TryActivateExisting(SingleInstanceAppId) ? 0 : RestartGuiAsAdministrator();
+        using var singleInstance = PcNinjaSingleInstance.Acquire(SingleInstanceAppId);
+        if (singleInstance is null)
+        {
+            AppLog.Info("Another GUI instance is already running; it was brought to the foreground.");
+            return 0;
+        }
 
         ApplicationConfiguration.Initialize();
         Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);

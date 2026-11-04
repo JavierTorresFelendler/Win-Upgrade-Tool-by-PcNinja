@@ -2,6 +2,23 @@
 
 Updated: 2026-11-04. This is sanitized project context, not a backup of Codex chats.
 
+## In progress: single-instance GUI (issue #30, branch `feature/single-instance`)
+
+- Scope: GUI only. A second GUI launch signals the running instance, which restores
+  and focuses its window; the new process exits with code 0. The unelevated launch
+  probes before UAC, so an open app never triggers a second elevation prompt.
+- Implementation: shared `shared/PcNinjaSingleInstance.cs` (byte-identical in the
+  WinUpdate V1/V2 and Smart Office Installer repositories, C# 5 compatible), linked
+  into the GUI project. App id `WinUpgradeTool` (fixed; never versioned). See
+  `shared/README.md` for the contract and the unified-tool plan.
+- Unchanged: CLI mode, `AppOperationGate`, update helper. The helper launches the new
+  GUI only after the parent exits, which releases the guard.
+- Verification so far: the shared file compiles as C# 5 and latest; the integration
+  was checked for compiler errors without the Windows Desktop reference pack. Still
+  required on Windows: CI build, then a VM check of second launch while minimized,
+  maximized, behind other windows, with a modal dialog open, and a self-update.
+- Release hold: no build, tag or release is authorized by this change.
+
 ## Published and verified: stable 1.2
 
 Owner authorized release and personally approved the protected `release`

@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased — single-instance GUI (issue #30)
+
+- Opening the GUI while it is already running no longer starts a second copy;
+  the running window is restored and brought to the front, without a UAC prompt.
+- Uses the shared `shared/PcNinjaSingleInstance.cs` guard (same file in all PcNinja
+  tools). CLI mode is unchanged and remains protected by `AppOperationGate`.
+
 ## 1.2.0 — clearer manual source and Server guidance
 
 - Hide unavailable automatic-download controls without losing manual source fields.

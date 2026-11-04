@@ -23,6 +23,8 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\PcNinja.Win11Upgrade.Core\PcNinja.Win11Upgrade.Core.csproj" />
+    <!-- Shared across all PcNinja tools; keep byte-identical (see shared/README.md). -->
+    <Compile Include="..\..\shared\PcNinjaSingleInstance.cs" Link="Shared\PcNinjaSingleInstance.cs" />
     <EmbeddedResource Include="Assets\PcNinja-mascot.png" LogicalName="PcNinja.Win11UpgradeAssistant.Assets.PcNinja-mascot.png" />
   </ItemGroup>
 </Project>
