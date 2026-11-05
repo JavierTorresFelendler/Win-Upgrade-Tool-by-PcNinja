@@ -473,7 +473,7 @@ public sealed class AppUpdateWorkspace : IDisposable
 
     private static void SetArchivedFileAcl(string path, string expectedHash)
     {
-        using var file = OpenRegularFile(path, ReadControl | ReadAttributes | 0x00040000 | 0x00080000, 1);
+        using var file = OpenRegularFile(path, GenericRead | ReadControl | ReadAttributes | 0x00040000 | 0x00080000, 1);
         SetArchivedFileAcl(file, expectedHash);
     }
 
@@ -492,7 +492,7 @@ public sealed class AppUpdateWorkspace : IDisposable
 
     private static void SetRecoveryFileAcl(string path, string expectedHash)
     {
-        using var file = OpenRegularFile(path, ReadControl | ReadAttributes | 0x00040000 | 0x00080000, 1);
+        using var file = OpenRegularFile(path, GenericRead | ReadControl | ReadAttributes | 0x00040000 | 0x00080000, 1);
         if (!HashHandle(file).Equals(expectedHash, StringComparison.OrdinalIgnoreCase))
             throw new InvalidDataException("A recovery file changed before its permissions were set.");
         using var security = new NativeSecurity(PrivateFileSddl);
