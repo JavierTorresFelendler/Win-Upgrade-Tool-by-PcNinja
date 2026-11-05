@@ -116,6 +116,7 @@ internal static class PortableLifecycleChecks
                 StandardInputEncoding = new UTF8Encoding(false), StandardOutputEncoding = Encoding.UTF8
             };
             start.ArgumentList.Add(AppUpdateInstaller.HelperArgument);
+            IsolateFixtureHttp(start);
             using var helper = Process.Start(start) ?? throw new Exception("Fixture helper did not launch.");
             workspace.MarkHandoffStarted();
             using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(90));
@@ -138,11 +139,26 @@ internal static class PortableLifecycleChecks
         return FindGui(target);
     }
 
-    private static Process StartGui(string path) => Process.Start(new ProcessStartInfo(path)
+    private static Process StartGui(string path)
     {
-        WorkingDirectory = Path.GetDirectoryName(path)!, UseShellExecute = false,
-        WindowStyle = ProcessWindowStyle.Normal
-    }) ?? throw new Exception("Fixture GUI did not start.");
+        var start = new ProcessStartInfo(path)
+        {
+            WorkingDirectory = Path.GetDirectoryName(path)!, UseShellExecute = false,
+            WindowStyle = ProcessWindowStyle.Normal
+        };
+        IsolateFixtureHttp(start);
+        return Process.Start(start) ?? throw new Exception("Fixture GUI did not start.");
+    }
+
+    private static void IsolateFixtureHttp(ProcessStartInfo start)
+    {
+        // Once this stable version is published, its synthetic RC predecessor
+        // would otherwise see a real update and open a consent dialog. These
+        // fixture GUIs/helpers use only prepared local bytes, never a live feed.
+        foreach (var name in new[] { "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY" })
+            start.Environment[name] = "http://127.0.0.1:1";
+        start.Environment["NO_PROXY"] = "";
+    }
 
     private static async Task WaitForWindowAsync(Process process)
     {

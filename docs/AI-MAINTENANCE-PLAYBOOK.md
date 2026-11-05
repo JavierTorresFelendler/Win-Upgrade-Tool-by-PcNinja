@@ -352,6 +352,11 @@ completion: the live GUI can inherit those handles. Fixture teardown may need
 bounded retries/read-only normalization on its own validated random temp tree;
 never extend that exception to arbitrary customer files or production recovery.
 Hosted GUI lifecycle evidence is separate from client foreground/UAC testing.
+Isolate only the fixture child processes from the live release feed (the runner
+uses a refused loopback HTTP proxy in their environment). Otherwise the synthetic
+RC starts offering the real stable release after publication and can introduce
+a modal consent dialog into later CI runs. Production network/update settings
+remain unchanged; independently verify real discovery with published binaries.
 
 Recovery snapshot checks must use a readable handle while it is still alive.
 `FileStream(SafeFileHandle, ...)` owns and closes that handle; flush, then hash
