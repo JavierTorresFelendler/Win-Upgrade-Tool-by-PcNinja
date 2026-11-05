@@ -71,18 +71,25 @@ check is metadata only, status is offline. Beta discovers Beta only; stable/RC
 discovers stable only. Returned release metadata includes importance, message and
 the exact GitHub release-notes URL. Critical does not imply download consent.
 
-New version-named files stay beside the RUNNING EXE, not the caller's CWD.
-The old file is unchanged. There is no Program Files fallback, overwrite/rename
-or Copy N. Existing exact files are verified for reuse, not replaced on mismatch.
+New releases use the fixed `Win-Upgrade-Tool-by-PcNinja.exe` filename and stay
+beside the RUNNING EXE, not the caller's CWD. If that is already the active path,
+the helper snapshots and verifies the predecessor before atomic replacement.
+Other existing files are verified for reuse, not overwritten on mismatch.
 run needs Administrator and --yes, never UAC-relaunches or opens a GUI/browser.
 The unreleased install verb remains an alias only.
 
-The unchanged-filename rule above is specific to CLI, which never relaunches a
-GUI. GUI updating marks the exact predecessor OLD-/OLD.V1-/OLD.V2- after native
-PID-authenticated shown-window readiness. This housekeeping never deletes or
-overwrites existing files. Both interfaces remain independent of OS pending
-restart flags and external Windows Setup, while this tool's own operations
-serialize safely. Local app-update status may include archiveStatus/archivedPath.
+CLI never relaunches a GUI; it leaves transaction recovery pending until a GUI
+startup is confirmed. GUI readiness archives the exact predecessor under its
+verified four-part FileVersion, with a SHA-256 suffix when different bytes occupy
+the normal archive name. A confirmed failed launch is rolled back; uncertain or
+possibly live successors retain recovery bytes. Both interfaces remain
+independent of OS pending restart flags and external Windows Setup, while this
+tool's own operations serialize safely. Local app-update status may include
+archiveStatus/archivedPath and a deferred reason.
+
+The already published V1/V1.1/V1.2 binaries retain strict versioned asset pins.
+They cannot accept a new fixed-name manifest; download/open the fixed-name EXE
+manually once to migrate. Historical assets remain unchanged.
 
 Beta builds do not discover stable releases. Download/open the first official
 V1 manually once; the old `1.1.0-beta.5` cannot switch to stable `1.0.0` through

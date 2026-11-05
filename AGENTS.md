@@ -45,11 +45,14 @@ access to prior chats, local Codex skills, personal memories, or machine paths.
   open-source permission grant. Do not replace it with MIT/GPL or imply source
   reuse/rebranding rights without an explicit owner decision. Preserve upstream
   third-party terms; report security issues privately to javier@pcninja.pro.
-- Stable V1 uses technical 1.0.0 and Win-Upgrade-Tool-by-PcNinja-v.1.exe; 1.1.0 uses
-  -v.1.1.exe. Display Windows Upgrade Tool by PcNinja; canonical repository is
-  JavierTorresFelendler/Win-Upgrade-Tool-by-PcNinja. Keep C# and publisher filename mappings identical and preserve all
-  historical Beta/RC names. Beta-to-first-stable is a manual bootstrap, not an
-  excuse to bypass newer-version or channel checks.
+- Historical stable V1/V1.1/V1.2 and Beta/RC assets keep their published,
+  versioned names and bytes. New stable/Beta public EXE assets and the active
+  application use the fixed `Win-Upgrade-Tool-by-PcNinja.exe` name; predecessor
+  archives use the verified four-part Windows FileVersion. Keep C# and publisher
+  identity mappings aligned. Existing clients that pin versioned asset names
+  require a documented manual one-time migration; never weaken version, channel,
+  digest or signer checks. Display Windows Upgrade Tool by PcNinja; canonical
+  repository is JavierTorresFelendler/Win-Upgrade-Tool-by-PcNinja.
 - Keep the standalone application separate from future WinUpdate Tool integration.
 - GUI and CLI must use the same Core validation, download and upgrade operations.
 - Manual x64 Windows 10/11 client LTSC upgrades use `ManualUpgradePolicy` and

@@ -14,6 +14,7 @@ internal static class AppUpdateFileChecks
         CheckRequests();
         CheckInvalidExecutables();
         CheckNativeFixture();
+        CheckFinishedStagingCleanup();
         Console.WriteLine("PASS: App-update portable root/nonce/space, protected ACL allowlist, bounded private JSON, candidate version/hash/size/signer continuity and invalid PE/product refusal. No Program Files writes, executable launch or network used.");
     }
 
@@ -68,7 +69,7 @@ internal static class AppUpdateFileChecks
         var hash = new string('A', 64);
         var signer = new string('B', 40);
         var release = Manifest(hash, 1024);
-        var actual = new AppExecutableInfo("1.1.0", hash, 1024, null);
+        var actual = new AppExecutableInfo("1.1.0", "1.1.0.0", hash, 1024, null);
         AppUpdateWorkspace.VerifyExecutableInfo(actual, release, null); // Explicit unsigned policy, not signature trust.
         AppUpdateWorkspace.VerifyExecutableInfo(actual with { Version = "1.1.0+commit.abc" }, release, null);
         AppUpdateWorkspace.VerifyExecutableInfo(actual with { SignerThumbprint = signer.ToLowerInvariant() }, release, signer);
@@ -82,6 +83,10 @@ internal static class AppUpdateFileChecks
         Reject(() => AppUpdateWorkspace.VerifyExecutableInfo(actual with { SignerThumbprint = new string('C', 40) }, release, signer));
         Reject(() => AppUpdateWorkspace.VerifyExecutableInfo(actual with { SignerThumbprint = signer }, release, "not-a-thumbprint"));
         Reject(() => AppUpdateWorkspace.VerifyExecutableInfo(actual, release with { Product = "Another application" }, null));
+        Require(AppUpdateWorkspace.TryParseWindowsFileVersion(actual.FileVersion, out _) &&
+            !AppUpdateWorkspace.TryParseWindowsFileVersion("1.1.0", out _) &&
+            !AppUpdateWorkspace.TryParseWindowsFileVersion("1.1.0.0.0", out _),
+            "Predecessor archival accepted a non-four-part Windows FileVersion.");
     }
 
     private static void CheckRequests()
@@ -177,6 +182,83 @@ internal static class AppUpdateFileChecks
         AppUpdateIdentity.Repository, "stable", "1.1.0", "v1.1.0", AppUpdateIdentity.AssetNameFor("1.1.0"),
         $"https://github.com/{AppUpdateIdentity.Repository}/releases/download/v1.1.0/{AppUpdateIdentity.AssetNameFor("1.1.0")}", size, hash,
         $"https://github.com/{AppUpdateIdentity.Repository}/releases/tag/v1.1.0");
+    // After an update only the new and the archived EXE may remain beside the app.
+    private static void CheckFinishedStagingCleanup()
+    {
+        Require(AppUpdateWorkspace.ResultPath.StartsWith(AppLog.Folder, StringComparison.OrdinalIgnoreCase) &&
+            !AppUpdateWorkspace.ResultPath.Contains(AppUpdateWorkspace.StateDirectoryName, StringComparison.OrdinalIgnoreCase),
+            "The last app-update result must be kept with the log, not beside the application.");
+        using var identity = WindowsIdentity.GetCurrent();
+        if (identity.User?.Value != "S-1-5-18" && !new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator))
+        {
+            Console.WriteLine("SKIP: Finished-staging cleanup needs an elevated fixture token; not executed.");
+            return;
+        }
+
+        var parent = NewFixtureParent();
+        Directory.CreateDirectory(parent);
+        try
+        {
+            var none = AppUpdateWorkspace.RemoveFinishedStagingFixture(parent);
+            Require(!none.StagingPresent && !none.StagingRemoved, "Cleanup reported staging where none existed.");
+
+            // Legacy/uncertain operations have no transaction proof and must not be deleted.
+            var first = Guid.NewGuid().ToString("N");
+            var second = Guid.NewGuid().ToString("N");
+            string helperPath;
+            using (var workspace = AppUpdateWorkspace.CreateFixture(parent, first, 4096, 4096))
+            {
+                workspace.WriteRequest(new FixtureRequest(1, first));
+                File.WriteAllBytes(workspace.CandidatePath, [1, 2, 3]);
+                File.WriteAllBytes(workspace.HelperPath, [4, 5, 6]);
+                File.WriteAllText(Path.Combine(workspace.DirectoryPath, "result.tmp"), "{}");
+                File.WriteAllText(Path.Combine(workspace.StateDirectory, AppUpdateWorkspace.ResultFileName), "{}");
+            }
+            using (var workspace = AppUpdateWorkspace.CreateFixture(parent, second, 4096, 4096))
+            {
+                File.WriteAllBytes(workspace.HelperPath, [7, 8, 9]);
+                helperPath = workspace.HelperPath;
+            }
+            var staging = Path.Combine(parent, AppUpdateWorkspace.StateDirectoryName);
+            var keep = Path.Combine(parent, "Windows-Upgrade-Tool-by-PcNinja-v.1.exe");
+            File.WriteAllBytes(keep, [0x4d, 0x5a]);
+
+            // A running helper and an incomplete transaction both retain exact recovery files.
+            using (new FileStream(helperPath, FileMode.Open, FileAccess.Read, FileShare.Read))
+            {
+                var busy = AppUpdateWorkspace.RemoveFinishedStagingFixture(parent);
+                Require(!busy.StagingRemoved && busy.StagingPresent && busy.Retained.Count == 2 &&
+                    busy.Retained.Any(item => item.StartsWith(second, StringComparison.Ordinal)) &&
+                    busy.Retained.Any(item => item.StartsWith(first, StringComparison.Ordinal)) && busy.OperationsRemoved == 0,
+                    "Unproven legacy operations must retain all recovery files: " + string.Join("; ", busy.Retained));
+                Require(File.Exists(helperPath) && Directory.Exists(Path.Combine(staging, first)) &&
+                    !File.Exists(Path.Combine(staging, AppUpdateWorkspace.ResultFileName)),
+                    "Cleanup removed an unproven operation or retained the removable legacy status file.");
+            }
+
+            var done = AppUpdateWorkspace.RemoveFinishedStagingFixture(parent);
+            Require(!done.StagingRemoved && done.Retained.Count == 2 && Directory.Exists(staging),
+                "Unproven operations were removed after the helper unlocked.");
+            Require(File.Exists(keep), "Cleanup altered unrelated application files.");
+
+            // Unknown content is never deleted; the staging folder is then retained.
+            var third = Guid.NewGuid().ToString("N");
+            string unknown;
+            using (var workspace = AppUpdateWorkspace.CreateFixture(parent, third, 4096, 4096))
+            {
+                unknown = Path.Combine(workspace.DirectoryPath, "unrelated.keep");
+                File.WriteAllText(unknown, "leave this file alone");
+            }
+            var foreign = Path.Combine(staging, "not-an-operation");
+            Directory.CreateDirectory(foreign);
+            var guarded = AppUpdateWorkspace.RemoveFinishedStagingFixture(parent);
+            Require(!guarded.StagingRemoved && guarded.Retained.Count == 4 && File.Exists(unknown) && Directory.Exists(foreign),
+                "Cleanup deleted content it did not create: " + string.Join("; ", guarded.Retained));
+            Console.WriteLine("PASS: Finished update staging removed exactly (locked helper kept, unknown content kept, only app files remain).");
+        }
+        finally { RemoveFixtureParent(parent); }
+    }
+
     private static string NewFixtureParent() => Path.Combine(Path.GetTempPath(), "PcNinja-AppUpdate-Fixture-" + Guid.NewGuid().ToString("N"));
     private static void RemoveFixtureParent(string parent)
     {

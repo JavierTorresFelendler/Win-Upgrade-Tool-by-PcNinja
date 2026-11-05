@@ -18,39 +18,43 @@ project-specific decisions and working procedures across assistants and machines
 
 ## Download
 
-[Download 1.2 portable EXE](https://github.com/JavierTorresFelendler/Win-Upgrade-Tool-by-PcNinja/releases/download/v1.2.0/Win-Upgrade-Tool-by-PcNinja-v.1.2.exe)
-or view its [release notes and checksums](https://github.com/JavierTorresFelendler/Win-Upgrade-Tool-by-PcNinja/releases/tag/v1.2.0).
+[Download 1.3 portable EXE](https://github.com/JavierTorresFelendler/Win-Upgrade-Tool-by-PcNinja/releases/download/v1.3.0/Win-Upgrade-Tool-by-PcNinja.exe)
+or view its [release notes and checksums](https://github.com/JavierTorresFelendler/Win-Upgrade-Tool-by-PcNinja/releases/tag/v1.3.0).
 
-The current stable line is 1.2 (`1.2.0`). The Releases page is authoritative for
+Version 1.3 uses technical version `1.3.0`. The Releases page is authoritative for
 publication status. Download a published build only
 from this repository's [Releases](https://github.com/JavierTorresFelendler/Win-Upgrade-Tool-by-PcNinja/releases)
-page; a PR artifact is a test build, not an official release. Version 1.2 uses:
+page; a PR artifact is a test build, not an official release. Version 1.3 uses:
 
 ```text
-Win-Upgrade-Tool-by-PcNinja-v.1.2.exe
+Win-Upgrade-Tool-by-PcNinja.exe
 ```
 
 The portable x64 EXE contains both the graphical application and the CLI. No
 PowerShell or CMD files are required.
 
-Public V1 remains technical version `1.0.0`; 1.2 uses `1.2.0` and file version
-`1.2.0.0`. Full version/commit metadata remains in
+Public V1 remains technical version `1.0.0`; 1.3 uses `1.3.0` and file version
+`1.3.0.0`. Full version/commit metadata remains in
 file properties, diagnostic logs, `version` and `status --json`. The GUI title
 stays **Windows Upgrade Tool by PcNinja**. Historical RC/Beta assets keep
 their original names and bytes. See [product identity](docs/PRODUCT-IDENTITY.md).
 
 V1 includes [portable application updates](docs/APPLICATION-UPDATES.md).
-New version-named EXEs stay beside the running tool; nothing moves to Program
-Files or overwrites the old EXE. After the new GUI confirms startup, only the
-exact predecessor is marked `OLD-`, or `OLD.V1-`, `OLD.V2-`, etc. if occupied.
-A regular/critical offer shows the release summary and exact GitHub notes;
-only **Download and run the new version** authorizes EXE transfer.
+New stable/Beta releases use the fixed active filename
+`Win-Upgrade-Tool-by-PcNinja.exe`. Same-name updates replace atomically only
+after a verified recovery snapshot; the predecessor is archived using its
+verified four-part Windows FileVersion, with a SHA-256 suffix on a name
+collision. Existing published versioned assets remain unchanged. A regular/
+critical offer shows the release summary and exact GitHub notes; only
+**Download and run the new version** authorizes EXE transfer.
 Stable discovers stable only; Beta discovers numbered Betas only. **Beta and test
 candidate users must download and open a published stable build manually once**, including
 earlier test candidates reporting 1.0.0. The old
 `1.1.0-beta.5` cannot switch channels or downgrade itself to stable `1.0.0`.
-Future stable-to-stable updates use the normal consent-based updater. Windows
-restart flags and external Setup do not gate updates to this application.
+Older clients also retain strict versioned asset pins and cannot consume a new
+fixed-name manifest, so download/open the fixed-name build manually to migrate.
+Afterward, updates use the normal consent-based updater. Windows restart flags
+and external Setup do not gate updates to this application.
 
 The tool is free to use, but it is **not offered under an open-source license**.
 See [LICENSE](LICENSE) for the actual permissions and restrictions, and

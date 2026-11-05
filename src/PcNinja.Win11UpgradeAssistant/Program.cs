@@ -2,15 +2,21 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Security.Principal;
+using PcNinja.Shared;
 using PcNinja.Win11Upgrade.Core;
 
 namespace PcNinja.Win11UpgradeAssistant;
 
 internal static class Program
 {
+    /// <summary>Fixed shared single-instance id. Never version it.</summary>
+    internal const string SingleInstanceAppId = "WinUpgradeTool";
+
     [STAThread]
     private static int Main(string[] args)
     {
+        if (args.Length > 0 && args[0].Equals(AppUpdateInstaller.CleanupArgument, StringComparison.Ordinal))
+            return args.Length == 1 ? AppUpdateInstaller.RunCleanupWorker() : 2;
         if (args.Length > 0 && args[0].Equals(AppUpdateInstaller.HelperArgument, StringComparison.Ordinal))
             return args.Length == 1 ? AppUpdateInstaller.RunHelperAsync().GetAwaiter().GetResult() : 2;
         AppLog.Info($"{ProductIdentity.Name}; build {ProductIdentity.BuildVersion}; " +
@@ -21,7 +27,26 @@ internal static class Program
             return CliRunner.RunAsync(args).GetAwaiter().GetResult();
         }
 
-        if (!IsAdministrator()) return RestartGuiAsAdministrator();
+        // GUI is single-instance per Windows session. A second launch asks the
+        // running window to come forward and waits for its acknowledgement. The
+        // probe runs before UAC, so an open app causes no second elevation prompt.
+        PcNinjaSingleInstance.DiagnosticSink = AppLog.Info;
+        var singleInstanceOptions = new PcNinjaSingleInstanceOptions();
+        if (!IsAdministrator())
+        {
+            PcNinjaSingleInstance.TryActivateExisting(SingleInstanceAppId, singleInstanceOptions, out var probe);
+            if (probe == PcNinjaSingleInstanceOutcome.ActivatedExisting) return 0;
+            if (probe == PcNinjaSingleInstanceOutcome.ExistingNotResponding) return ShowAlreadyRunning();
+            return RestartGuiAsAdministrator();
+        }
+        var singleInstance = PcNinjaSingleInstance.Acquire(SingleInstanceAppId, singleInstanceOptions, out var instance);
+        if (singleInstance is null)
+        {
+            AppLog.Info($"Second GUI launch: {instance}.");
+            return instance == PcNinjaSingleInstanceOutcome.ExistingNotResponding ? ShowAlreadyRunning() : 0;
+        }
+        if (instance == PcNinjaSingleInstanceOutcome.GuardUnavailable)
+            AppLog.Info("Single-instance guard unavailable; starting without it (operations remain protected by AppOperationGate).");
 
         ApplicationConfiguration.Initialize();
         Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
@@ -31,14 +56,58 @@ internal static class Program
         var readinessPipe = Environment.GetEnvironmentVariable(AppUpdateGuiReadiness.EnvironmentName);
         Environment.SetEnvironmentVariable(AppUpdateGuiReadiness.EnvironmentName, null);
         using var form = new MainForm();
-        if (AppUpdateGuiReadiness.IsValidName(readinessPipe))
-            form.Shown += (_, _) => form.BeginInvoke(new Action(async () =>
+        form.Shown += (_, _) => form.BeginInvoke(new Action(async () =>
+        {
+            if (form.IsDisposed || !form.Visible) return;
+            try
             {
-                if (form.IsDisposed || !form.Visible) return;
                 form.Update(); // Paint the initialized window before acknowledging startup.
-                await AppUpdateGuiReadiness.SignalAsync(readinessPipe);
-            }));
-        Application.Run(form);
+                if (AppUpdateGuiReadiness.IsValidName(readinessPipe))
+                    await AppUpdateGuiReadiness.SignalAsync(readinessPipe);
+                else
+                    AppUpdateInstaller.ConfirmPendingGuiStartup(Environment.ProcessPath
+                        ?? throw new InvalidOperationException("Application path is unavailable."));
+            }
+            finally { StartUpdateCleanupWorker(); }
+        }));
+        try { Application.Run(form); }
+        finally
+        {
+            // Release ownership as soon as the window is gone, so a relaunch during
+            // shutdown is handed over instead of waiting on a closing instance.
+            singleInstance.Dispose();
+        }
+        return 0;
+    }
+
+    private static void StartUpdateCleanupWorker()
+    {
+        try
+        {
+            using var worker = Process.Start(new ProcessStartInfo
+            {
+                FileName = Environment.ProcessPath
+                    ?? throw new InvalidOperationException("The update cleanup worker path is unavailable."),
+                WorkingDirectory = AppContext.BaseDirectory,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WindowStyle = ProcessWindowStyle.Hidden,
+                ArgumentList = { AppUpdateInstaller.CleanupArgument }
+            }) ?? throw new IOException("The update cleanup worker could not start.");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Win32Exception or
+            InvalidOperationException or System.Security.SecurityException)
+        {
+            AppLog.Info($"Application-update cleanup worker could not start: {ex.Message}");
+        }
+    }
+
+    private static int ShowAlreadyRunning()
+    {
+        MessageBox.Show(
+            $"{ProductIdentity.Name} is already running but is not responding.\n\n" +
+            "Wait a moment and try again, or close it from Task Manager.",
+            ProductIdentity.Name, MessageBoxButtons.OK, MessageBoxIcon.Information);
         return 0;
     }
 

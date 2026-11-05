@@ -58,7 +58,8 @@ internal static class CliAppUpdates
     {
         try
         {
-            var path = Path.Combine(AppUpdateInstaller.DestinationDirectory, AppUpdateWorkspace.StateDirectoryName, "Last-AppUpdate.json");
+            var path = File.Exists(AppUpdateWorkspace.ResultPath) ? AppUpdateWorkspace.ResultPath
+                : AppUpdateWorkspace.LegacyResultPath(AppUpdateInstaller.DestinationDirectory);
             using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
             if (stream.Length > 8192) return null;
             using var json = JsonDocument.Parse(stream, new JsonDocumentOptions { MaxDepth = 8 });

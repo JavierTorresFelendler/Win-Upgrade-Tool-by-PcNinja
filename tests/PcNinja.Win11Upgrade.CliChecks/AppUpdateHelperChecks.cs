@@ -14,11 +14,12 @@ internal static class AppUpdateHelperChecks
             10, new string('a', 64), $"https://github.com/{AppUpdateIdentity.Repository}/releases/tag/v9.9.9");
         var request = new AppUpdateRequest(2, id, now, Environment.ProcessId + 10000,
             now.AddMinutes(-1).UtcDateTime.Ticks, @"C:\Fixture\app.exe", new string('a', 64),
-            null, manifest, false);
+            null, manifest, false, "1.1.0.0");
         AppUpdateInstaller.ValidateRequest(request, id);
+        AppUpdateInstaller.ValidateRequest(request with { ParentFileVersion = null }, id); // Legacy schema-v2 request.
         // Read the built product host, not this test runner; never execute it.
         // This proves that the negative PE fixtures did not create an always-reject verifier.
-        var builtHost = Path.Combine(AppContext.BaseDirectory, AppUpdateIdentity.AssetName);
+        var builtHost = Path.Combine(AppContext.BaseDirectory, AppUpdateIdentity.BuildExecutableName);
         var builtInfo = AppUpdateWorkspace.InspectExecutable(builtHost);
         Require(builtInfo.Version == ProductIdentity.Version && builtInfo.SizeBytes == new FileInfo(builtHost).Length &&
             builtInfo.Sha256.Length == 64, "The real built product host failed read-only executable inspection.");
@@ -34,6 +35,7 @@ internal static class AppUpdateHelperChecks
             request with { ParentPath = @"\\?\C:\app.exe" }, request with { ParentPath = @"C:\app.exe:ads" },
             request with { ParentPath = @"C:\app*.exe" }, request with { ParentPath = "C:\\bad\nname.exe" },
             request with { ParentHash = "" },
+            request with { ParentFileVersion = "1.1.0" },
             request with { RequiredSigner = new string('a', 39) }, request with { RequiredSigner = new string('z', 40) },
             request with { Release = manifest with { Repository = "other/project" } }
         }) Reject(() => AppUpdateInstaller.ValidateRequest(invalid, id));

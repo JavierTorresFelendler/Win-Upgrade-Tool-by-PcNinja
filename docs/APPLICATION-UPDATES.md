@@ -1,11 +1,12 @@
 # Portable application updates
 
-V1 includes the consent-based portable updater developed and tested through the
-Beta line. Published RC/Beta assets stay unchanged. The owner confirmed a real
-Beta 4 -> Beta 5 update, new GUI readiness, exact predecessor OLD rename and an
-UpToDate check. That evidence does not establish every failure-path test or a
-stable-to-stable lifecycle. Release authorization and remaining gates are recorded
-in [Development status](DEVELOPMENT-STATUS.md).
+The updater is EXE-only. Historical assets remain immutable. New stable/Beta
+releases use a fixed unversioned EXE name; predecessor archives use the verified
+four-part Windows FileVersion and SHA-256 only when different bytes already
+occupy the ordinary archive name. The owner-confirmed Beta 4 -> Beta 5 live
+update is historical evidence for the old versioned updater, not acceptance of
+this fixed-name transition. Release status and outstanding gates are recorded in
+[Development status](DEVELOPMENT-STATUS.md).
 
 ## User flow
 
@@ -16,13 +17,24 @@ in [Development status](DEVELOPMENT-STATUS.md).
 3. **Not now**, Escape or closing the offer keeps the current tool. Opening notes
    opens the exact GitHub release page, not a download and not update consent.
 4. Only **Download and run the new version** starts transfer/verification.
-5. Save the version-named EXE beside the running tool, not the shell's working
-   directory. A private hidden `.pcninja-updates/<operation-id>` staging directory
-   is below that same folder. There is no Program Files destination or fallback.
-6. Verify bytes/hash/size/product/version/publisher continuity. A verified helper
-   waits for the exact old process to exit, then GUI opens the new EXE with NO
-   arguments. After the initialized new window is shown/painted and acknowledges
-   startup, the helper marks only this exact predecessor OLD-; bytes stay intact.
+5. Save `Win-Upgrade-Tool-by-PcNinja.exe` beside the running tool, not the shell's
+   working directory. A private hidden `.pcninja-updates/<operation-id>` staging
+   directory is below that same folder while the update runs. There is no Program
+   Files destination or fallback.
+6. Verify bytes/hash/size/product/version/publisher continuity. The helper waits
+   for the exact old process to exit, then verifies and snapshots its bytes. If
+   the active path is already the fixed filename, replace it atomically; for a
+   one-time versioned-to-fixed transition, install the fixed EXE beside the old
+   one. GUI opens the successor with NO arguments. After the initialized new
+   window is shown/painted and acknowledges startup, archive the predecessor
+   under `Win-Upgrade-Tool-by-PcNinja-v<FileVersion>.exe`; a different file at
+   that name uses a SHA-256-qualified name. Identical archives are reused.
+7. Once the new GUI has been painted, it confirms a pending CLI update's
+   transaction against its exact fixed-name EXE. An independent bounded cleanup
+   worker then deletes only readiness-proven completed staging and verified
+   recovery copies. Unknown, changed, reparse, hard-linked, locked, or
+   transaction-uncertain content is retained and logged; legacy operation
+   folders without sufficient completion evidence are retained.
 
 No installer, original replacement, numbered Copy N, service,
 scheduled task, Windows Setup or forced restart is involved. Cancellation/failure
@@ -31,31 +43,42 @@ the old EXE; open it again. A correctly verified existing exact-version file is
 reused; a mismatch is not overwritten/deleted and causes an actionable refusal.
 Readonly/unsupported locations fail, never relocate silently.
 
-### Mark the predecessor OLD
+### Same-name replacement and recovery
 
-After confirmed GUI startup, the helper best-effort renames only the exact
-predecessor bound in the private update request to `OLD-<original filename>`.
-No directory scan or deletion occurs. An existing OLD destination is never
-overwritten: try OLD.V1-, OLD.V2-, etc., retaining the exact original basename.
-There are at most 1000 deterministic name attempts; native no-overwrite rename
-also protects against a slot being occupied between the existence check and move.
-Locked/changed/unsafe/already-OLD files are retained and logged.
-This cosmetic failure does not fail an otherwise successful update. Original
-hash verification and no-overwrite rename share one source handle under anchored
-ancestors. Never release a path lock, hash a filename and then rename by path.
+The helper records a private transaction before publication. It holds anchored
+NTFS directory handles, rejects reparse points and hard links, verifies exact
+hashes/ACLs, and uses an atomic same-volume replace while retaining displaced
+bytes. The predecessor snapshot's Windows FileVersion is read from the exact
+verified executable, not inferred from the release version. A normal archive is
+`Win-Upgrade-Tool-by-PcNinja-v<four-part FileVersion>.exe`. If that path contains
+different bytes, use `-<predecessor SHA-256>.exe`; if identical bytes already
+exist, reuse them. Retire only exact legacy OLD duplicates after the versioned
+survivor is re-verified. Unknown or modified legacy archives are never removed.
+
+The GUI readiness result distinguishes confirmed startup, a definitely exited
+failed successor, and uncertain/live successor state. Roll back only when the
+successor is known gone; otherwise keep the target, snapshot and displaced
+bytes. No process is force-closed. Archive failure after successful GUI startup
+is reported and retried by the next cleanup worker, without undoing a working
+update.
 
 GUI startup uses a bounded same-user random pipe; the helper verifies the native
 client PID against the retained exact new process. The environment carries only
 an opaque ACK channel, not a target path/command, and the GUI clears it. No command
-line arguments or OS actions are replayed. Missing/late/wrong-process readiness
-means no archive; old bytes remain available. CLI does not relaunch a GUI and
-therefore leaves the predecessor name unchanged. Local status adds archiveStatus
-and archivedPath. Published Beta 1/2/4 binaries are not retroactively modified.
+line arguments or OS actions are replayed. Missing or wrong-process readiness
+never authorizes deleting a potentially live successor. CLI does not relaunch a
+GUI; it leaves transaction recovery pending until a GUI startup is confirmed.
+Local status includes archiveStatus, archivedPath and a deferred reason when
+archival cannot yet be completed. A transaction still marked `publishing` or
+`awaiting-gui` cannot authorize archival or cleanup; the normal GUI marks an
+awaiting CLI transaction ready only after its fixed-name executable and private
+predecessor snapshot are re-verified. Published Beta 1/2/4 binaries are immutable.
 
 ## Version names and channels
 
 Binary/product identity is authoritative, not a guessed filename. Internal build
-output remains Windows-Upgrade-Assistant-By-PcNinja.exe; published assets are:
+output remains Windows-Upgrade-Assistant-By-PcNinja.exe. Historical published
+assets remain:
 
 | Product version | Published filename | Update discovery |
 | --- | --- | --- |
@@ -66,10 +89,12 @@ output remains Windows-Upgrade-Assistant-By-PcNinja.exe; published assets are:
 | 1.1.0 (V1.1) | Win-Upgrade-Tool-by-PcNinja-v.1.1.exe | Stable only |
 | 1.2.0 (1.2) | Win-Upgrade-Tool-by-PcNinja-v.1.2.exe | Stable only |
 
-For 1.2 the owner selected the versioned filename for all downloads. This also
-preserves the exact filename contract compiled into stable V1. Publishing only
-the old `-v.1.exe` name under `v1.2.0` would make that client reject the update.
-Do not change the old binary or relax its manifest/asset checks.
+Future stable/Beta manifests and publisher assets use
+`Win-Upgrade-Tool-by-PcNinja.exe`; numbered RC assets retain their historical
+versioned mapping. Do not change any old binary or relax its manifest/asset
+checks. Since old binaries require the prior versioned asset filename, download
+and open a fixed-name release manually once to migrate; then the new updater can
+follow fixed-name releases. Never replace the immutable `v1.2.0` release asset.
 
 Beta discovery checks up to three pages of five recent release records, bounded
 by metadata/time limits, and selects the highest numbered published Beta. It
@@ -112,8 +137,10 @@ with Administrators/SYSTEM ACLs; unsafe existing staging is refused, not taken o
 Reused files are copied into private staging and their ACLs revalidated/hardened;
 CopyFile's source permissions must not leak into the privileged helper.
 Exact candidate/ancestor read/no-write/no-delete handles remain held through
-launch. Existing files are never overwritten. Private handoff files are retained
-for diagnosis; do not broadly clean the staging root or replay helper requests.
+launch. Only the exact canonical current EXE may be replaced, atomically, after
+the predecessor snapshot is hash-verified; other existing files are never
+overwritten. Private handoff files are retained unless a verified transaction
+proves cleanup safe; do not broadly clean the staging root or replay requests.
 
 The machine-wide gate serializes this tool's own active operations across instances;
 it never reads Windows restart flags or enumerates external Setup processes.
@@ -132,17 +159,20 @@ CLI: `app-update check --json`, `app-update status --json`,
 `app-update run --yes --json`. The unreleased install verb is an alias, not an
 installer. run needs explicit elevated --yes; CLI never opens a GUI, browser or
 hidden prompt. APP_UPDATE_HANDOFF_STARTED is not proof the new process ran.
-After helper completion, correlate `operationId` in local
-`.pcninja-updates/Last-AppUpdate.json` and run the new EXE's --version. Status is
-bounded/read-only and may be null/unavailable without folder access.
+After helper completion, correlate `operationId` in
+`%ProgramData%\PcNinja\Win11UpgradeAssistant\Last-AppUpdate.json` (beside the log;
+older builds kept it in `.pcninja-updates`, still read as a fallback) and run the
+new EXE's --version. Status is bounded/read-only and may be null/unavailable.
 Every updater result has setupStarted=false and readyForRestart=false.
 
 ## Live acceptance and historical Beta notes
 
-The owner-provided Beta 5 log confirms the Beta 4 handoff, new GUI startup,
-`GUI ready=True`, `predecessor archive=renamed`, and a subsequent UpToDate check.
-The OLD.V collision sequence also has native disposable-file test coverage;
-do not describe every collision/cancel/offline/signing scenario as field-tested.
+The owner-provided Beta 5 log confirms the historical Beta 4 handoff, new GUI
+startup, `GUI ready=True`, predecessor OLD rename, and a subsequent UpToDate
+check. That is not live acceptance of the fixed-name transition. Native
+disposable-file tests cover four-part version archives, hash collisions, exact
+identical reuse and legacy duplicate retirement; do not describe the new update
+lifecycle as field-tested until owner VM acceptance is complete.
 
 Use a disposable Windows 10/11 VM/snapshot for release-candidate checks: notes
 and Not now must not transfer an EXE; consent must download/verify the exact

@@ -1,6 +1,201 @@
 # Development handoff
 
-Updated: 2026-11-04. This is sanitized project context, not a backup of Codex chats.
+Updated: 2026-11-05. This is sanitized project context, not a backup of Codex chats.
+
+## Authorized: official 1.3.0 preparation and publication
+
+Release-source checkpoint `f155c65bb4fa5fe14f65ae9805d89a36ffdab327` passed
+every PR step in run `42035942724`, including both real single-file helper/GUI
+cycles, immediate-close cleanup, exact final contents and test housekeeping.
+These controlled elevated tests cover RC-to-stable and stable-to-newer-stable
+replacement; they do not prove every customer focus/UAC/display configuration.
+The remaining source edit records evidence only; rerun required PR checks, merge
+normally and tag the reviewed main source for the protected release build.
+
+Owner tested PR31 source `7b2a354` in a Windows 10 Pro x64 VM (build
+19045.6456) and reports no visible problems apart from app-update discovery.
+The supplied log identifies the exact tested merge `bdd6883` and successful
+11-image media enumeration; it does not prove every focus/UAC checklist item.
+Owner explicitly authorized fixing the check and publishing an official new
+version, including merge/tag/publication; no extra RC is required. This supersedes
+earlier release holds for this scope. The protected environment still requires
+human owner approval after the exact release build is ready.
+
+Preparing 1.3.0, FileVersion 1.3.0.0, fixed public/current EXE name. Discovery now
+validates the API tag/channel/draft state, then returns up to date for equal/older
+releases before any manifest/EXE request. All newer candidates retain exact pins;
+old binaries still need manual one-time migration. Added regression checks for
+historical names, request counts, invalid metadata and RC-to-stable discovery.
+Adding an opt-in real single-file helper/GUI lifecycle fixture to PR and stable
+release CI; its two fixture versions are never published. Exact-head CI and real
+lifecycle results must pass before merging/tagging. No Windows Setup is involved.
+
+The first lifecycle runner awaited pipe EOF even after helper process exit; the
+live successor can inherit those standard handles. The runner now uses exact
+helper process exit/state as completion proof and never waits for GUI-owned EOF.
+This is a fixture lifetime correction, not evidence of an application failure.
+Read-only live discovery with 1.3 already reports APP_UPDATE_CURRENT against the
+historical 1.2 feed, with applicationUpdated/setupStarted/readyForRestart=false.
+
+Run `42035251436` exercised both actual helper/GUI cycles successfully, including
+native readiness, exact versioned history and independent cleanup after close.
+Only final removal of the disposable fixture folder failed on a just-exited
+mapped predecessor image. Test housekeeping now retries its validated temp-only
+target for up to 10 seconds and normalizes read-only fixture attributes. Production
+cleanup and its assertions remain unchanged. A complete new CI pass is required.
+
+## VM candidate follow-up (2026-11-05)
+
+**VM candidate checkpoint:** source `7b2a354b426181af3f9f2e2c842baa8f575a8bb3`
+passed all PR validation steps in run `42028154929` (tested merge
+`bdd6883cbf74b12a6d5b7be80ef31021e84d67e5`). Artifact ID `13414653255`
+contains the fixed-name portable EXE, 73,112,584 bytes, FileVersion 1.2.0.0,
+ProductVersion `1.2.0+bdd6883cbf74b12a6d5b7be80ef31021e84d67e5`.
+Independently downloaded EXE SHA-256 matches the artifact checksum:
+`7802d49be8fe5b17d6f465f2a1de8e6381d80adf7b38e06812929a2810bd9c4c`.
+Elevated CI passed snapshot, historical bootstrap, repeated same-name replacement,
+definite rollback, uncertain-readiness retention, normal/collision archive cleanup
+and identical/unrelated legacy-file cases. Local Core/CLI/GUI suites and offline
+packaging/workflow/policy checks passed; all three test projects built with zero
+warnings/errors using `-warnaserror`. The checks below describe investigation
+history, superseded by this checkpoint. The build remains unsigned and unpublished;
+actual helper/single-file GUI lifecycle and owner VM acceptance remain open.
+
+The owner requested completion through a downloadable VM test candidate. This
+authorizes fixes and test builds on PR #31; it does not authorize a merge or release.
+Investigating failed run `41991072509` found that the elevated publisher fixture
+omitted the predecessor snapshot made by the real helper before `ApplyVerified`.
+It now follows that sequence for bootstrap, repeated replacement and rollback.
+The snapshot implementation also hashed a write-only handle after its owning
+FileStream had closed it. It now verifies through the same exclusive read/write
+handle after flushing and before disposal. Local CLI and offline packaging,
+workflow and publication-policy fixtures pass; elevated evidence awaits exact-head
+CI. Runtime GUI focus/UAC and actual single-file handoff remain VM acceptance.
+
+Follow-up: run `42027733312` passed snapshot/repeated-update/rollback fixtures,
+then exposed a cleanup fixture that used an ordinary copied executable instead
+of the protected published successor. The fixture now performs real atomic
+publication before simulating later GUI readiness. Cleanup also searches past a
+different-content normal archive to the hash-qualified archive, and retires
+legacy duplicates through the existing DELETE-capable helper. Elevated fixtures
+now cover both normal/collision cleanup, identical OLD retirement and preservation
+of unrelated historical files. See `VM-CANDIDATE-PR31.md` for owner acceptance.
+
+## In progress: single-instance GUI and fixed-name EXE updater (PR #31, issue #30)
+
+Branch `feature/single-instance`, draft. PR #31 remains open and in draft.
+Its last failed PR validation run
+`41989976149` failed the elevated headless updater fixture: after safely reusing
+an identical archive and deleting the recovery snapshot, the code redundantly
+reopened the archive by path for executable inspection and could not lock it.
+The local follow-up skips that redundant reopen only for `reused` archives,
+whose exact hash and ACL are checked through the existing handle and whose bytes
+were already inspected as the predecessor. No release build, tag or publication
+is authorized before every applicable code, CI, signing and owner-VM gate passes.
+
+### Single-instance GUI
+
+- The single-instance guard remains GUI-only; CLI operation-gate semantics are
+  unchanged. The update helper has separate owner-directed lifecycle changes
+  documented below.
+- Shared `shared/PcNinjaSingleInstance.cs` (C# 5, intended to stay byte-identical
+  across PcNinja repositories) linked into the GUI; app id `WinUpgradeTool`.
+- Review findings of 2026-11-05 addressed in the second revision:
+  1. *Startup race* (request before the window exists was consumed and lost):
+     the owner retries activation (10 s) and acknowledges via a `.Ack` event only
+     after a window was restored/focused; the requester waits (15 s) and
+     re-signals every second.
+  2. *Access denied* (silent exit when the event existed but was unusable): now
+     `GuardUnavailable`, the GUI starts (fail open) and a diagnostic is logged.
+     Same for a different object type squatting the name. Rationale: a silently
+     missing app is worse than a rare second window; machine operations remain
+     serialized by `AppOperationGate`.
+  Additional cases found during the redesign: an owner that is closing hands
+  over to the waiting launch (the GUI releases the guard as soon as its window
+  closes); an owner that never acknowledges yields a "not responding" message
+  instead of a silent exit; first-revision owners (no `.Ack`) are still signalled.
+- Deterministic smoke checks (`SingleInstanceChecks`) use real kernel objects in
+  one process with a simulated window activator. They cannot prove real focus,
+  UAC or cross-integrity behavior; those remain VM checks.
+- The other three repositories (WinUpdate V1/V2, Smart Office Installer PRs) still
+  carry the first revision of the shared file. It is compatible in both directions,
+  but they need the same update before their own release (owner decision).
+
+### Update-folder cleanup (owner report 2026-11-05)
+
+- Cause: the 1.2 in-app updater left the hidden, Administrators/SYSTEM-only
+  `.pcninja-updates` folder (operation folders with `candidate.exe`,
+  `UpdateHelper.exe`, `request.json`, plus `Last-AppUpdate.json`) beside the EXE;
+  nothing ever removed it and a standard user cannot open or delete it. Not caused
+  by the single-instance change.
+- Fix: `Last-AppUpdate.json` moved to `%ProgramData%\PcNinja\Win11UpgradeAssistant`
+  (CLI still reads the old location as fallback). After the window is painted,
+  the GUI confirms any pending CLI transaction against its fixed-name executable
+  and verified predecessor snapshot, then starts a bounded independent internal
+  cleanup worker. It takes the update gate (the helper holds it until it exits),
+  removes exact finished operation files and folders, the legacy result and the
+  staging folder. Unknown/locked or transaction-uncertain content is kept and
+  logged; retries run for ~2 minutes and cleanup is attempted again at the next
+  GUI start. Older folders without transaction proof remain retained.
+- Smoke check `CheckFinishedStagingCleanup` (elevated fixture) covers removal,
+  a locked helper, unknown content and "only app files remain".
+
+### Still required on Windows
+
+- CI on the final head; then owner VM evidence: VM OS, exact test EXE and SHA-256,
+  normal/minimized/maximized/behind another window, modal dialog, standard to
+  elevated relaunch, rapid repeated launches, relaunch while closing, restart after
+  close/crash; a controlled self-update test (parent exits, successor ready,
+  correctly named predecessor archive from its verified four-part FileVersion,
+  no updater work folder remains, and failed
+  relaunch keeps the original; on a fresh folder only the current and predecessor
+  EXEs should remain).
+- Before release: version, release notes and updater-compatible asset name.
+
+### EXE updater implementation and remaining gates (owner directive, 2026-11-05)
+
+- Implemented and pushed in commits `883dcbf`, `e511685`, `5a88c82` and `250fe98`:
+  new stable/Beta manifests and publisher
+  identity use the fixed `Win-Upgrade-Tool-by-PcNinja.exe`; historical release
+  assets remain unchanged. The updater captures and verifies the predecessor's
+  four-part Windows FileVersion, creates deterministic versioned/hash-qualified
+  archives, supports versioned-to-fixed bootstrap and repeated fixed-name
+  replacement, retains snapshots/transaction state, and distinguishes rollback
+  from uncertain/live successor readiness. Cleanup requires a `successor-ready`
+  transaction; `publishing` and `awaiting-gui` state cannot authorize archival.
+  A bounded independent cleanup worker runs after the GUI is painted. No MSI work
+  was added.
+- Compatibility remains strict: older binaries' versioned asset checks are not
+  weakened; their one-time migration is a manual download/open. Published
+  versioned assets/tags, including stable 1.2, remain immutable.
+- Not yet complete or proven: legacy staging without transaction proof is
+  conservatively retained, so migration/cleanup of every older operation layout
+  is incomplete. Schema-v2 requests without predecessor FileVersion metadata
+  remain accepted; the helper recaptures it from the verified old file, and a
+  request-validation check covers the legacy shape, but full handoff recapture
+  remains untested. Required elevated filesystem/publication/rollback/cleanup
+  fixtures did not run under this token; NTFS journal proof also skipped. Actual
+  helper/EXE replacement, Windows GUI close/relaunch and owner VM acceptance
+  remain open.
+- The product is unsigned. Signing requirements are not satisfied. No official
+  release is ready or authorized; do not tag, publish, replace assets or claim
+  release readiness.
+
+### Local verification on 2026-11-05
+
+- Passed with warnings as errors: `dotnet build src\PcNinja.Win11UpgradeAssistant\PcNinja.Win11UpgradeAssistant.csproj -c Debug -warnaserror --no-restore`, and the same command for `tests\PcNinja.Win11Upgrade.CliChecks\PcNinja.Win11Upgrade.CliChecks.csproj`, `tests\PcNinja.Win11Upgrade.SmokeTests\PcNinja.Win11Upgrade.SmokeTests.csproj`, and `tests\PcNinja.Win11Upgrade.GuiChecks\PcNinja.Win11Upgrade.GuiChecks.csproj`.
+- Passed: `dotnet run --project tests\PcNinja.Win11Upgrade.CliChecks\PcNinja.Win11Upgrade.CliChecks.csproj -c Debug --no-build`, SmokeTests and GuiChecks with `-c Debug --no-build`. CLI checks skipped the elevated fixed-name publication/rollback fixture; SmokeTests skipped elevated protected updater filesystem/cleanup fixtures and NTFS journal proof.
+- Latest archive-reuse check: CLI Checks and SmokeTests both built with
+  `-warnaserror` and passed locally, including archive reuse/collision tests.
+  CLI Checks skipped the elevated fixed-name publication/rollback fixture, so
+  the owner-path regression still depends on hosted CI. The follow-up for run
+  `41989976149` also passed these two local suites; its edit is not yet pushed.
+- Passed after correcting a CLI help line-wrap mismatch: `powershell -NoProfile -ExecutionPolicy Bypass -File tests\Verify-Cli.ps1 -ExePath src\PcNinja.Win11UpgradeAssistant\bin\Debug\net8.0-windows\win-x64\Windows-Upgrade-Assistant-By-PcNinja.exe -ExpectedVersion 1.2.0`.
+- `tests\Verify-AppUpdatePackaging.ps1` could not run in Windows PowerShell 5 because `System.Text.Json.JsonDocumentOptions` is unavailable; `pwsh` is not installed. No network, app replacement, Windows Setup or reboot was performed. `git diff --check` passed after the latest code/help edit.
+- The focused local checks do not exercise the elevated failure path. Hosted CI
+  failed for `250fe98`, `36deaee`, and `4ad367c`; the latest narrowly scoped
+  correction needs a new exact-head hosted run. Elevated fixture success,
+  exact-head CI, signing, and owner-VM acceptance remain release blockers.
 
 ## Published and verified: stable 1.2
 

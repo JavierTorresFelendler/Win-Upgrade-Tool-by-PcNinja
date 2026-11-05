@@ -14,7 +14,7 @@ using Microsoft.Win32.SafeHandles;
 
 namespace PcNinja.Win11Upgrade.Core;
 
-public sealed record AppExecutableInfo(string Version, string Sha256, long SizeBytes, string? SignerThumbprint);
+public sealed record AppExecutableInfo(string Version, string FileVersion, string Sha256, long SizeBytes, string? SignerThumbprint);
 
 /// <summary>
 /// Product-pinned local update staging. Keep this object alive through replacement:
@@ -44,12 +44,26 @@ public sealed class AppUpdateWorkspace : IDisposable
     private bool _disposed;
 
     public const string StateDirectoryName = ".pcninja-updates";
+    public const string ResultFileName = "Last-AppUpdate.json";
+
+    /// <summary>
+    /// Last app-update result, kept with the diagnostic log in ProgramData so the
+    /// portable folder ends with only the new and the archived EXE.
+    /// </summary>
+    public static string ResultPath => Path.Combine(AppLog.Folder, ResultFileName);
+
+    /// <summary>Pre-release builds kept the result inside the portable staging folder.</summary>
+    public static string LegacyResultPath(string sourceDirectory) => Path.Combine(sourceDirectory, StateDirectoryName, ResultFileName);
     public string SourceDirectory { get; }
     public string StateDirectory => Path.Combine(SourceDirectory, StateDirectoryName);
     public string DirectoryPath { get; }
     public string CandidatePath => Path.Combine(DirectoryPath, "candidate.exe");
     public string HelperPath => Path.Combine(DirectoryPath, "UpdateHelper.exe");
     public string RequestPath => Path.Combine(DirectoryPath, "request.json");
+    public string PreviousPath => Path.Combine(DirectoryPath, "previous.exe");
+    public string DisplacedPath => Path.Combine(DirectoryPath, "displaced.exe");
+    public string FailedPath => Path.Combine(DirectoryPath, "failed.exe");
+    public string TransactionPath => Path.Combine(DirectoryPath, "transaction.json");
 
     private AppUpdateWorkspace(string sourceDirectory, string operationId, DirectoryAnchors anchors, bool cleanupAllowed)
     {
@@ -124,6 +138,56 @@ public sealed class AppUpdateWorkspace : IDisposable
         return ParseRequest<T>(bytes);
     }
 
+    public void WriteTransactionState<T>(T state)
+    {
+        EnsureAlive();
+        ArgumentNullException.ThrowIfNull(state);
+        var bytes = JsonSerializer.SerializeToUtf8Bytes(state, RequestJson);
+        if (bytes.Length is <= 0 or > MaximumRequestBytes)
+            throw new InvalidDataException("The private update transaction state exceeds its size limit.");
+        var temporary = Path.Combine(DirectoryPath, "transaction-" + Guid.NewGuid().ToString("N") + ".tmp");
+        try
+        {
+            using (var security = new NativeSecurity(PrivateFileSddl))
+            {
+                var attributes = security.Attributes;
+                using var handle = CreateFileWithSecurity(temporary, GenericWrite | ReadControl | ReadAttributes, 0,
+                    ref attributes, 1, OpenReparsePoint, IntPtr.Zero);
+                if (handle.IsInvalid) throw NativeFailure("Could not create the private transaction replacement.");
+                VerifyRegularFile(handle, temporary);
+                ValidateControlledDescriptor(ReadDescriptor(handle), privateScope: true, requireProtected: true);
+                using var stream = new FileStream(handle, FileAccess.Write);
+                stream.Write(bytes);
+                stream.Flush(flushToDisk: true);
+            }
+            if (ExistsExactly(TransactionPath))
+            {
+                using (var current = OpenRegularFile(TransactionPath, GenericRead | ReadControl | ReadAttributes, 1))
+                    ValidateControlledDescriptor(ReadDescriptor(current), privateScope: true, requireProtected: true);
+                File.Replace(temporary, TransactionPath, null, ignoreMetadataErrors: false);
+            }
+            else File.Move(temporary, TransactionPath, overwrite: false);
+        }
+        finally
+        {
+            if (ExistsExactly(temporary))
+                DeleteExactFiles([temporary], privateScope: true);
+        }
+    }
+
+    internal T ReadTransactionState<T>()
+    {
+        EnsureAlive();
+        using var handle = OpenRegularFile(TransactionPath, GenericRead | ReadControl | ReadAttributes, 1);
+        ValidateControlledDescriptor(ReadDescriptor(handle), privateScope: true, requireProtected: false);
+        using var stream = new FileStream(handle, FileAccess.Read);
+        if (stream.Length is <= 0 or > MaximumRequestBytes)
+            throw new InvalidDataException("The private update transaction state has an invalid size.");
+        var bytes = new byte[(int)stream.Length];
+        stream.ReadExactly(bytes);
+        return ParseRequest<T>(bytes);
+    }
+
     internal static T ParseRequest<T>(byte[] bytes)
     {
         if (bytes.Length is <= 0 or > MaximumRequestBytes)
@@ -143,17 +207,243 @@ public sealed class AppUpdateWorkspace : IDisposable
         EnsureAlive();
         if (!_cleanupAllowed)
             throw new InvalidOperationException("Update recovery or helper handoff is present; staging is retained.");
+        DeleteExactFiles([HelperPath, CandidatePath, RequestPath, PreviousPath, DisplacedPath, FailedPath, TransactionPath], privateScope: true);
+    }
+
+    /// <summary>
+    /// Removes finished update staging beside the application: every exact operation
+    /// folder whose helper is no longer running, the pre-release result file and then
+    /// the hidden staging folder itself. Call only while holding the application-update
+    /// operation gate (no download or helper handoff can be active). Unknown entries are
+    /// never deleted; anything locked or unexpected is retained and reported.
+    /// </summary>
+    public static AppUpdateStagingCleanup RemoveFinishedStaging(string sourceDirectory) =>
+        RemoveFinishedStagingCore(NormalizeLocalPath(sourceDirectory));
+
+    internal static AppUpdateStagingCleanup RemoveFinishedStagingFixture(string parent) =>
+        RemoveFinishedStagingCore(ValidateFixtureParent(parent));
+
+    private static AppUpdateStagingCleanup RemoveFinishedStagingCore(string parent)
+    {
+        var staging = Path.Combine(parent, StateDirectoryName);
+        if (!Directory.Exists(staging)) return new(0, [], StagingRemoved: false, StagingPresent: false);
+
+        // Validate the protected root first: no reparse points, Administrators/SYSTEM ACL.
+        using (var anchors = AnchorLocalChain(parent)) anchors.Add(OpenControlledDirectory(staging, true, create: false));
+
+        var removed = 0;
+        var retained = new List<string>();
+        foreach (var entry in Directory.EnumerateFileSystemEntries(staging).ToArray())
+        {
+            var name = Path.GetFileName(entry);
+            try
+            {
+                if (string.Equals(name, ResultFileName, StringComparison.OrdinalIgnoreCase) && !Directory.Exists(entry))
+                    DeleteExactFiles([entry], privateScope: false);
+                else if (IsOperationId(name) && Directory.Exists(entry))
+                {
+                    using (var workspace = OpenCore(name, 0, 0, create: false, parent))
+                    {
+                        FinalizeTransaction(workspace, name);
+                        var files = new List<string> { workspace.HelperPath, workspace.CandidatePath, workspace.RequestPath,
+                            workspace.PreviousPath, workspace.DisplacedPath, workspace.FailedPath,
+                            workspace.TransactionPath, Path.Combine(workspace.DirectoryPath, "result.tmp") };
+                        foreach (var temporary in Directory.EnumerateFiles(workspace.DirectoryPath, "transaction-*.tmp"))
+                        {
+                            var fileName = Path.GetFileName(temporary);
+                            var idPart = fileName["transaction-".Length..^".tmp".Length];
+                            if (Guid.TryParseExact(idPart, "N", out _)) files.Add(temporary);
+                        }
+                        DeleteExactFiles(files.ToArray(), privateScope: false);
+                    }
+                    Directory.Delete(entry, recursive: false); // Fails, and keeps it, if anything unknown remains.
+                    removed++;
+                }
+                else retained.Add($"{name}: not created by the updater");
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or
+                InvalidDataException or ArgumentException or System.ComponentModel.Win32Exception)
+            {
+                retained.Add($"{name}: {ex.Message}");
+            }
+        }
+
+        if (retained.Count > 0) return new(removed, retained, StagingRemoved: false, StagingPresent: true);
+        Directory.Delete(staging, recursive: false);
+        return new(removed, retained, StagingRemoved: true, StagingPresent: false);
+    }
+
+    public static int MarkAwaitingGuiTransactionsReady(string sourceDirectory, string currentExecutablePath)
+    {
+        var parent = NormalizeLocalPath(sourceDirectory);
+        var expectedPath = NormalizeLocalPath(Path.Combine(parent, AppUpdateIdentity.AssetName));
+        if (!string.Equals(NormalizeLocalPath(currentExecutablePath), expectedPath, StringComparison.OrdinalIgnoreCase))
+            return 0;
+        var installed = InspectExecutable(expectedPath);
+        using var installedGuard = HoldOriginal(expectedPath, installed.Sha256);
+        var staging = Path.Combine(parent, StateDirectoryName);
+        if (!Directory.Exists(staging)) return 0;
+        using var anchors = AnchorLocalChain(parent);
+        anchors.Add(OpenControlledDirectory(staging, true, create: false));
+        var marked = 0;
+        foreach (var entry in Directory.EnumerateDirectories(staging).ToArray())
+        {
+            var id = Path.GetFileName(entry);
+            if (!IsOperationId(id)) continue;
+            try
+            {
+                using var workspace = OpenCore(id, 0, 0, create: false, parent);
+                var state = workspace.ReadTransactionState<AppUpdateTransactionState>();
+                if (state.Status != "awaiting-gui") continue;
+                if (state.SchemaVersion != 1 || state.OperationId != id ||
+                    state.ParentHash is not { Length: 64 } || !state.ParentHash.All(Uri.IsHexDigit) ||
+                    state.ReleaseHash is not { Length: 64 } || !state.ReleaseHash.All(Uri.IsHexDigit) ||
+                    !TryParseWindowsFileVersion(state.ParentFileVersion, out var parentVersion) ||
+                    Path.GetFileName(state.OriginalName) != state.OriginalName ||
+                    !Path.GetExtension(state.OriginalName).Equals(".exe", StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidDataException("The pending GUI transaction identity is invalid.");
+                if (!installed.Sha256.Equals(state.ReleaseHash, StringComparison.OrdinalIgnoreCase)) continue;
+                VerifyHashAndFileVersion(expectedPath, state.ReleaseHash, null, "running successor");
+                VerifyHashAndFileVersion(workspace.PreviousPath, state.ParentHash, parentVersion,
+                    "pending predecessor snapshot", privateScope: true);
+                workspace.WriteTransactionState(state with { Status = "successor-ready" });
+                marked++;
+            }
+            catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or
+                System.ComponentModel.Win32Exception or System.Security.SecurityException or ArgumentException)
+            {
+                AppLog.Info($"Pending app-update transaction {id} remains protected: {ex.Message}");
+            }
+        }
+        return marked;
+    }
+
+    private static void FinalizeTransaction(AppUpdateWorkspace workspace, string operationId)
+    {
+        var state = workspace.ReadTransactionState<AppUpdateTransactionState>();
+        if (state.SchemaVersion != 1 || state.OperationId != operationId ||
+            state.ParentHash is not { Length: 64 } || !state.ParentHash.All(Uri.IsHexDigit) ||
+            state.ReleaseHash is not { Length: 64 } || !state.ReleaseHash.All(Uri.IsHexDigit) ||
+            !TryParseWindowsFileVersion(state.ParentFileVersion, out var parentVersion) ||
+            Path.GetFileName(state.OriginalName) != state.OriginalName ||
+            !Path.GetExtension(state.OriginalName).Equals(".exe", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("The update transaction identity is incomplete or invalid; recovery files were retained.");
+
+        var target = Path.Combine(workspace.SourceDirectory, AppUpdateIdentity.AssetName);
+        if (state.Status == "rolled-back")
+        {
+            VerifyHashAndFileVersion(target, state.ParentHash, parentVersion, "restored predecessor");
+            VerifyRecoveryIfPresent(workspace.FailedPath, state.ReleaseHash, null, "failed successor");
+            VerifyRecoveryIfPresent(workspace.DisplacedPath, state.ParentHash, parentVersion, "displaced predecessor");
+        }
+        else if (state.Status == "rolled-back-separate")
+        {
+            VerifyHashAndFileVersion(Path.Combine(workspace.SourceDirectory, state.OriginalName),
+                state.ParentHash, parentVersion, "separate predecessor");
+            VerifyRecoveryIfPresent(target, state.ReleaseHash, null, "reused successor");
+        }
+        else if (state.Status is "successor-ready" or "ready-needs-archive" or "ready")
+        {
+            VerifyHashAndFileVersion(target, state.ReleaseHash, null, "installed successor");
+            var archive = FindVerifiedArchive(workspace.SourceDirectory, state, parentVersion);
+            if (archive is null && ExistsExactly(workspace.PreviousPath))
+            {
+                VerifyHashAndFileVersion(workspace.PreviousPath, state.ParentHash, parentVersion,
+                    "predecessor recovery snapshot", privateScope: true);
+                var result = ArchiveOriginalExact(workspace.SourceDirectory, workspace.PreviousPath, state.ParentHash,
+                    parentVersion, state.OriginalName, privateSource: true, verifyExecutable: true);
+                archive = result.Path;
+            }
+            if (archive is null)
+                throw new IOException("The verified predecessor archive is unavailable; recovery files were retained.");
+            RetireSeparateOriginal(workspace.SourceDirectory, state, target);
+            state = state with { Status = "ready", ArchivePath = archive };
+            workspace.WriteTransactionState(state);
+            VerifyRecoveryIfPresent(workspace.DisplacedPath, state.ParentHash, parentVersion, "displaced predecessor");
+        }
+        else
+            throw new InvalidDataException("The transaction has no cleanup-safe terminal state; recovery files were retained.");
+
+        VerifyRecoveryIfPresent(workspace.PreviousPath, state.ParentHash, parentVersion, "predecessor snapshot");
+        VerifyRecoveryIfPresent(workspace.DisplacedPath, state.ParentHash, parentVersion, "displaced predecessor");
+        VerifyRecoveryIfPresent(workspace.FailedPath, state.Status == "rolled-back" ? state.ReleaseHash : state.ReleaseHash,
+            null, "failed or superseded successor");
+        if (state.Status == "ready" &&
+            FindVerifiedArchive(workspace.SourceDirectory, state, parentVersion) is { } survivor)
+            RetireLegacyDuplicates(workspace.SourceDirectory, state.OriginalName, state.ParentHash, survivor);
+    }
+
+    private static string? FindVerifiedArchive(string parent, AppUpdateTransactionState state, string parentVersion)
+    {
+        var names = new[] { ArchiveName(parentVersion), ArchiveName(parentVersion, state.ParentHash) };
+        foreach (var name in names.Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            var path = Path.Combine(parent, name);
+            if (!ExistsExactly(path)) continue;
+            // A different predecessor can have the same FileVersion. Keep it
+            // and examine the deterministic hash-qualified alternative.
+            using var pinned = OpenRegularFile(path, GenericRead | ReadControl | ReadAttributes, 1);
+            if (!HashHandle(pinned).Equals(state.ParentHash, StringComparison.OrdinalIgnoreCase)) continue;
+            VerifyHashAndFileVersion(path, state.ParentHash, parentVersion, "predecessor archive");
+            if (state.ArchivePath is not null && !string.Equals(Path.GetFullPath(state.ArchivePath),
+                Path.GetFullPath(path), StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException("The recorded predecessor archive path changed; recovery files were retained.");
+            return path;
+        }
+        return null;
+    }
+
+    private static void VerifyRecoveryIfPresent(string path, string expectedHash, string? expectedVersion, string description)
+    {
+        if (ExistsExactly(path))
+            VerifyHashAndFileVersion(path, expectedHash, expectedVersion, description, privateScope: true);
+    }
+
+    private static void VerifyHashAndFileVersion(string path, string expectedHash, string? expectedVersion,
+        string description, bool privateScope = false)
+    {
+        using (var file = OpenRegularFile(path, GenericRead | ReadControl | ReadAttributes, 1))
+            ValidateControlledDescriptor(ReadDescriptor(file), privateScope, requireProtected: true);
+        var actual = InspectExecutable(path);
+        if (!actual.Sha256.Equals(expectedHash, StringComparison.OrdinalIgnoreCase) ||
+            expectedVersion is not null && actual.FileVersion != expectedVersion)
+            throw new InvalidDataException($"The {description} failed exact hash/FileVersion verification.");
+    }
+
+    private static void RetireSeparateOriginal(string parent, AppUpdateTransactionState state, string fixedTarget)
+    {
+        if (state.OriginalName.Equals(Path.GetFileName(fixedTarget), StringComparison.OrdinalIgnoreCase)) return;
+        var original = Path.Combine(parent, state.OriginalName);
+        if (!ExistsExactly(original)) return;
+        var actual = InspectExecutable(original);
+        if (!actual.Sha256.Equals(state.ParentHash, StringComparison.OrdinalIgnoreCase) ||
+            actual.FileVersion != state.ParentFileVersion)
+            throw new InvalidDataException("A separate predecessor changed; it was retained beside its verified archive.");
+        using var file = OpenRegularFile(original, GenericRead | DeleteAccess | ReadControl | ReadAttributes, 1);
+        if (!HashHandle(file).Equals(state.ParentHash, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("A separate predecessor changed while being retired.");
+        DeleteByHandle(file);
+    }
+
+    private static bool IsOperationId(string name)
+    {
+        try { return NormalizeOperationId(name) == name; } // Exact lowercase "N" GUID, as created.
+        catch (ArgumentException) { return false; }
+    }
+
+    private static void DeleteExactFiles(string[] paths, bool privateScope)
+    {
         var files = new List<SafeFileHandle>();
         try
         {
             // Acquire every file exclusively before marking any for deletion. A running
             // image cannot grant GENERIC_WRITE; do not partially clean an active helper.
-            foreach (var path in new[] { HelperPath, CandidatePath, RequestPath })
+            foreach (var path in paths)
             {
                 if (!ExistsExactly(path)) continue;
                 var handle = OpenRegularFile(path, GenericRead | GenericWrite | DeleteAccess | ReadControl | ReadAttributes, 0);
                 files.Add(handle);
-                ValidateControlledDescriptor(ReadDescriptor(handle), privateScope: true, requireProtected: false);
+                ValidateControlledDescriptor(ReadDescriptor(handle), privateScope, requireProtected: false);
             }
             foreach (var file in files)
             {
@@ -166,9 +456,10 @@ public sealed class AppUpdateWorkspace : IDisposable
     }
 
     /// <summary>Final versioned files are readable; staging and request remain private.</summary>
-    private static void SetFileAcl(string path, bool publicRead)
+    private static void SetFileAcl(string path, bool publicRead, AppUpdateManifest release, string? signer)
     {
         using var file = OpenRegularFile(path, ReadControl | ReadAttributes | 0x00040000 | 0x00080000, 1);
+        VerifyExecutableInfo(InspectExecutable(path), release, signer);
         using var security = new NativeSecurity(publicRead ? PublicFileSddl : PrivateFileSddl);
         if (!GetSecurityDescriptorOwner(security.Pointer, out var owner, out _) ||
             !GetSecurityDescriptorDacl(security.Pointer, out var present, out var dacl, out _) || !present)
@@ -178,27 +469,61 @@ public sealed class AppUpdateWorkspace : IDisposable
         ValidateControlledDescriptor(ReadDescriptor(file), privateScope: !publicRead, requireProtected: true);
     }
 
+    private static void SetArchivedFileAcl(string path, string expectedHash)
+    {
+        using var file = OpenRegularFile(path, GenericRead | ReadControl | ReadAttributes | 0x00040000 | 0x00080000, 1);
+        SetArchivedFileAcl(file, expectedHash);
+    }
+
+    private static void SetArchivedFileAcl(SafeFileHandle file, string expectedHash)
+    {
+        if (!HashHandle(file).Equals(expectedHash, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("A predecessor archive changed before its permissions were set.");
+        using var security = new NativeSecurity(PublicFileSddl);
+        if (!GetSecurityDescriptorOwner(security.Pointer, out var owner, out _) ||
+            !GetSecurityDescriptorDacl(security.Pointer, out var present, out var dacl, out _) || !present)
+            throw NativeFailure("Could not prepare predecessor archive permissions.");
+        var result = SetSecurityInfo(file, 1, OwnerAndDacl | 0x80000000, owner, IntPtr.Zero, dacl, IntPtr.Zero);
+        if (result != 0) throw NativeFailure("Could not publish the verified predecessor archive.", (int)result);
+        ValidateArchivedFileAcl(file);
+    }
+
+    private static void SetRecoveryFileAcl(string path, string expectedHash)
+    {
+        using var file = OpenRegularFile(path, GenericRead | ReadControl | ReadAttributes | 0x00040000 | 0x00080000, 1);
+        if (!HashHandle(file).Equals(expectedHash, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("A recovery file changed before its permissions were set.");
+        using var security = new NativeSecurity(PrivateFileSddl);
+        if (!GetSecurityDescriptorOwner(security.Pointer, out var owner, out _) ||
+            !GetSecurityDescriptorDacl(security.Pointer, out var present, out var dacl, out _) || !present)
+            throw NativeFailure("Could not prepare recovery-file permissions.");
+        var result = SetSecurityInfo(file, 1, OwnerAndDacl | 0x80000000, owner, IntPtr.Zero, dacl, IntPtr.Zero);
+        if (result != 0) throw NativeFailure("Could not secure the application recovery file.", (int)result);
+        ValidateControlledDescriptor(ReadDescriptor(file), privateScope: true, requireProtected: true);
+    }
+
     public string TargetPath(AppUpdateManifest release)
     {
         EnsureAlive();
         AppUpdateClient.ValidateManifest(release);
-        return Path.Combine(SourceDirectory, release.AssetName);
+        return Path.Combine(SourceDirectory, AppUpdateIdentity.AssetName);
     }
 
     public void CopyExistingCandidate(AppUpdateManifest release, string? signer)
     {
-        using var guard = HoldVerifiedCandidate(TargetPath(release), release, signer);
-        File.Copy(TargetPath(release), CandidatePath, overwrite: false);
-        SetFileAcl(CandidatePath, publicRead: false); // CopyFile may preserve a user-writable source ACL.
+        var target = TargetPath(release);
+        using var guard = HoldVerifiedCandidate(target, release, signer);
+        File.Copy(target, CandidatePath, overwrite: false);
+        SetFileAcl(CandidatePath, publicRead: false, release, signer); // CopyFile may preserve a user-writable source ACL.
     }
 
     public void PrepareHelper(AppUpdateManifest release, string? signer)
     {
         EnsureAlive();
-        SetFileAcl(CandidatePath, publicRead: false);
+        SetFileAcl(CandidatePath, publicRead: false, release, signer);
         VerifyCandidate(CandidatePath, release, signer);
         File.Copy(CandidatePath, HelperPath, overwrite: false);
-        SetFileAcl(HelperPath, publicRead: false);
+        SetFileAcl(HelperPath, publicRead: false, release, signer);
         VerifyCandidate(HelperPath, release, signer);
     }
 
@@ -210,11 +535,106 @@ public sealed class AppUpdateWorkspace : IDisposable
         if (!ExistsExactly(target))
         {
             VerifyCandidate(CandidatePath, release, signer);
-            SetFileAcl(CandidatePath, publicRead: true);
+            SetFileAcl(CandidatePath, publicRead: true, release, signer);
             try { File.Move(CandidatePath, target, overwrite: false); }
             catch (IOException) when (ExistsExactly(target)) { /* Validate the exact raced/existing file; never overwrite it. */ }
         }
+        SetFileAcl(target, publicRead: true, release, signer);
         return HoldVerifiedCandidate(target, release, signer);
+    }
+
+    public void SnapshotOriginal(string path, string expectedHash)
+    {
+        EnsureAlive();
+        if (ExistsExactly(PreviousPath))
+        {
+            using var existing = OpenRegularFile(PreviousPath, GenericRead | ReadControl | ReadAttributes, 1);
+            ValidateControlledDescriptor(ReadDescriptor(existing), privateScope: true, requireProtected: true);
+            if (!HashHandle(existing).Equals(expectedHash, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException("A different predecessor recovery snapshot already exists.");
+            return;
+        }
+        using var parents = AnchorLocalChain(Path.GetDirectoryName(NormalizeLocalPath(path))!);
+        using var source = OpenRegularFile(path, GenericRead | ReadControl | ReadAttributes, 1);
+        using var input = new FileStream(source, FileAccess.Read, 64 * 1024, isAsync: false);
+        var actualHash = Convert.ToHexString(SHA256.HashData(input));
+        if (!actualHash.Equals(expectedHash, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("The predecessor changed before its recovery snapshot was created.");
+        input.Position = 0;
+        using var security = new NativeSecurity(PrivateFileSddl);
+        var attributes = security.Attributes;
+        using var snapshot = CreateFileWithSecurity(PreviousPath, GenericRead | GenericWrite | ReadControl | ReadAttributes, 0,
+            ref attributes, 1, OpenReparsePoint, IntPtr.Zero);
+        if (snapshot.IsInvalid) throw NativeFailure("Could not create the private predecessor recovery snapshot.");
+        VerifyRegularFile(snapshot, PreviousPath);
+        ValidateControlledDescriptor(ReadDescriptor(snapshot), privateScope: true, requireProtected: true);
+        using (var output = new FileStream(snapshot, FileAccess.Write, 64 * 1024, isAsync: false))
+        {
+            input.CopyTo(output);
+            output.Flush(flushToDisk: true);
+            // FileStream owns the handle: verify while it is still open, using
+            // the same exclusive read/write handle that received the bytes.
+            if (!HashHandle(snapshot).Equals(expectedHash, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException("The predecessor recovery snapshot failed its SHA-256 verification.");
+        }
+    }
+
+    public IDisposable ReplaceCurrentAndHold(AppUpdateManifest release, string? signer, string expectedParentHash)
+    {
+        EnsureAlive();
+        var target = TargetPath(release);
+        if (!string.Equals(Path.GetFullPath(target), Path.GetFullPath(Path.Combine(SourceDirectory, AppUpdateIdentity.AssetName)), StringComparison.OrdinalIgnoreCase) ||
+            !ExistsExactly(target) || ExistsExactly(DisplacedPath) || ExistsExactly(FailedPath))
+            throw new IOException("Same-name replacement has an occupied or unexpected recovery path.");
+        VerifyCandidate(CandidatePath, release, signer);
+        var current = InspectExecutable(target);
+        if (!current.Sha256.Equals(expectedParentHash, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("The fixed-name current EXE changed before replacement.");
+        try { File.Replace(CandidatePath, target, DisplacedPath, ignoreMetadataErrors: false); }
+        catch (IOException) when (!ExistsExactly(target))
+        { throw new IOException("Atomic replacement did not leave the current EXE at its fixed path."); }
+        var displaced = InspectExecutable(DisplacedPath);
+        if (!displaced.Sha256.Equals(expectedParentHash, StringComparison.OrdinalIgnoreCase))
+        {
+            // Preserve a raced-in target byte-for-byte before refusing to continue.
+            if (ExistsExactly(FailedPath))
+                throw new IOException("A raced target displaced the original; both recovery copies were retained.");
+            File.Replace(DisplacedPath, target, FailedPath, ignoreMetadataErrors: false);
+            throw new InvalidDataException("The fixed-name target changed during atomic replacement; its exact prior bytes were restored.");
+        }
+        SetRecoveryFileAcl(DisplacedPath, expectedParentHash);
+        SetFileAcl(target, publicRead: true, release, signer);
+        return HoldVerifiedCandidate(target, release, signer);
+    }
+
+    public void RestorePredecessor(AppUpdateManifest release, string? signer, string expectedParentHash)
+    {
+        EnsureAlive();
+        var target = TargetPath(release);
+        if (!ExistsExactly(PreviousPath) || ExistsExactly(FailedPath))
+            throw new IOException("The predecessor snapshot is missing or the failed-image recovery path is occupied.");
+        var predecessor = InspectExecutable(PreviousPath);
+        if (!predecessor.Sha256.Equals(expectedParentHash, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("The predecessor recovery snapshot no longer matches the original hash.");
+        VerifyCandidate(target, release, signer);
+        File.Replace(PreviousPath, target, FailedPath, ignoreMetadataErrors: false);
+        var restored = InspectExecutable(target);
+        if (!restored.Sha256.Equals(expectedParentHash, StringComparison.OrdinalIgnoreCase) ||
+            restored.FileVersion != predecessor.FileVersion)
+            throw new InvalidDataException("The fixed-name predecessor restore could not be verified.");
+        SetArchivedFileAcl(target, expectedParentHash);
+        SetFileAcl(FailedPath, publicRead: false, release, signer);
+    }
+
+    public void RemovePublishedCandidate(AppUpdateManifest release, string? signer)
+    {
+        EnsureAlive();
+        var target = TargetPath(release);
+        VerifyExecutableInfo(InspectExecutable(target), release, signer);
+        using var candidate = OpenRegularFile(target, GenericRead | GenericWrite | DeleteAccess | ReadControl | ReadAttributes, 0);
+        if (!HashHandle(candidate).Equals(release.Sha256, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("The unconfirmed successor changed before removal.");
+        DeleteByHandle(candidate);
     }
 
     public static IDisposable HoldVerifiedCandidate(string path, AppUpdateManifest release, string? signer) =>
@@ -227,54 +647,171 @@ public sealed class AppUpdateWorkspace : IDisposable
     });
 
     /// <summary>Archive only the exact verified predecessor; never overwrite OLD.</summary>
-    public string ArchiveOriginal(string path, string expectedHash)
+    public AppUpdateArchive ArchiveOriginal(string path, string expectedHash, string fileVersion,
+        string legacyOriginalName, bool privateSource)
     {
         EnsureAlive();
-        return ArchiveOriginalExact(SourceDirectory, path, expectedHash);
+        var full = NormalizeLocalPath(path);
+        var expectedSource = privateSource ? PreviousPath : Path.Combine(SourceDirectory, legacyOriginalName);
+        if (!string.Equals(full, Path.GetFullPath(expectedSource), StringComparison.OrdinalIgnoreCase))
+            throw new InvalidDataException("Only the transaction-bound predecessor source can be archived.");
+        return ArchiveOriginalExact(SourceDirectory, path, expectedHash, fileVersion, legacyOriginalName,
+            privateSource, verifyExecutable: true);
     }
 
-    internal static string ArchiveFixtureOriginal(string parent, string path, string expectedHash) =>
-        ArchiveOriginalExact(ValidateFixtureParent(parent), path, expectedHash);
+    internal static AppUpdateArchive ArchiveFixtureOriginal(string parent, string path, string expectedHash, string fileVersion) =>
+        ArchiveOriginalExact(ValidateFixtureParent(parent), path, expectedHash, fileVersion,
+            Path.GetFileName(path), privateSource: false, verifyExecutable: false);
 
-    private static string ArchiveOriginalExact(string parent, string path, string expectedHash)
+    internal static string ArchiveName(string fileVersion, string? hash = null)
+    {
+        if (!TryParseWindowsFileVersion(fileVersion, out fileVersion) ||
+            hash is not null && (hash.Length != 64 || !hash.All(Uri.IsHexDigit)))
+            throw new InvalidDataException("A verified four-part Windows FileVersion and optional SHA-256 are required for an archive name.");
+        return Path.GetFileNameWithoutExtension(AppUpdateIdentity.AssetName) + "-v" + fileVersion +
+            (hash is null ? "" : "-" + hash.ToLowerInvariant()) + ".exe";
+    }
+
+    private static AppUpdateArchive ArchiveOriginalExact(string parent, string path, string expectedHash,
+        string fileVersion, string legacyOriginalName, bool privateSource, bool verifyExecutable)
     {
         var full = NormalizeLocalPath(path);
-        if (!string.Equals(Path.GetDirectoryName(full), parent, StringComparison.OrdinalIgnoreCase) ||
-            !Path.GetExtension(full).Equals(".exe", StringComparison.OrdinalIgnoreCase) ||
-            Path.GetFileName(full).StartsWith("OLD-", StringComparison.OrdinalIgnoreCase) ||
-            Path.GetFileName(full).StartsWith("OLD.V", StringComparison.OrdinalIgnoreCase) ||
+        if (!Path.GetExtension(full).Equals(".exe", StringComparison.OrdinalIgnoreCase) ||
+            !privateSource && !string.Equals(Path.GetDirectoryName(full), parent, StringComparison.OrdinalIgnoreCase) ||
+            !string.Equals(Path.GetPathRoot(full), Path.GetPathRoot(parent), StringComparison.OrdinalIgnoreCase) ||
+            Path.GetFileName(legacyOriginalName) != legacyOriginalName ||
+            !Path.GetExtension(legacyOriginalName).Equals(".exe", StringComparison.OrdinalIgnoreCase) ||
             expectedHash is not { Length: 64 } || !expectedHash.All(char.IsAsciiHexDigit))
             throw new InvalidDataException("Only the exact ordinary predecessor EXE can be archived.");
+        var archiveVersion = ArchiveName(fileVersion);
+        if (verifyExecutable)
+        {
+            var actual = InspectExecutable(full);
+            if (!actual.Sha256.Equals(expectedHash, StringComparison.OrdinalIgnoreCase) ||
+                actual.FileVersion != fileVersion)
+                throw new InvalidDataException("The predecessor's verified bytes or Windows FileVersion changed before archival.");
+        }
         using var anchors = AnchorLocalChain(parent);
-        // Verify and rename through ONE pinned file handle: no path-based race
-        // between hash verification and the no-overwrite rename.
-        using var file = OpenRegularFile(full, GenericRead | DeleteAccess | ReadControl | ReadAttributes, 1);
-        using var stream = new FileStream(file, FileAccess.Read);
-        if (!Convert.ToHexString(SHA256.HashData(stream)).Equals(expectedHash, StringComparison.OrdinalIgnoreCase))
-            throw new InvalidDataException("The predecessor changed; its filename was retained.");
+        var archive = Path.Combine(parent, archiveVersion);
+        string status;
+        using (var source = OpenRegularFile(full, GenericRead | DeleteAccess | ReadControl | ReadAttributes |
+            0x00040000 | 0x00080000, 1))
+        {
+            if (privateSource)
+                ValidateControlledDescriptor(ReadDescriptor(source), privateScope: true, requireProtected: true);
+            if (!HashHandle(source).Equals(expectedHash, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException("The predecessor changed; its filename was retained.");
+            status = TryArchive(source, archive, expectedHash, verifyExecutable);
+            if (status == "occupied")
+            {
+                archive = Path.Combine(parent, ArchiveName(fileVersion, expectedHash));
+                status = TryArchive(source, archive, expectedHash, verifyExecutable);
+            }
+            if (verifyExecutable && status == "archived")
+                SetArchivedFileAcl(source, expectedHash);
+        }
+        if (status == "occupied")
+            throw new IOException("Both deterministic predecessor archive names are occupied by different bytes; recovery files were retained.");
+        if (verifyExecutable && status == "archived")
+        {
+            var actualArchive = InspectExecutable(archive);
+            if (!actualArchive.Sha256.Equals(expectedHash, StringComparison.OrdinalIgnoreCase) ||
+                actualArchive.FileVersion != fileVersion)
+                throw new InvalidDataException("The predecessor archive failed executable identity verification.");
+        }
+        else using (var verifiedArchive = OpenRegularFile(archive, GenericRead | ReadControl | ReadAttributes, 1))
+            if (!HashHandle(verifiedArchive).Equals(expectedHash, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException("The predecessor archive could not be re-verified.");
+        RetireLegacyDuplicates(parent, legacyOriginalName, expectedHash, archive);
+        return new(status, archive);
+    }
+
+    private static string TryArchive(SafeFileHandle source, string destination, string expectedHash,
+        bool verifyPublicAcl)
+    {
+        if (ExistsExactly(destination))
+        {
+            using var existing = OpenRegularFile(destination, GenericRead | ReadControl | ReadAttributes, 1);
+            if (!HashHandle(existing).Equals(expectedHash, StringComparison.OrdinalIgnoreCase)) return "occupied";
+            if (verifyPublicAcl)
+                ValidateArchivedFileAcl(existing);
+            if (MatchesHandlePath(source, destination)) return "reused";
+            DeleteByHandle(source);
+            return "reused";
+        }
         var rootOffset = IntPtr.Size == 8 ? 8 : 4;
         var lengthOffset = rootOffset + IntPtr.Size;
         var nameOffset = lengthOffset + 4;
-        for (var slot = 0; slot < 1000; slot++)
+        var name = Encoding.Unicode.GetBytes(destination + '\0');
+        var buffer = Marshal.AllocHGlobal(nameOffset + name.Length);
+        try
         {
-            var prefix = slot == 0 ? "OLD-" : $"OLD.V{slot}-";
-            var destination = Path.Combine(parent, prefix + Path.GetFileName(full));
-            if (ExistsExactly(destination)) continue; // Hint only; the native no-overwrite rename handles races.
-            var name = Encoding.Unicode.GetBytes(destination + '\0');
-            var buffer = Marshal.AllocHGlobal(nameOffset + name.Length);
-            try
-            {
-                Marshal.Copy(new byte[nameOffset], 0, buffer, nameOffset); // ReplaceIfExists=false, RootDirectory=null.
-                Marshal.WriteInt32(buffer, lengthOffset, name.Length - 2);
-                Marshal.Copy(name, 0, IntPtr.Add(buffer, nameOffset), name.Length);
-                if (RenameFileByHandle(file, 3, buffer, (uint)(nameOffset + name.Length))) return destination;
-                var error = Marshal.GetLastWin32Error();
-                if (error is 80 or 183) continue; // Someone occupied this slot; do not overwrite.
-                throw NativeFailure("The predecessor could not be renamed; its original filename was retained.", error);
-            }
-            finally { Marshal.FreeHGlobal(buffer); }
+            Marshal.Copy(new byte[nameOffset], 0, buffer, nameOffset);
+            Marshal.WriteInt32(buffer, lengthOffset, name.Length - 2);
+            Marshal.Copy(name, 0, IntPtr.Add(buffer, nameOffset), name.Length);
+            if (RenameFileByHandle(source, 3, buffer, (uint)(nameOffset + name.Length))) return "archived";
+            var error = Marshal.GetLastWin32Error();
+            if (error is not (80 or 183)) throw NativeFailure("The predecessor could not be archived without overwriting another file.", error);
         }
-        throw new IOException("No free OLD archive name within the bounded slot limit; the predecessor was retained.");
+        finally { Marshal.FreeHGlobal(buffer); }
+        using var raced = OpenRegularFile(destination, GenericRead | ReadControl | ReadAttributes, 1);
+        if (!HashHandle(raced).Equals(expectedHash, StringComparison.OrdinalIgnoreCase)) return "occupied";
+        if (verifyPublicAcl)
+            ValidateArchivedFileAcl(raced);
+        if (!MatchesHandlePath(source, destination)) DeleteByHandle(source);
+        return "reused";
+    }
+
+    private static void RetireLegacyDuplicates(string parent, string originalName, string expectedHash, string survivor)
+    {
+        foreach (var legacy in LegacyArchivePaths(parent, originalName))
+        {
+            if (!ExistsExactly(legacy) || string.Equals(legacy, survivor, StringComparison.OrdinalIgnoreCase)) continue;
+            using var archive = OpenRegularFile(survivor, GenericRead | ReadControl | ReadAttributes, 1);
+            if (!HashHandle(archive).Equals(expectedHash, StringComparison.OrdinalIgnoreCase)) continue;
+            using var duplicate = OpenRegularFile(legacy, GenericRead | DeleteAccess | ReadControl | ReadAttributes, 1);
+            if (HashHandle(duplicate).Equals(expectedHash, StringComparison.OrdinalIgnoreCase)) DeleteByHandle(duplicate);
+        }
+    }
+
+    private static void ValidateArchivedFileAcl(SafeFileHandle file)
+    {
+        var descriptor = ReadDescriptor(file);
+        ValidateControlledDescriptor(descriptor, privateScope: false, requireProtected: true);
+        if (descriptor.DiscretionaryAcl is null || !descriptor.DiscretionaryAcl
+            .Cast<GenericAce>()
+            .OfType<CommonAce>()
+            .Any(ace => ace.SecurityIdentifier.Value == "S-1-5-32-545" &&
+                (uint)ace.AccessMask == 0x001200a9))
+            throw new UnauthorizedAccessException("The predecessor archive is not readable by standard users.");
+    }
+
+    internal static IEnumerable<string> LegacyArchivePaths(string parent, string originalName)
+    {
+        yield return Path.Combine(parent, "OLD-" + originalName);
+        for (var slot = 1; slot < 1000; slot++)
+            yield return Path.Combine(parent, $"OLD.V{slot}-" + originalName);
+    }
+
+    private static string HashHandle(SafeFileHandle handle)
+    {
+        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        var buffer = new byte[64 * 1024];
+        long offset = 0;
+        int read;
+        while ((read = RandomAccess.Read(handle, buffer, offset)) != 0)
+        {
+            hash.AppendData(buffer.AsSpan(0, read));
+            offset += read;
+        }
+        return Convert.ToHexString(hash.GetHashAndReset());
+    }
+
+    private static void DeleteByHandle(SafeFileHandle handle)
+    {
+        var disposition = new FileDisposition { DeleteFile = true };
+        if (!SetFileInformationByHandle(handle, 4, ref disposition, (uint)Marshal.SizeOf<FileDisposition>()))
+            throw NativeFailure("A verified duplicate predecessor could not be safely retired.");
     }
 
     private static IDisposable HoldExecutable(string path, Action<AppExecutableInfo> verify)
@@ -294,11 +831,21 @@ public sealed class AppUpdateWorkspace : IDisposable
     public void WriteResult<T>(T result)
     {
         EnsureAlive();
-        var temporary = Path.Combine(DirectoryPath, "result.tmp");
-        using (var file = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None))
-            JsonSerializer.Serialize(file, result, RequestJson);
-        SetFileAcl(temporary, publicRead: true);
-        File.Move(temporary, Path.Combine(StateDirectory, "Last-AppUpdate.json"), overwrite: true);
+        // Outside the portable folder (see ResultPath). Random CreateNew temp name; the
+        // final move replaces a planted link itself and never writes through it.
+        Directory.CreateDirectory(AppLog.Folder);
+        var temporary = Path.Combine(AppLog.Folder, $"{ResultFileName}.{Guid.NewGuid():N}.tmp");
+        try
+        {
+            using (var file = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+                JsonSerializer.Serialize(file, result, RequestJson);
+            File.Move(temporary, ResultPath, overwrite: true);
+        }
+        catch
+        {
+            try { File.Delete(temporary); } catch (IOException) { } catch (UnauthorizedAccessException) { }
+            throw;
+        }
     }
 
     private sealed class ExecutableGuard(DirectoryAnchors parents, SafeFileHandle file) : IDisposable
@@ -331,14 +878,25 @@ public sealed class AppUpdateWorkspace : IDisposable
         }
         var metadata = FileVersionInfo.GetVersionInfo(fullPath);
         if (metadata.ProductName != AppUpdateIdentity.Product || metadata.CompanyName != "PcNinja" ||
-            !ReleaseVersion.TryParse(metadata.ProductVersion, out var version))
+            !ReleaseVersion.TryParse(metadata.ProductVersion, out var version) ||
+            !TryParseWindowsFileVersion(metadata.FileVersion, out var fileVersion))
             throw new InvalidDataException("The executable does not have the fixed PcNinja product/company and a valid release version.");
         stream.Position = 0;
         var hash = Convert.ToHexString(SHA256.HashData(stream));
         stream.Position = 0;
         var signer = VerifyAuthenticode(fullPath, handle, signaturePresent);
         // Validate the complete informational version; only build metadata is ignored.
-        return new(version!.Value.Split('+')[0], hash, stream.Length, signer);
+        return new(version!.Value.Split('+')[0], fileVersion, hash, stream.Length, signer);
+    }
+
+    public static bool TryParseWindowsFileVersion(string? value, out string fileVersion)
+    {
+        fileVersion = "";
+        if (string.IsNullOrEmpty(value) || !Version.TryParse(value, out var parsed) || parsed.Revision < 0 ||
+            parsed.ToString(4) != value || parsed.Major > 65534 || parsed.Minor > 65534 ||
+            parsed.Build > 65534 || parsed.Revision > 65534) return false;
+        fileVersion = parsed.ToString(4);
+        return true;
     }
 
     public static AppExecutableInfo VerifyCandidate(string path, AppUpdateManifest release, string? requiredSigner)

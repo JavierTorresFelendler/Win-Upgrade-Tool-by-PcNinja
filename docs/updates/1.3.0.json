@@ -1,0 +1,4 @@
+{
+  "importance": "normal",
+  "message": "Version 1.3 brings single-instance window activation and fixed-name portable application updates with versioned recovery backups. Older published clients that require versioned download names need a one-time manual download of this release. No Windows upgrade or restart is requested by updating this tool."
+}

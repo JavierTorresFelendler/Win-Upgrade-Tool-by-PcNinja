@@ -5,23 +5,85 @@ using PcNinja.Win11Upgrade.Core;
 
 namespace PcNinja.Win11UpgradeAssistant;
 
-internal sealed record AppUpdateRequest(int SchemaVersion, string OperationId, DateTimeOffset CreatedUtc,
-    int ParentProcessId, long ParentStartUtcTicks, string ParentPath, string ParentHash,
-    string? RequiredSigner, AppUpdateManifest Release, bool RelaunchGui);
-
 internal sealed record AppUpdateHandoffResult(string Version, string TargetPath, string OperationId,
     int HelperProcessId, string Message);
-internal sealed record AppUpdateArchiveResult(string Status, string? Path);
+internal sealed record AppUpdateArchiveResult(string Status, string? Path, string? Reason = null);
+internal sealed record AppUpdateApplyResult(bool Ready, bool SafeToRollback);
+internal sealed record AppUpdateLaunchResult(bool Ready, bool SafeToRollback);
 
 /// <summary>Explicit app-only handoff. Never passes CLI/OS-upgrade arguments to a successor.</summary>
 internal static class AppUpdateInstaller
 {
     internal const string HelperArgument = "--internal-app-update";
+    internal const string CleanupArgument = "--internal-app-update-cleanup";
     private const string Ready = "PCNINJA_APP_UPDATE_READY_V2";
     private const string Go = "PCNINJA_APP_UPDATE_GO_V2";
     internal static string DestinationDirectory => Path.GetDirectoryName(Environment.ProcessPath
         ?? throw new InvalidOperationException("Application path is unavailable."))!;
     internal static string DestinationFor(AppUpdateManifest release) => Path.Combine(DestinationDirectory, release.AssetName);
+
+    /// <summary>
+    /// GUI startup housekeeping: after an update only the new and the archived EXE may
+    /// remain beside the app. Removes the hidden, administrator-only staging folder once
+    /// no download or helper handoff holds the operation gate (the helper keeps it until
+    /// it exits). Bounded retries; never blocks the GUI and never fails it.
+    /// </summary>
+    internal static async Task RemoveFinishedUpdateStagingAsync()
+    {
+        for (var attempt = 1; attempt <= 60; attempt++)
+        {
+            try
+            {
+                if (!Directory.Exists(Path.Combine(DestinationDirectory, AppUpdateWorkspace.StateDirectoryName))) return;
+                AppUpdateStagingCleanup result;
+                using (AppOperationGate.EnterUpdate())
+                    result = AppUpdateWorkspace.RemoveFinishedStaging(DestinationDirectory);
+                if (result.StagingRemoved)
+                {
+                    AppLog.Info($"Removed finished application-update staging ({result.OperationsRemoved} operation(s)).");
+                    return;
+                }
+
+                if (attempt == 60 || attempt % 10 == 1)
+                    AppLog.Info($"Application-update staging retained for now: {string.Join("; ", result.Retained)}");
+            }
+            catch (InvalidOperationException)
+            {
+                // A download, helper handoff or Windows operation is running; try again later.
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or System.ComponentModel.Win32Exception)
+            {
+                AppLog.Info($"Application-update staging cleanup deferred: {ex.Message}");
+            }
+            await Task.Delay(TimeSpan.FromSeconds(2)).ConfigureAwait(false);
+        }
+    }
+
+    internal static int RunCleanupWorker()
+    {
+        RemoveFinishedUpdateStagingAsync().GetAwaiter().GetResult();
+        return 0;
+    }
+
+    internal static void ConfirmPendingGuiStartup(string currentExecutablePath)
+    {
+        try
+        {
+            using var gate = AppOperationGate.EnterUpdate();
+            var marked = AppUpdateWorkspace.MarkAwaitingGuiTransactionsReady(
+                Path.GetDirectoryName(currentExecutablePath)!, currentExecutablePath);
+            if (marked > 0) AppLog.Info($"Confirmed GUI readiness for {marked} pending application update(s).");
+        }
+        catch (InvalidOperationException ex)
+        {
+            AppLog.Info($"Pending application-update readiness was deferred: {ex.Message}");
+        }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or
+            System.ComponentModel.Win32Exception or System.Security.SecurityException or ArgumentException)
+        {
+            AppLog.Info($"Pending application-update readiness could not be confirmed: {ex.Message}");
+        }
+    }
 
     internal static async Task<AppUpdateHandoffResult> InstallAsync(AppUpdateClient client,
         AppUpdateManifest release, bool relaunchGui, IProgress<AppUpdateProgress>? progress, CancellationToken token)
@@ -45,7 +107,8 @@ internal static class AppUpdateInstaller
         var handedOff = false;
         try
         {
-            if (File.Exists(target) || Directory.Exists(target)) workspace.CopyExistingCandidate(release, requiredSigner);
+            if (!SamePath(target, parentPath) && (File.Exists(target) || Directory.Exists(target)))
+                workspace.CopyExistingCandidate(release, requiredSigner);
             else
             {
                 await using var candidate = new FileStream(workspace.CandidatePath, FileMode.CreateNew,
@@ -58,7 +121,7 @@ internal static class AppUpdateInstaller
             workspace.PrepareHelper(release, requiredSigner);
             var request = new AppUpdateRequest(2, id, DateTimeOffset.UtcNow, parent.Id,
                 parent.StartTime.ToUniversalTime().Ticks, Path.GetFullPath(parentPath), current.Sha256,
-                requiredSigner, release, relaunchGui);
+                requiredSigner, release, relaunchGui, current.FileVersion);
             workspace.WriteRequest(request);
             token.ThrowIfCancellationRequested();
             var start = new ProcessStartInfo
@@ -88,7 +151,7 @@ internal static class AppUpdateInstaller
             handedOff = true;
             AppLog.Info($"App update handoff {id}: {ProductIdentity.Version} -> {release.Version}; target {target}.");
             return new(release.Version, target, id, helper.Id,
-                "Application run handoff started. The previous EXE is retained and may be marked OLD after GUI readiness. No Windows upgrade or restart was requested.");
+                "Application update handoff started. The previous EXE is retained for verified recovery and versioned archival after GUI readiness. No Windows upgrade or restart was requested.");
         }
         finally
         {
@@ -120,9 +183,8 @@ internal static class AppUpdateInstaller
                 throw new InvalidDataException("The helper is outside its protected workspace.");
             request = workspace.ReadRequest<AppUpdateRequest>();
             ValidateRequest(request, id);
-            if (!SamePath(Path.GetDirectoryName(request.ParentPath)!, workspace.SourceDirectory) ||
-                SamePath(request.ParentPath, workspace.TargetPath(request.Release)))
-                throw new InvalidDataException("The new version must be beside, not replace, the original executable.");
+            if (!SamePath(Path.GetDirectoryName(request.ParentPath)!, workspace.SourceDirectory))
+                throw new InvalidDataException("The new version must remain in the original executable folder.");
             AppUpdateWorkspace.VerifyCandidate(self, request.Release, request.RequiredSigner);
             AppUpdateWorkspace.VerifyCandidate(workspace.CandidatePath, request.Release, request.RequiredSigner);
             using var parent = Process.GetProcessById(request.ParentProcessId);
@@ -133,6 +195,8 @@ internal static class AppUpdateInstaller
             var parentFile = AppUpdateWorkspace.InspectExecutable(request.ParentPath);
             if (!parentFile.Sha256.Equals(request.ParentHash, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidDataException("The original executable changed before handoff.");
+            if (request.ParentFileVersion is not null && request.ParentFileVersion != parentFile.FileVersion)
+                throw new InvalidDataException("The predecessor's Windows FileVersion changed before handoff.");
             if (parentFile.SignerThumbprint is not null &&
                 !parentFile.SignerThumbprint.Equals(request.RequiredSigner, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidDataException("The app update cannot drop the original publisher policy.");
@@ -140,33 +204,62 @@ internal static class AppUpdateInstaller
                 throw new InvalidDataException("The successor is not newer than the original app.");
             if (AppUpdateIdentity.ChannelFor(parentFile.Version) != request.Release.Channel)
                 throw new InvalidDataException("The successor changed the parent's update channel.");
-            using var originalGuard = AppUpdateWorkspace.HoldOriginal(request.ParentPath, request.ParentHash);
-            using var gate = AppOperationGate.OpenHandoff();
-            Console.WriteLine(Ready);
-            Console.Out.Flush();
-            using (var goTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(20)))
-                if (await ReadHandshakeAsync(Console.In, goTimeout.Token) != Go)
-                    throw new InvalidDataException("App update handoff was not committed.");
-            gate.AdoptHandoff();
-            using (var exitTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(60)))
-                await parent.WaitForExitAsync(exitTimeout.Token);
-            parentExited = true;
-            ValidateRequest(request, id);
-            var guiReady = false;
-            ApplyVerified(workspace, request, target => guiReady = AppUpdateGuiReadiness.LaunchAndWait(target));
-            if (request.RelaunchGui && !guiReady)
-                throw new IOException("The new GUI did not acknowledge readiness. The original executable was retained.");
-            originalGuard.Dispose(); // The old process exited and the new GUI is now confirmed.
-            var archive = ArchivePrevious(workspace, request, guiReady);
-            AppLog.Info($"App update {request.OperationId}: GUI ready={guiReady}; predecessor archive={archive.Status}; path={archive.Path ?? request.ParentPath}.");
-            try { WriteResult(workspace, request, true, "New portable version is ready.", archive); }
-            catch (Exception statusError)
+            var originalGuard = AppUpdateWorkspace.HoldOriginal(request.ParentPath, request.ParentHash);
+            try
             {
-                // Replacement/relaunch already succeeded. A diagnostic write failure
-                // must not claim the previous application was restored or undo it.
-                AppLog.Error($"Application update {request.OperationId} applied, but its status file could not be saved: {statusError}");
+                using var gate = AppOperationGate.OpenHandoff();
+                Console.WriteLine(Ready);
+                Console.Out.Flush();
+                using (var goTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(20)))
+                    if (await ReadHandshakeAsync(Console.In, goTimeout.Token) != Go)
+                        throw new InvalidDataException("App update handoff was not committed.");
+                gate.AdoptHandoff();
+                using (var exitTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(60)))
+                    await parent.WaitForExitAsync(exitTimeout.Token);
+                parentExited = true;
+                ValidateRequest(request, id);
+                parentFile = AppUpdateWorkspace.InspectExecutable(request.ParentPath);
+                if (!parentFile.Sha256.Equals(request.ParentHash, StringComparison.OrdinalIgnoreCase) ||
+                    request.ParentFileVersion is not null && request.ParentFileVersion != parentFile.FileVersion)
+                    throw new InvalidDataException("The predecessor changed while the original process was exiting.");
+                request = request with { ParentFileVersion = parentFile.FileVersion };
+                originalGuard.Dispose();
+                workspace.SnapshotOriginal(request.ParentPath, request.ParentHash);
+                workspace.WriteTransactionState(new AppUpdateTransactionState(1, id, "publishing",
+                    request.ParentHash, request.Release.Sha256, parentFile.FileVersion,
+                    Path.GetFileName(request.ParentPath), null));
+                var applied = ApplyVerified(workspace, request, AppUpdateGuiReadiness.LaunchAndWait);
+                if (request.RelaunchGui && !applied.Ready)
+                    throw new IOException(applied.SafeToRollback
+                        ? "The new GUI did not acknowledge readiness; the exact predecessor was restored."
+                        : "The new GUI readiness is uncertain; both recovery copies were retained and no live process was stopped.");
+                if (applied.Ready)
+                    workspace.WriteTransactionState(new AppUpdateTransactionState(1, id, "successor-ready",
+                        request.ParentHash, request.Release.Sha256, parentFile.FileVersion,
+                        Path.GetFileName(request.ParentPath), null));
+                var archive = applied.Ready
+                    ? ArchivePrevious(workspace, request, true)
+                    : new AppUpdateArchiveResult("pending-gui", null);
+                var state = archive.Status == "retained" ? "ready-needs-archive"
+                    : applied.Ready ? "ready" : "awaiting-gui";
+                workspace.WriteTransactionState(new AppUpdateTransactionState(1, id, state,
+                    request.ParentHash, request.Release.Sha256,
+                    request.ParentFileVersion ?? throw new InvalidDataException("Predecessor FileVersion is unavailable."),
+                    Path.GetFileName(request.ParentPath), archive.Path));
+                AppLog.Info($"App update {request.OperationId}: GUI ready={applied.Ready}; predecessor archive={archive.Status}; path={archive.Path ?? request.ParentPath}.");
+                try
+                {
+                    WriteResult(workspace, request, true,
+                        applied.Ready ? "The new application GUI is ready." : "The verified new EXE is in place; open it to finish GUI readiness and predecessor archival.",
+                        archive);
+                }
+                catch (Exception statusError)
+                {
+                    AppLog.Error($"Application update {request.OperationId} applied, but its status file could not be saved: {statusError}");
+                }
+                return 0;
             }
-            return 0;
+            finally { originalGuard.Dispose(); }
         }
         catch (Exception ex)
         {
@@ -176,9 +269,12 @@ internal static class AppUpdateInstaller
                 try
                 {
                     using var workspace = AppUpdateWorkspace.Open(Path.GetDirectoryName(request.ParentPath)!, request.OperationId);
-                    WriteResult(workspace, request, false, "The new version could not be run. The original executable is unchanged.");
+                    WriteResult(workspace, request, false, "The new version could not be run. Recovery copies were retained.");
                 }
-                catch { }
+                catch (Exception statusError)
+                {
+                    AppLog.Error($"Application update {request.OperationId} failed and its diagnostic status could not be saved: {statusError}");
+                }
                 if (parentExited && request.RelaunchGui)
                     MessageBox.Show("The app update could not be completed. Your previous copy was not removed. Open it again and check View log.",
                         "Application update", MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -189,8 +285,9 @@ internal static class AppUpdateInstaller
 
     internal static void ValidateRequest(AppUpdateRequest request, string id)
     {
+        ArgumentNullException.ThrowIfNull(request);
         var now = DateTimeOffset.UtcNow;
-        if (request is null || request.SchemaVersion != 2 || request.OperationId != id ||
+        if (request.SchemaVersion != 2 || request.OperationId != id ||
             id is not { Length: 32 } || !id.All(char.IsAsciiHexDigit) ||
             !Guid.TryParseExact(id, "N", out var operation) || operation == Guid.Empty || request.ParentProcessId <= 0 ||
             request.ParentProcessId == Environment.ProcessId || request.ParentStartUtcTicks <= 0 ||
@@ -200,28 +297,63 @@ internal static class AppUpdateInstaller
             request.CreatedUtc > now.AddSeconds(30) || now - request.CreatedUtc > TimeSpan.FromMinutes(5) ||
             !IsOrdinaryLocalPath(request.ParentPath) ||
             !IsHash(request.ParentHash) ||
-            request.RequiredSigner is not null && (request.RequiredSigner.Length != 40 || !request.RequiredSigner.All(Uri.IsHexDigit)))
+            request.RequiredSigner is not null && (request.RequiredSigner.Length != 40 || !request.RequiredSigner.All(Uri.IsHexDigit)) ||
+            request.ParentFileVersion is not null && !AppUpdateWorkspace.TryParseWindowsFileVersion(request.ParentFileVersion, out _))
             throw new InvalidDataException("The app update handoff is invalid or expired.");
         AppUpdateClient.ValidateManifest(request.Release);
     }
 
-    internal static void ApplyVerified(AppUpdateWorkspace workspace, AppUpdateRequest request, Action<string> launch)
+    internal static AppUpdateApplyResult ApplyVerified(AppUpdateWorkspace workspace, AppUpdateRequest request,
+        Func<string, AppUpdateLaunchResult> launch)
     {
         if (!SamePath(workspace.SourceDirectory, Path.GetDirectoryName(request.ParentPath)!))
             throw new InvalidDataException("The update destination differs from the original application folder.");
+        if (request.ParentFileVersion is null)
+            throw new InvalidDataException("Verified predecessor Windows FileVersion metadata is required before publication.");
         AppUpdateWorkspace.VerifyCandidate(workspace.CandidatePath, request.Release, request.RequiredSigner);
-        using var candidateGuard = workspace.PublishAndHold(request.Release, request.RequiredSigner);
-        if (request.RelaunchGui) launch(workspace.TargetPath(request.Release));
+        var target = workspace.TargetPath(request.Release);
+        var sameName = SamePath(target, request.ParentPath);
+        var targetExisted = File.Exists(target) || Directory.Exists(target);
+        IDisposable? guard = sameName
+            ? workspace.ReplaceCurrentAndHold(request.Release, request.RequiredSigner, request.ParentHash)
+            : workspace.PublishAndHold(request.Release, request.RequiredSigner);
+        try
+        {
+            if (!request.RelaunchGui) return new(false, false);
+            var launched = launch(target);
+            if (launched.Ready) return new(true, false);
+            if (!launched.SafeToRollback) return new(false, false);
+            guard.Dispose();
+            guard = null;
+            if (sameName) workspace.RestorePredecessor(request.Release, request.RequiredSigner, request.ParentHash);
+            else if (!targetExisted) workspace.RemovePublishedCandidate(request.Release, request.RequiredSigner);
+            workspace.WriteTransactionState(new AppUpdateTransactionState(1, request.OperationId,
+                sameName ? "rolled-back" : "rolled-back-separate",
+                request.ParentHash, request.Release.Sha256, request.ParentFileVersion,
+                Path.GetFileName(request.ParentPath), null));
+            return new(false, true);
+        }
+        finally { guard?.Dispose(); }
     }
 
     internal static AppUpdateArchiveResult ArchivePrevious(AppUpdateWorkspace workspace, AppUpdateRequest request, bool guiReady)
     {
         if (!request.RelaunchGui || !guiReady) return new("not-requested", null);
-        try { return new("renamed", workspace.ArchiveOriginal(request.ParentPath, request.ParentHash)); }
+        try
+        {
+            if (request.ParentFileVersion is null)
+                throw new InvalidDataException("Verified predecessor Windows FileVersion metadata is unavailable.");
+            var source = SamePath(request.ParentPath, workspace.TargetPath(request.Release))
+                ? workspace.PreviousPath : request.ParentPath;
+            var archive = workspace.ArchiveOriginal(source, request.ParentHash,
+                request.ParentFileVersion, Path.GetFileName(request.ParentPath),
+                privateSource: SamePath(source, workspace.PreviousPath));
+            return new(archive.Status, archive.Path);
+        }
         catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or System.ComponentModel.Win32Exception or System.Security.SecurityException)
         {
-            AppLog.Info($"Predecessor filename retained after successful update: {ex.Message}");
-            return new("retained", null); // Cosmetic housekeeping must never turn a successful update into failure.
+            AppLog.Info($"Predecessor archive deferred after successful update: {ex.Message}");
+            return new("retained", null, ex.Message);
         }
     }
 
@@ -230,7 +362,7 @@ internal static class AppUpdateInstaller
         workspace.WriteResult(new { schemaVersion = 1, timestamp = DateTimeOffset.UtcNow,
             operationId = request.OperationId, success, version = request.Release.Version,
             targetPath = workspace.TargetPath(request.Release), originalPath = request.ParentPath,
-            archiveStatus = archive?.Status, archivedPath = archive?.Path, message });
+            archiveStatus = archive?.Status, archivedPath = archive?.Path, archiveReason = archive?.Reason, message });
     }
 
     // Console.In can implement ReadAsync with a synchronous underlying pipe read.

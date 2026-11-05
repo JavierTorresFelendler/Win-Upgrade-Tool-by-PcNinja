@@ -1,5 +1,26 @@
 # Changelog
 
+## 1.3.0 — single-instance GUI and fixed-name portable updates (issue #30)
+
+- Opening the GUI while it is already running no longer starts a second copy;
+  the running window is restored and brought to the front, without a UAC prompt.
+  A launch during startup or shutdown of the running copy is no longer lost, and
+  a copy that does not respond is reported instead of silently ignored.
+- Uses the shared `shared/PcNinjaSingleInstance.cs` guard (same file in all PcNinja
+  tools). CLI mode is unchanged and remains protected by `AppOperationGate`.
+- Use `Win-Upgrade-Tool-by-PcNinja.exe` for the current application. Archive the
+  predecessor with its verified four-part FileVersion, reusing identical bytes
+  and preserving different-content collisions with a full SHA256 suffix.
+- Support atomic same-name replacement, verified recovery snapshots and rollback
+  when a failed successor is certainly gone. Preserve uncertain/live processes.
+- After GUI readiness, independently clean verified completed update staging.
+  Preserve distinct historical backups and legacy staging without transaction
+  proof. Keep the last update result with the log in ProgramData.
+- Report up to date for an equal/older historical release without trying to use
+  its old asset name. Newer candidates still require all exact asset/manifest,
+  version/channel/hash/size/signature checks. Historical clients with versioned
+  asset pins require a one-time manual migration.
+
 ## 1.2.0 — clearer manual source and Server guidance
 
 - Hide unavailable automatic-download controls without losing manual source fields.

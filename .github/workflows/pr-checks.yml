@@ -59,6 +59,17 @@ jobs:
           dotnet run --project tests/PcNinja.Win11Upgrade.CliChecks/PcNinja.Win11Upgrade.CliChecks.csproj -c Release --no-build
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Real portable helper and GUI lifecycle (no Windows Setup)
+        shell: pwsh
+        run: |
+          Import-Module ./.github/scripts/AppUpdateRelease.psm1 -Force
+          $identity = Get-PcNinjaReleaseIdentity -PropsPath Directory.Build.props
+          if ($identity.IsStable) {
+            & ./tests/Verify-PortableUpdateLifecycle.ps1 -CandidatePath (Join-Path artifacts $env:TEST_ASSET_NAME) -ExpectedVersion $identity.Version
+          } else {
+            Write-Output 'Stable-only controlled lifecycle fixtures; preview builds keep their separate channel.'
+          }
+
       - name: Build GUI checks and verify read-only CLI
         shell: pwsh
         run: |

@@ -3,6 +3,7 @@ $ErrorActionPreference = 'Stop'
 $script:Repository = 'JavierTorresFelendler/Win-Upgrade-Tool-by-PcNinja'
 $script:Product = 'Windows Upgrade Tool by PcNinja'
 $script:BuildExecutableName = 'Windows-Upgrade-Assistant-By-PcNinja.exe'
+$script:AssetName = 'Win-Upgrade-Tool-by-PcNinja.exe'
 $script:ManifestName = 'update-manifest.json'
 $script:MaximumBytes = 100000000L
 
@@ -24,10 +25,7 @@ function Get-PcNinjaVersionIdentity {
     $label = if ($stable) { $Version } elseif ($beta) { "Beta$revision" } else { "RC$revision" }
     $display = "$($parts[0]).$($parts[1])" + $(if ($parts[2] -eq '0') { '' } else { ".$($parts[2])" })
     if (-not $stable) { $display += "-$label" }
-    $asset = if ($stable) {
-        if ($parts[1] -eq '0' -and $parts[2] -eq '0') { $display = $parts[0] }
-        "Win-Upgrade-Tool-by-PcNinja-v.$display.exe"
-    } else { "Windows-Upgrade-Assistant-By-PcNinja-V$display.exe" }
+    $asset = if ($stable -or $beta) { $script:AssetName } else { "Windows-Upgrade-Assistant-By-PcNinja-V$display.exe" }
     [pscustomobject]@{
         Version = $Version; Tag = "v$Version"; IsStable = $stable; IsBeta = $beta; HasManifest = ($stable -or $beta)
         Channel = $(if ($stable) { 'stable' } elseif ($beta) { 'beta' } else { 'preview' })
