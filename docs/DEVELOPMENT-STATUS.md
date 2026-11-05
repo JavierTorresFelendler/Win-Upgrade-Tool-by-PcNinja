@@ -22,6 +22,13 @@ Adding an opt-in real single-file helper/GUI lifecycle fixture to PR and stable
 release CI; its two fixture versions are never published. Exact-head CI and real
 lifecycle results must pass before merging/tagging. No Windows Setup is involved.
 
+The first lifecycle runner awaited pipe EOF even after helper process exit; the
+live successor can inherit those standard handles. The runner now uses exact
+helper process exit/state as completion proof and never waits for GUI-owned EOF.
+This is a fixture lifetime correction, not evidence of an application failure.
+Read-only live discovery with 1.3 already reports APP_UPDATE_CURRENT against the
+historical 1.2 feed, with applicationUpdated/setupStarted/readyForRestart=false.
+
 ## VM candidate follow-up (2026-11-05)
 
 **VM candidate checkpoint:** source `7b2a354b426181af3f9f2e2c842baa8f575a8bb3`

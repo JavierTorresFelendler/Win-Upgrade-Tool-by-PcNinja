@@ -92,24 +92,24 @@ internal static class PortableLifecycleChecks
             {
                 WorkingDirectory = workspace.DirectoryPath, UseShellExecute = false,
                 CreateNoWindow = true, WindowStyle = ProcessWindowStyle.Hidden,
-                RedirectStandardInput = true, RedirectStandardOutput = true, RedirectStandardError = true,
+                RedirectStandardInput = true, RedirectStandardOutput = true,
                 StandardInputEncoding = new UTF8Encoding(false), StandardOutputEncoding = Encoding.UTF8
             };
             start.ArgumentList.Add(AppUpdateInstaller.HelperArgument);
             using var helper = Process.Start(start) ?? throw new Exception("Fixture helper did not launch.");
             workspace.MarkHandoffStarted();
-            var errors = helper.StandardError.ReadToEndAsync();
             using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(90));
             Require(await AppUpdateInstaller.ReadHandshakeAsync(helper.StandardOutput, timeout.Token) ==
                 "PCNINJA_APP_UPDATE_READY_V2", "Real helper did not acknowledge READY.");
-            var output = helper.StandardOutput.ReadToEndAsync(timeout.Token);
             gate.TransferToHelper();
             await helper.StandardInput.WriteLineAsync("PCNINJA_APP_UPDATE_GO_V2");
             helper.StandardInput.Close();
             Require(parent.CloseMainWindow(), "The fixture parent GUI did not accept close after GO.");
             await parent.WaitForExitAsync(timeout.Token);
             await helper.WaitForExitAsync(timeout.Token);
-            Require(helper.ExitCode == 0, $"Real helper failed ({helper.ExitCode}): {await errors}; {await output}");
+            // The successor may inherit the helper's standard handles. Its GUI
+            // stays alive, so pipe EOF is not a helper-completion signal.
+            Require(helper.ExitCode == 0, $"Real helper failed ({helper.ExitCode}); see fixture diagnostics.");
             Require(workspace.ReadTransactionState<AppUpdateTransactionState>().Status == "ready",
                 "Real helper did not persist readiness and completed predecessor archival.");
         }
