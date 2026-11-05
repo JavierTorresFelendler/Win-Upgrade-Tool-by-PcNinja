@@ -15,6 +15,15 @@ handle after flushing and before disposal. Local CLI and offline packaging,
 workflow and publication-policy fixtures pass; elevated evidence awaits exact-head
 CI. Runtime GUI focus/UAC and actual single-file handoff remain VM acceptance.
 
+Follow-up: run `42027733312` passed snapshot/repeated-update/rollback fixtures,
+then exposed a cleanup fixture that used an ordinary copied executable instead
+of the protected published successor. The fixture now performs real atomic
+publication before simulating later GUI readiness. Cleanup also searches past a
+different-content normal archive to the hash-qualified archive, and retires
+legacy duplicates through the existing DELETE-capable helper. Elevated fixtures
+now cover both normal/collision cleanup, identical OLD retirement and preservation
+of unrelated historical files. See `VM-CANDIDATE-PR31.md` for owner acceptance.
+
 ## In progress: single-instance GUI and fixed-name EXE updater (PR #31, issue #30)
 
 Branch `feature/single-instance`, draft. PR #31 remains open and in draft.

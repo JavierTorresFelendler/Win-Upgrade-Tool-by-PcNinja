@@ -102,7 +102,8 @@ internal static class PortablePublishChecks
                 Require(AppUpdateWorkspace.InspectExecutable(target).Sha256 == info.Sha256,
                     "Mismatch handling overwrote the current fixed-name EXE.");
             }
-            CheckTransactionCleanup(builtHost, info);
+            CheckTransactionCleanup(builtHost, info, collision: false);
+            CheckTransactionCleanup(builtHost, info, collision: true);
             Require(Directory.GetFiles(parent, "*.exe").Length == 2,
                 "The portable folder did not settle to one canonical EXE plus its predecessor archive.");
             Console.WriteLine("PASS: Elevated historical-name bootstrap, two repeated fixed-name atomic replacements, hash-verified version archive/reuse, definite rollback and uncertain-readiness retention. Test-host bytes only; no helper/executable/Setup launched.");
@@ -133,7 +134,7 @@ internal static class PortablePublishChecks
             Environment.ProcessId + 10000, DateTime.UtcNow.AddMinutes(-1).Ticks,
             original, info.Sha256, info.SignerThumbprint, release, true, info.FileVersion);
 
-    private static void CheckTransactionCleanup(string builtHost, AppExecutableInfo info)
+    private static void CheckTransactionCleanup(string builtHost, AppExecutableInfo info, bool collision)
     {
         var id = Guid.NewGuid().ToString("N");
         var parent = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "PcNinja-AppUpdate-Fixture-" + Guid.NewGuid().ToString("N")));
@@ -142,9 +143,20 @@ internal static class PortablePublishChecks
         {
             var target = Path.Combine(parent, AppUpdateIdentity.AssetName);
             File.Copy(builtHost, target);
+            var normalArchive = Path.Combine(parent, AppUpdateWorkspace.ArchiveName(info.FileVersion));
+            if (collision) File.WriteAllText(normalArchive, "unrelated same-version archive");
+            var legacy = Path.Combine(parent, "OLD-" + AppUpdateIdentity.AssetName);
+            var unrelated = Path.Combine(parent, "OLD.V1-" + AppUpdateIdentity.AssetName);
+            File.Copy(builtHost, legacy);
+            File.WriteAllText(unrelated, "unrelated historical backup");
             using (var workspace = AppUpdateWorkspace.CreateFixture(parent, id, info.SizeBytes, info.SizeBytes))
             {
                 workspace.SnapshotOriginal(target, info.Sha256);
+                workspace.CopyExistingCandidate(MakeRelease(info), info.SignerThumbprint);
+                var request = MakeRequest(workspace, target, AppUpdateIdentity.AssetName, info, MakeRelease(info));
+                var applied = AppUpdateInstaller.ApplyVerified(workspace, request with { RelaunchGui = false },
+                    _ => throw new Exception("A CLI publication must not launch a GUI."));
+                Require(!applied.Ready, "CLI publication claimed GUI readiness.");
                 workspace.WriteTransactionState(new AppUpdateTransactionState(1, id, "awaiting-gui",
                     info.Sha256, info.Sha256, info.FileVersion, AppUpdateIdentity.AssetName, null));
             }
@@ -158,11 +170,15 @@ internal static class PortablePublishChecks
                 Require(workspace.ReadTransactionState<AppUpdateTransactionState>().Status == "successor-ready",
                     "A fully initialized canonical GUI did not authenticate the pending transaction.");
             var finished = AppUpdateWorkspace.RemoveFinishedStagingFixture(parent);
-            var archive = Path.Combine(parent, AppUpdateWorkspace.ArchiveName(info.FileVersion));
+            var archive = Path.Combine(parent, AppUpdateWorkspace.ArchiveName(info.FileVersion,
+                collision ? info.Sha256 : null));
             Require(finished.StagingRemoved && File.Exists(Path.Combine(parent, AppUpdateIdentity.AssetName)) &&
                 AppUpdateWorkspace.InspectExecutable(archive).Sha256 == info.Sha256 &&
-                Directory.GetFiles(parent, "*.exe").Length == 2,
-                "Readiness-proven cleanup did not archive the predecessor and remove only updater staging.");
+                !File.Exists(legacy) && File.ReadAllText(unrelated) == "unrelated historical backup" &&
+                (!collision || File.ReadAllText(normalArchive) == "unrelated same-version archive") &&
+                Directory.GetFiles(parent, "*.exe").Length == (collision ? 4 : 3),
+                "Readiness-proven cleanup failed archive collision/legacy preservation or retained staging: " +
+                string.Join("; ", finished.Retained));
         }
         finally
         {

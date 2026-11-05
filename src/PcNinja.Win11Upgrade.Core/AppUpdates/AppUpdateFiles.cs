@@ -368,15 +368,9 @@ public sealed class AppUpdateWorkspace : IDisposable
         VerifyRecoveryIfPresent(workspace.DisplacedPath, state.ParentHash, parentVersion, "displaced predecessor");
         VerifyRecoveryIfPresent(workspace.FailedPath, state.Status == "rolled-back" ? state.ReleaseHash : state.ReleaseHash,
             null, "failed or superseded successor");
-        foreach (var archive in LegacyArchivePaths(workspace.SourceDirectory, state.OriginalName))
-        {
-            if (!ExistsExactly(archive)) continue;
-            using var legacy = OpenRegularFile(archive, GenericRead | ReadControl | ReadAttributes, 1);
-            if (!HashHandle(legacy).Equals(state.ParentHash, StringComparison.OrdinalIgnoreCase))
-                continue; // An unrelated legacy archive is never removed.
-            if (state.Status == "ready" && FindVerifiedArchive(workspace.SourceDirectory, state, parentVersion) is not null)
-                DeleteByHandle(legacy);
-        }
+        if (state.Status == "ready" &&
+            FindVerifiedArchive(workspace.SourceDirectory, state, parentVersion) is { } survivor)
+            RetireLegacyDuplicates(workspace.SourceDirectory, state.OriginalName, state.ParentHash, survivor);
     }
 
     private static string? FindVerifiedArchive(string parent, AppUpdateTransactionState state, string parentVersion)
@@ -386,6 +380,10 @@ public sealed class AppUpdateWorkspace : IDisposable
         {
             var path = Path.Combine(parent, name);
             if (!ExistsExactly(path)) continue;
+            // A different predecessor can have the same FileVersion. Keep it
+            // and examine the deterministic hash-qualified alternative.
+            using var pinned = OpenRegularFile(path, GenericRead | ReadControl | ReadAttributes, 1);
+            if (!HashHandle(pinned).Equals(state.ParentHash, StringComparison.OrdinalIgnoreCase)) continue;
             VerifyHashAndFileVersion(path, state.ParentHash, parentVersion, "predecessor archive");
             if (state.ArchivePath is not null && !string.Equals(Path.GetFullPath(state.ArchivePath),
                 Path.GetFullPath(path), StringComparison.OrdinalIgnoreCase))
