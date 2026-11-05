@@ -27,6 +27,8 @@ is published, latest, immutable, non-draft/non-prerelease (release ID 435255508)
   applicationUpdated/setupStarted/readyForRestart flags remain false. This proves
   live discovery, not an actual customer installation. Historical published
   clients with versioned asset pins still require a one-time manual migration.
+  README now leads with an IMPORTANT notice explaining the broken automatic
+  migration from published V1/1.2 and linking directly to the manual 1.3 download.
 - All 14 earlier release/asset records retain their prior IDs, names, sizes and
   digests. The product remains unsigned. Owner reports the earlier candidate
   works on Windows 10 Pro build 19045.6456 apart from the now-fixed discovery bug;

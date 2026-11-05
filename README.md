@@ -4,6 +4,15 @@ Free-to-use standalone Windows application for guiding advanced home users throu
 in-place Windows upgrade on x64 hardware, including an experimental Windows 11
 compatibility method and an experimental manual Windows 10 target path.
 
+> [!IMPORTANT]
+> **Published V1 and 1.2 users: download 1.3 manually once.**
+> Version 1.3 changes the application filename to `Win-Upgrade-Tool-by-PcNinja.exe`.
+> Older published versions expect a versioned EXE name, so their built-in updater
+> **cannot update automatically to 1.3** and may report that updates are unavailable.
+> Close the old tool, [download the official 1.3 EXE](https://github.com/JavierTorresFelendler/Win-Upgrade-Tool-by-PcNinja/releases/download/v1.3.0/Win-Upgrade-Tool-by-PcNinja.exe)
+> and open it manually. After this one-time move, use the new tool for future
+> automatic update checks and consent-based application updates.
+
 > [!WARNING]
 > The Windows 11 path uses the undocumented
 > `/product server` compatibility behavior. Back up important files
