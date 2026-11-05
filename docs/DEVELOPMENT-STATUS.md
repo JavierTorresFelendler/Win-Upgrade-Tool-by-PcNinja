@@ -6,13 +6,13 @@ Updated: 2026-11-05. This is sanitized project context, not a backup of Codex ch
 
 Branch `feature/single-instance`, draft. PR #31 remains open and in draft.
 Its last failed PR validation run
-`41989344350` failed the elevated headless updater fixture after the previous
-access-denied failure was fixed: reuse deleted the recovery snapshot, but then
-the code unnecessarily reopened the already-verified archive to rewrite its ACL
-and failed to lock it. The follow-up validates the existing archive ACL through
-the already-open handle and avoids a redundant ACL rewrite. No release build,
-tag or publication is authorized before every applicable code, CI, signing and
-owner-VM gate passes.
+`41989976149` failed the elevated headless updater fixture: after safely reusing
+an identical archive and deleting the recovery snapshot, the code redundantly
+reopened the archive by path for executable inspection and could not lock it.
+The local follow-up skips that redundant reopen only for `reused` archives,
+whose exact hash and ACL are checked through the existing handle and whose bytes
+were already inspected as the predecessor. No release build, tag or publication
+is authorized before every applicable code, CI, signing and owner-VM gate passes.
 
 ### Single-instance GUI
 
@@ -109,13 +109,14 @@ owner-VM gate passes.
 - Latest archive-reuse check: CLI Checks and SmokeTests both built with
   `-warnaserror` and passed locally, including archive reuse/collision tests.
   CLI Checks skipped the elevated fixed-name publication/rollback fixture, so
-  the owner-path regression still depends on hosted CI.
+  the owner-path regression still depends on hosted CI. The follow-up for run
+  `41989976149` also passed these two local suites; its edit is not yet pushed.
 - Passed after correcting a CLI help line-wrap mismatch: `powershell -NoProfile -ExecutionPolicy Bypass -File tests\Verify-Cli.ps1 -ExePath src\PcNinja.Win11UpgradeAssistant\bin\Debug\net8.0-windows\win-x64\Windows-Upgrade-Assistant-By-PcNinja.exe -ExpectedVersion 1.2.0`.
 - `tests\Verify-AppUpdatePackaging.ps1` could not run in Windows PowerShell 5 because `System.Text.Json.JsonDocumentOptions` is unavailable; `pwsh` is not installed. No network, app replacement, Windows Setup or reboot was performed. `git diff --check` passed after the latest code/help edit.
 - The focused local checks do not exercise the elevated failure path. Hosted CI
-  for `250fe98` and diagnostic head `36deaee` failed; the ACL reuse correction
-  needs an exact-head hosted rerun. Elevated fixture success, exact-head CI,
-  signing, and owner-VM acceptance remain release blockers.
+  failed for `250fe98`, `36deaee`, and `4ad367c`; the latest narrowly scoped
+  correction needs a new exact-head hosted run. Elevated fixture success,
+  exact-head CI, signing, and owner-VM acceptance remain release blockers.
 
 ## Published and verified: stable 1.2
 

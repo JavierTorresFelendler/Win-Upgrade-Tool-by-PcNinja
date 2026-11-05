@@ -712,7 +712,7 @@ public sealed class AppUpdateWorkspace : IDisposable
         }
         if (status == "occupied")
             throw new IOException("Both deterministic predecessor archive names are occupied by different bytes; recovery files were retained.");
-        if (verifyExecutable)
+        if (verifyExecutable && status == "archived")
         {
             var actualArchive = InspectExecutable(archive);
             if (!actualArchive.Sha256.Equals(expectedHash, StringComparison.OrdinalIgnoreCase) ||
