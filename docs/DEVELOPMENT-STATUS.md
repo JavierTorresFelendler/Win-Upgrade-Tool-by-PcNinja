@@ -5,11 +5,12 @@ Updated: 2026-11-05. This is sanitized project context, not a backup of Codex ch
 ## In progress: single-instance GUI and fixed-name EXE updater (PR #31, issue #30)
 
 Branch `feature/single-instance`, draft. PR #31 is open at remote commit
-`07efa4bed62c82a0c7efd72819853e62450ca657`; its PR validation check passed for
-that commit only. The fixed-name updater work described below is currently local
-and uncommitted, so that remote check does not validate it. No release build,
-tag or publication is authorized before every applicable code, CI, signing and
-owner-VM gate passes.
+`250fe9859c2d435e6b9c30f1d980a2d746ebdbec`. Its PR validation run
+`41988970199` failed the elevated headless updater fixture after the previous
+access-denied failure was fixed: an identical predecessor archive was not
+reused. The fixture now reports archive status/path/reason and source retention
+details to expose the next root cause. No release build, tag or publication is
+authorized before every applicable code, CI, signing and owner-VM gate passes.
 
 ### Single-instance GUI
 
@@ -63,15 +64,17 @@ owner-VM gate passes.
 - CI on the final head; then owner VM evidence: VM OS, exact test EXE and SHA-256,
   normal/minimized/maximized/behind another window, modal dialog, standard to
   elevated relaunch, rapid repeated launches, relaunch while closing, restart after
-  close/crash; a controlled self-update test (parent exits, successor ready, OLD
-  versioned predecessor archive, no updater work folder remains, and failed
+  close/crash; a controlled self-update test (parent exits, successor ready,
+  correctly named predecessor archive from its verified four-part FileVersion,
+  no updater work folder remains, and failed
   relaunch keeps the original; on a fresh folder only the current and predecessor
   EXEs should remain).
 - Before release: version, release notes and updater-compatible asset name.
 
 ### EXE updater implementation and remaining gates (owner directive, 2026-11-05)
 
-- Implemented in the local worktree: new stable/Beta manifests and publisher
+- Implemented and pushed in commits `883dcbf`, `e511685`, `5a88c82` and `250fe98`:
+  new stable/Beta manifests and publisher
   identity use the fixed `Win-Upgrade-Tool-by-PcNinja.exe`; historical release
   assets remain unchanged. The updater captures and verifies the predecessor's
   four-part Windows FileVersion, creates deterministic versioned/hash-qualified
@@ -101,9 +104,13 @@ owner-VM gate passes.
 
 - Passed with warnings as errors: `dotnet build src\PcNinja.Win11UpgradeAssistant\PcNinja.Win11UpgradeAssistant.csproj -c Debug -warnaserror --no-restore`, and the same command for `tests\PcNinja.Win11Upgrade.CliChecks\PcNinja.Win11Upgrade.CliChecks.csproj`, `tests\PcNinja.Win11Upgrade.SmokeTests\PcNinja.Win11Upgrade.SmokeTests.csproj`, and `tests\PcNinja.Win11Upgrade.GuiChecks\PcNinja.Win11Upgrade.GuiChecks.csproj`.
 - Passed: `dotnet run --project tests\PcNinja.Win11Upgrade.CliChecks\PcNinja.Win11Upgrade.CliChecks.csproj -c Debug --no-build`, SmokeTests and GuiChecks with `-c Debug --no-build`. CLI checks skipped the elevated fixed-name publication/rollback fixture; SmokeTests skipped elevated protected updater filesystem/cleanup fixtures and NTFS journal proof.
+- Latest focused check after `250fe98`: `dotnet build tests\PcNinja.Win11Upgrade.CliChecks\PcNinja.Win11Upgrade.CliChecks.csproj -c Debug -warnaserror --no-restore` passed with 0 warnings/errors; the matching `dotnet run ... -c Debug --no-build` passed its non-elevated fixtures and skipped the elevated fixed-name publication/rollback fixture. `git diff --check` passed.
 - Passed after correcting a CLI help line-wrap mismatch: `powershell -NoProfile -ExecutionPolicy Bypass -File tests\Verify-Cli.ps1 -ExePath src\PcNinja.Win11UpgradeAssistant\bin\Debug\net8.0-windows\win-x64\Windows-Upgrade-Assistant-By-PcNinja.exe -ExpectedVersion 1.2.0`.
 - `tests\Verify-AppUpdatePackaging.ps1` could not run in Windows PowerShell 5 because `System.Text.Json.JsonDocumentOptions` is unavailable; `pwsh` is not installed. No network, app replacement, Windows Setup or reboot was performed. `git diff --check` passed after the latest code/help edit.
-- The local checks do not validate the current PR head: the edits remain uncommitted/unpushed. Hosted CI must run on the exact new head after checkpointing, followed by elevated fixture and owner-VM evidence.
+- The focused local checks do not exercise the elevated failure path. Hosted CI for
+  `250fe98` failed run `41988970199`; the exact elevated fixture issue is under
+  investigation. Elevated fixture success, exact-head CI, signing, and owner-VM
+  acceptance remain release blockers.
 
 ## Published and verified: stable 1.2
 

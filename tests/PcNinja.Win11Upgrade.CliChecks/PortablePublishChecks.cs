@@ -64,7 +64,10 @@ internal static class PortablePublishChecks
                     "Repeated fixed-name replacement failed exact successor verification.");
                 var result = AppUpdateInstaller.ArchivePrevious(workspace, request, true);
                 Require(result.Status == "reused" && result.Path == archived.Path &&
-                    !File.Exists(workspace.PreviousPath), "Identical predecessor archive was not reused safely.");
+                    !File.Exists(workspace.PreviousPath),
+                    $"Identical predecessor archive was not reused safely. Status={result.Status}; " +
+                    $"path={result.Path ?? "<none>"}; expectedPath={archived.Path}; " +
+                    $"reason={result.Reason ?? "<none>"}; previousExists={File.Exists(workspace.PreviousPath)}.");
             }
 
             using (var rollback = AppUpdateWorkspace.CreateFixture(parent, Guid.NewGuid().ToString("N"), info.SizeBytes, info.SizeBytes))
