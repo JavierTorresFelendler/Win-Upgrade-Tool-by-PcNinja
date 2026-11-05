@@ -487,7 +487,7 @@ public sealed class AppUpdateWorkspace : IDisposable
             throw NativeFailure("Could not prepare predecessor archive permissions.");
         var result = SetSecurityInfo(file, 1, OwnerAndDacl | 0x80000000, owner, IntPtr.Zero, dacl, IntPtr.Zero);
         if (result != 0) throw NativeFailure("Could not publish the verified predecessor archive.", (int)result);
-        ValidateControlledDescriptor(ReadDescriptor(file), privateScope: false, requireProtected: true);
+        ValidateArchivedFileAcl(file);
     }
 
     private static void SetRecoveryFileAcl(string path, string expectedHash)
@@ -701,11 +701,11 @@ public sealed class AppUpdateWorkspace : IDisposable
                 ValidateControlledDescriptor(ReadDescriptor(source), privateScope: true, requireProtected: true);
             if (!HashHandle(source).Equals(expectedHash, StringComparison.OrdinalIgnoreCase))
                 throw new InvalidDataException("The predecessor changed; its filename was retained.");
-            status = TryArchive(source, archive, expectedHash);
+            status = TryArchive(source, archive, expectedHash, verifyExecutable);
             if (status == "occupied")
             {
                 archive = Path.Combine(parent, ArchiveName(fileVersion, expectedHash));
-                status = TryArchive(source, archive, expectedHash);
+                status = TryArchive(source, archive, expectedHash, verifyExecutable);
             }
             if (verifyExecutable && status == "archived")
                 SetArchivedFileAcl(source, expectedHash);
@@ -718,7 +718,6 @@ public sealed class AppUpdateWorkspace : IDisposable
             if (!actualArchive.Sha256.Equals(expectedHash, StringComparison.OrdinalIgnoreCase) ||
                 actualArchive.FileVersion != fileVersion)
                 throw new InvalidDataException("The predecessor archive failed executable identity verification.");
-            if (status != "archived") SetArchivedFileAcl(archive, expectedHash);
         }
         else using (var verifiedArchive = OpenRegularFile(archive, GenericRead | ReadControl | ReadAttributes, 1))
             if (!HashHandle(verifiedArchive).Equals(expectedHash, StringComparison.OrdinalIgnoreCase))
@@ -727,12 +726,15 @@ public sealed class AppUpdateWorkspace : IDisposable
         return new(status, archive);
     }
 
-    private static string TryArchive(SafeFileHandle source, string destination, string expectedHash)
+    private static string TryArchive(SafeFileHandle source, string destination, string expectedHash,
+        bool verifyPublicAcl)
     {
         if (ExistsExactly(destination))
         {
             using var existing = OpenRegularFile(destination, GenericRead | ReadControl | ReadAttributes, 1);
             if (!HashHandle(existing).Equals(expectedHash, StringComparison.OrdinalIgnoreCase)) return "occupied";
+            if (verifyPublicAcl)
+                ValidateArchivedFileAcl(existing);
             if (MatchesHandlePath(source, destination)) return "reused";
             DeleteByHandle(source);
             return "reused";
@@ -754,6 +756,8 @@ public sealed class AppUpdateWorkspace : IDisposable
         finally { Marshal.FreeHGlobal(buffer); }
         using var raced = OpenRegularFile(destination, GenericRead | ReadControl | ReadAttributes, 1);
         if (!HashHandle(raced).Equals(expectedHash, StringComparison.OrdinalIgnoreCase)) return "occupied";
+        if (verifyPublicAcl)
+            ValidateArchivedFileAcl(raced);
         if (!MatchesHandlePath(source, destination)) DeleteByHandle(source);
         return "reused";
     }
@@ -768,6 +772,18 @@ public sealed class AppUpdateWorkspace : IDisposable
             using var duplicate = OpenRegularFile(legacy, GenericRead | DeleteAccess | ReadControl | ReadAttributes, 1);
             if (HashHandle(duplicate).Equals(expectedHash, StringComparison.OrdinalIgnoreCase)) DeleteByHandle(duplicate);
         }
+    }
+
+    private static void ValidateArchivedFileAcl(SafeFileHandle file)
+    {
+        var descriptor = ReadDescriptor(file);
+        ValidateControlledDescriptor(descriptor, privateScope: false, requireProtected: true);
+        if (descriptor.DiscretionaryAcl is null || !descriptor.DiscretionaryAcl
+            .Cast<GenericAce>()
+            .OfType<CommonAce>()
+            .Any(ace => ace.SecurityIdentifier.Value == "S-1-5-32-545" &&
+                (uint)ace.AccessMask == 0x001200a9))
+            throw new UnauthorizedAccessException("The predecessor archive is not readable by standard users.");
     }
 
     internal static IEnumerable<string> LegacyArchivePaths(string parent, string originalName)

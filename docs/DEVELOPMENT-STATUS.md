@@ -4,13 +4,15 @@ Updated: 2026-11-05. This is sanitized project context, not a backup of Codex ch
 
 ## In progress: single-instance GUI and fixed-name EXE updater (PR #31, issue #30)
 
-Branch `feature/single-instance`, draft. PR #31 is open at remote commit
-`250fe9859c2d435e6b9c30f1d980a2d746ebdbec`. Its PR validation run
-`41988970199` failed the elevated headless updater fixture after the previous
-access-denied failure was fixed: an identical predecessor archive was not
-reused. The fixture now reports archive status/path/reason and source retention
-details to expose the next root cause. No release build, tag or publication is
-authorized before every applicable code, CI, signing and owner-VM gate passes.
+Branch `feature/single-instance`, draft. PR #31 remains open and in draft.
+Its last failed PR validation run
+`41989344350` failed the elevated headless updater fixture after the previous
+access-denied failure was fixed: reuse deleted the recovery snapshot, but then
+the code unnecessarily reopened the already-verified archive to rewrite its ACL
+and failed to lock it. The follow-up validates the existing archive ACL through
+the already-open handle and avoids a redundant ACL rewrite. No release build,
+tag or publication is authorized before every applicable code, CI, signing and
+owner-VM gate passes.
 
 ### Single-instance GUI
 
@@ -104,13 +106,16 @@ authorized before every applicable code, CI, signing and owner-VM gate passes.
 
 - Passed with warnings as errors: `dotnet build src\PcNinja.Win11UpgradeAssistant\PcNinja.Win11UpgradeAssistant.csproj -c Debug -warnaserror --no-restore`, and the same command for `tests\PcNinja.Win11Upgrade.CliChecks\PcNinja.Win11Upgrade.CliChecks.csproj`, `tests\PcNinja.Win11Upgrade.SmokeTests\PcNinja.Win11Upgrade.SmokeTests.csproj`, and `tests\PcNinja.Win11Upgrade.GuiChecks\PcNinja.Win11Upgrade.GuiChecks.csproj`.
 - Passed: `dotnet run --project tests\PcNinja.Win11Upgrade.CliChecks\PcNinja.Win11Upgrade.CliChecks.csproj -c Debug --no-build`, SmokeTests and GuiChecks with `-c Debug --no-build`. CLI checks skipped the elevated fixed-name publication/rollback fixture; SmokeTests skipped elevated protected updater filesystem/cleanup fixtures and NTFS journal proof.
-- Latest focused check after `250fe98`: `dotnet build tests\PcNinja.Win11Upgrade.CliChecks\PcNinja.Win11Upgrade.CliChecks.csproj -c Debug -warnaserror --no-restore` passed with 0 warnings/errors; the matching `dotnet run ... -c Debug --no-build` passed its non-elevated fixtures and skipped the elevated fixed-name publication/rollback fixture. `git diff --check` passed.
+- Latest archive-reuse check: CLI Checks and SmokeTests both built with
+  `-warnaserror` and passed locally, including archive reuse/collision tests.
+  CLI Checks skipped the elevated fixed-name publication/rollback fixture, so
+  the owner-path regression still depends on hosted CI.
 - Passed after correcting a CLI help line-wrap mismatch: `powershell -NoProfile -ExecutionPolicy Bypass -File tests\Verify-Cli.ps1 -ExePath src\PcNinja.Win11UpgradeAssistant\bin\Debug\net8.0-windows\win-x64\Windows-Upgrade-Assistant-By-PcNinja.exe -ExpectedVersion 1.2.0`.
 - `tests\Verify-AppUpdatePackaging.ps1` could not run in Windows PowerShell 5 because `System.Text.Json.JsonDocumentOptions` is unavailable; `pwsh` is not installed. No network, app replacement, Windows Setup or reboot was performed. `git diff --check` passed after the latest code/help edit.
-- The focused local checks do not exercise the elevated failure path. Hosted CI for
-  `250fe98` failed run `41988970199`; the exact elevated fixture issue is under
-  investigation. Elevated fixture success, exact-head CI, signing, and owner-VM
-  acceptance remain release blockers.
+- The focused local checks do not exercise the elevated failure path. Hosted CI
+  for `250fe98` and diagnostic head `36deaee` failed; the ACL reuse correction
+  needs an exact-head hosted rerun. Elevated fixture success, exact-head CI,
+  signing, and owner-VM acceptance remain release blockers.
 
 ## Published and verified: stable 1.2
 
