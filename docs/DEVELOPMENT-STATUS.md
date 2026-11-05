@@ -2,6 +2,40 @@
 
 Updated: 2026-11-05. This is sanitized project context, not a backup of Codex chats.
 
+## Published and verified: stable 1.3
+
+Owner authorized publication and personally approved the protected `release`
+deployment. [Stable 1.3](https://github.com/JavierTorresFelendler/Win-Upgrade-Tool-by-PcNinja/releases/tag/v1.3.0)
+is published, latest, immutable, non-draft/non-prerelease (release ID 435255508).
+
+- PR31 merged normally after exact-head PR CI `42036364319` passed. Reviewed
+  source `658159f904b2e26a57fc3e23c22e4f053704d8b6` and merged main have identical
+  trees. Immutable tag/source: `8eb3fd618c1bd29395852f0e59b4f0c8b56921d4`.
+- Release workflow `42036881041` passed build and protected publisher, consuming
+  exact artifact ID `13418907218`. No protection or owner approval was bypassed.
+  Both PR and tag runs exercised actual single-file RC-to-stable and repeated
+  fixed-name helper/GUI lifecycle, native readiness, archives and cleanup after close.
+- Published EXE `Win-Upgrade-Tool-by-PcNinja.exe`, asset ID 713555995,
+  73,112,572 bytes, ProductVersion `1.3.0+8eb3fd618c1bd29395852f0e59b4f0c8b56921d4`,
+  FileVersion 1.3.0.0. SHA256:
+  `e211f08cde6d181d91a482352d0f3258ecbb1c2094607f8a0146e1e4858b9e93`.
+- Independently downloaded all four published assets. API size/digest, local
+  checksums, manifest exact EXE binding and source/version metadata match the
+  protected build. Published-EXE read-only CLI suite and live CURRENT check pass.
+- The exact earlier PR31 1.2 candidate (`bdd6883`, EXE SHA256 `7802d49b...bd9c4c`)
+  reports APP_UPDATE_AVAILABLE for the published fixed-name 1.3 release. All
+  applicationUpdated/setupStarted/readyForRestart flags remain false. This proves
+  live discovery, not an actual customer installation. Historical published
+  clients with versioned asset pins still require a one-time manual migration.
+- All 14 earlier release/asset records retain their prior IDs, names, sizes and
+  digests. The product remains unsigned. Owner reports the earlier candidate
+  works on Windows 10 Pro build 19045.6456 apart from the now-fixed discovery bug;
+  not every focus/UAC/display combination is independently documented.
+- No Windows Setup, ISO transfer/mount, real application update or reboot was run
+  on the development machine. Controlled lifecycle execution occurred only in CI.
+  Documentation/test-harness closeout does not move the immutable release tag or
+  change the published runtime. Future runtime changes require another release.
+
 ## Authorized: official 1.3.0 preparation and publication
 
 Release-source checkpoint `f155c65bb4fa5fe14f65ae9805d89a36ffdab327` passed
