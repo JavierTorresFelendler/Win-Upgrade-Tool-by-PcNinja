@@ -15,6 +15,8 @@ internal static class Program
     [STAThread]
     private static int Main(string[] args)
     {
+        if (args.Length > 0 && args[0].Equals(AppUpdateInstaller.CleanupArgument, StringComparison.Ordinal))
+            return args.Length == 1 ? AppUpdateInstaller.RunCleanupWorker() : 2;
         if (args.Length > 0 && args[0].Equals(AppUpdateInstaller.HelperArgument, StringComparison.Ordinal))
             return args.Length == 1 ? AppUpdateInstaller.RunHelperAsync().GetAwaiter().GetResult() : 2;
         AppLog.Info($"{ProductIdentity.Name}; build {ProductIdentity.BuildVersion}; " +
@@ -54,15 +56,20 @@ internal static class Program
         var readinessPipe = Environment.GetEnvironmentVariable(AppUpdateGuiReadiness.EnvironmentName);
         Environment.SetEnvironmentVariable(AppUpdateGuiReadiness.EnvironmentName, null);
         using var form = new MainForm();
-        // Remove leftovers of a finished app update once the window is up.
-        form.Shown += (_, _) => _ = Task.Run(AppUpdateInstaller.RemoveFinishedUpdateStagingAsync);
-        if (AppUpdateGuiReadiness.IsValidName(readinessPipe))
-            form.Shown += (_, _) => form.BeginInvoke(new Action(async () =>
+        form.Shown += (_, _) => form.BeginInvoke(new Action(async () =>
+        {
+            if (form.IsDisposed || !form.Visible) return;
+            try
             {
-                if (form.IsDisposed || !form.Visible) return;
                 form.Update(); // Paint the initialized window before acknowledging startup.
-                await AppUpdateGuiReadiness.SignalAsync(readinessPipe);
-            }));
+                if (AppUpdateGuiReadiness.IsValidName(readinessPipe))
+                    await AppUpdateGuiReadiness.SignalAsync(readinessPipe);
+                else
+                    AppUpdateInstaller.ConfirmPendingGuiStartup(Environment.ProcessPath
+                        ?? throw new InvalidOperationException("Application path is unavailable."));
+            }
+            finally { StartUpdateCleanupWorker(); }
+        }));
         try { Application.Run(form); }
         finally
         {
@@ -71,6 +78,28 @@ internal static class Program
             singleInstance.Dispose();
         }
         return 0;
+    }
+
+    private static void StartUpdateCleanupWorker()
+    {
+        try
+        {
+            using var worker = Process.Start(new ProcessStartInfo
+            {
+                FileName = Environment.ProcessPath
+                    ?? throw new InvalidOperationException("The update cleanup worker path is unavailable."),
+                WorkingDirectory = AppContext.BaseDirectory,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WindowStyle = ProcessWindowStyle.Hidden,
+                ArgumentList = { AppUpdateInstaller.CleanupArgument }
+            }) ?? throw new IOException("The update cleanup worker could not start.");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or Win32Exception or
+            InvalidOperationException or System.Security.SecurityException)
+        {
+            AppLog.Info($"Application-update cleanup worker could not start: {ex.Message}");
+        }
     }
 
     private static int ShowAlreadyRunning()

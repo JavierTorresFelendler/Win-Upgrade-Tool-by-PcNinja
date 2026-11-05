@@ -40,17 +40,21 @@ stays **Windows Upgrade Tool by PcNinja**. Historical RC/Beta assets keep
 their original names and bytes. See [product identity](docs/PRODUCT-IDENTITY.md).
 
 V1 includes [portable application updates](docs/APPLICATION-UPDATES.md).
-New version-named EXEs stay beside the running tool; nothing moves to Program
-Files or overwrites the old EXE. After the new GUI confirms startup, only the
-exact predecessor is marked `OLD-`, or `OLD.V1-`, `OLD.V2-`, etc. if occupied.
-A regular/critical offer shows the release summary and exact GitHub notes;
-only **Download and run the new version** authorizes EXE transfer.
+New stable/Beta releases use the fixed active filename
+`Win-Upgrade-Tool-by-PcNinja.exe`. Same-name updates replace atomically only
+after a verified recovery snapshot; the predecessor is archived using its
+verified four-part Windows FileVersion, with a SHA-256 suffix on a name
+collision. Existing published versioned assets remain unchanged. A regular/
+critical offer shows the release summary and exact GitHub notes; only
+**Download and run the new version** authorizes EXE transfer.
 Stable discovers stable only; Beta discovers numbered Betas only. **Beta and test
 candidate users must download and open a published stable build manually once**, including
 earlier test candidates reporting 1.0.0. The old
 `1.1.0-beta.5` cannot switch channels or downgrade itself to stable `1.0.0`.
-Future stable-to-stable updates use the normal consent-based updater. Windows
-restart flags and external Setup do not gate updates to this application.
+Older clients also retain strict versioned asset pins and cannot consume a new
+fixed-name manifest, so download/open the fixed-name build manually to migrate.
+Afterward, updates use the normal consent-based updater. Windows restart flags
+and external Setup do not gate updates to this application.
 
 The tool is free to use, but it is **not offered under an open-source license**.
 See [LICENSE](LICENSE) for the actual permissions and restrictions, and

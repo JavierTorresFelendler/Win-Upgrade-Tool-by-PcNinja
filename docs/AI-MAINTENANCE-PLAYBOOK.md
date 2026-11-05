@@ -218,7 +218,35 @@ All paths below are relative to the repository root.
 - Local client fixtures do not cover every DPI/graphics/remote-session case;
   repeat the original owner scenario on the affected machine after release.
 
-### 7. Keep silent Setup separate from orchestration and restart authorization
+### 7. Fixed-name EXE updates need transaction proof
+
+- Keep the active stable/Beta asset name fixed at
+  `Win-Upgrade-Tool-by-PcNinja.exe`; do not infer the archive identity from the
+  SemVer release. Read the predecessor's exact four-part Windows FileVersion
+  only after its hash-verified executable bytes are pinned.
+- Before a same-name replace, preserve and verify a recovery snapshot. Use
+  atomic same-volume replacement and retain displaced/failed bytes until
+  transaction status, installed successor and predecessor archive all verify.
+  If GUI startup is uncertain or the successor may still be alive, never kill it
+  to force rollback; retain recovery data and report the uncertainty.
+- A normal archive is keyed by FileVersion. If its existing bytes differ, use
+  the predecessor SHA-256 as a deterministic collision suffix. Reuse an
+  identical archive only after verifying it; retire legacy OLD duplicates only
+  after a versioned survivor is verified. Keep unrelated/modified legacy files.
+- Run cleanup in a separate bounded process, not a GUI-owned `Task.Run`. Delete
+  only exact protected files from a transaction whose installed app and archive
+  have been re-verified. A missing/invalid transaction or incomplete legacy
+  operation is not cleanup authority; retain it and log why.
+- Published versioned assets and old clients' exact filename checks are
+  immutable. Old clients cannot consume the new fixed-name manifest; document a
+  manual one-time download/open migration instead of weakening manifest, URL,
+  channel, digest or signer validation. EXE only; do not add MSI work.
+- Local archive unit fixtures use harmless bytes, while native ACL/replacement,
+  repeated fixed-name publication, failure/rollback and cleanup fixtures require
+  an elevated Windows token. Neither local smoke success nor an unsigned build
+  is release approval; hosted CI and owner VM acceptance remain separate gates.
+
+### 8. Keep silent Setup separate from orchestration and restart authorization
 
 - `/quiet` hides Setup UX; it must not remove source/image/storage/answer-file
   checks or imply consent. CLI requires explicit --yes for real quiet upgrades;
@@ -235,7 +263,7 @@ All paths below are relative to the repository root.
   combination. Also test the compiled portable CLI and client UI independently;
   successful fixtures are not proof of BigFix agent wiring or live quiet upgrades.
 
-### 8. Keep shared C# 5 source compatible with nullable-enabled consumers
+### 9. Keep shared C# 5 source compatible with nullable-enabled consumers
 
 - Shared source that must compile with legacy C# 5 cannot express modern nullable
   annotations. When a nullable-enabled SDK project links it, suppress only the
@@ -320,19 +348,20 @@ Unsigned builds explicitly depend on the project GitHub/TLS trust boundary.
 Preserve a valid existing signing certificate when signing is enabled; do not
 silently downgrade to unsigned or disable trust checks on a network error.
 
-The owner chose side-by-side versioned EXEs, not privileged in-place replacement
-or Program Files relocation. The owner later approved an OLD- prefix for the exact
-predecessor only after successor GUI readiness, with no overwrite or deletion.
-Keep private same-folder staging, anchored ancestors,
+Historical Beta trials used side-by-side versioned EXEs and an `OLD-` predecessor
+name. The owner's later fixed-name directive supersedes that naming decision for
+new stable/Beta releases and current app files; do not create new `OLD-` names.
+Keep historical assets and archives immutable except for narrowly verified
+transaction migration. Retain private same-folder staging, anchored ancestors,
 exact executable verification and a verified successor helper. A held no-write/
-no-delete executable guard must cover the final verification and launch; a path
-hash followed by an unlocked CreateProcess permits swapping bytes in a writable
-Desktop/Downloads folder. Never overwrite unknown existing version-named files.
-CopyFile can preserve a user-writable source ACL: explicitly secure reused
-candidate/helper copies before validation/execution. Existing unsafe staging ACLs
-are refused, not taken over. The exact parent handle and READY/GO transfer keep
-the non-thread-affine operation barrier through handoff. Never replace that
-protocol with a sleep, thread-affine mutex or stale history file.
+no-delete executable guard must cover final verification and launch; a path hash
+followed by an unlocked CreateProcess permits swapping bytes in a writable
+Desktop/Downloads folder. Never overwrite unknown existing files. CopyFile can
+preserve a user-writable source ACL: explicitly secure reused candidate/helper
+copies before validation/execution. Existing unsafe staging ACLs are refused, not
+taken over. The exact parent handle and READY/GO transfer keep the non-thread-
+affine operation barrier through handoff. Never replace that protocol with a
+sleep, thread-affine mutex or stale history file.
 
 Keep this application's own operations serialized, but never gate an application
 update on Windows restart flags or external Setup state. The owner explicitly
@@ -347,16 +376,16 @@ app unchanged; after handoff, keep the original EXE and diagnostic files and cor
 operation ID. Native publish/reuse/launch-lock tests use disposable files;
 they do not prove signing, elevation, handoff or relaunch on a customer's VM.
 
-For OLD housekeeping, authenticate the shown/painted successor's readiness to its
-native process identity over a bounded same-user nonce channel. Process.Start is
-not a readiness acknowledgement. Never scan for older EXEs or trust a public
-history file/environment path as rename authority. Use the private parent-bound
-request and rehash/rename the exact predecessor through the same DELETE-capable
-source handle, with anchored ancestors and ReplaceIfExists=false. Release the
-old read/no-delete guard only after new GUI readiness, then revalidate through
-the new handle. Archive collisions advance a bounded OLD.V1-/V2- sequence;
-never overwrite or rename a preexisting archive. Mismatches/locks/other failures skip housekeeping, never fail an
-already successful update. No ready GUI/CLI relaunch means no OLD rename.
+For legacy predecessor cleanup, authenticate the shown/painted successor's
+readiness to its native process identity over a bounded same-user nonce channel.
+Process.Start is not a readiness acknowledgement. Never scan arbitrary EXEs or
+trust a public history file/environment path as rename authority. Use the private
+parent-bound request, and only migrate an exact transaction-owned legacy `OLD-`
+archive after its versioned survivor is hash-verified. Retire only identical
+duplicates; preserve mismatches, locks and unrelated historical files. New
+archives use the verified FileVersion and deterministic SHA-256 collision name,
+never an `OLD.Vn-` sequence. Mismatches/locks/other failures retain recovery
+data; a successful app start is not proof that archival/cleanup completed.
 
 Stable release packaging must verify exact product/version/source commit and
 final bytes before publishing. Upload immutable assets to a draft, verify them,

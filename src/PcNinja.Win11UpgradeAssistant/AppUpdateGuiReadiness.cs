@@ -24,20 +24,47 @@ internal static class AppUpdateGuiReadiness
             PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
     }
 
-    internal static bool LaunchAndWait(string target)
+    internal static AppUpdateLaunchResult LaunchAndWait(string target)
     {
         var name = Prefix + Guid.NewGuid().ToString("N");
-        using var server = CreateServer(name);
+        NamedPipeServerStream server;
+        try { server = CreateServer(name); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception)
+        {
+            AppLog.Info($"Updated GUI readiness channel could not be created: {ex.Message}");
+            return new(false, true);
+        }
+        using (server)
+        {
         var start = new ProcessStartInfo
         {
             FileName = target, WorkingDirectory = Path.GetDirectoryName(target)!, UseShellExecute = false
             // No arguments. Environment conveys only an opaque ACK channel, never file paths or commands.
         };
         start.Environment[EnvironmentName] = name;
-        using var launched = Process.Start(start) ?? throw new IOException("The updated app could not be reopened.");
-        _ = launched.SafeHandle; // Retain this exact process, not a reusable PID.
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
-        return WaitAsync(server, launched.Id, timeout.Token).GetAwaiter().GetResult() && !launched.HasExited;
+        Process? launched;
+        try { launched = Process.Start(start); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception)
+        {
+            AppLog.Info($"Updated GUI could not be started: {ex.Message}");
+            return new(false, true);
+        }
+        if (launched is null) return new(false, true);
+        using (launched)
+        {
+            _ = launched.SafeHandle; // Retain this exact process, not a reusable PID.
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            bool ready;
+            try { ready = WaitAsync(server, launched.Id, timeout.Token).GetAwaiter().GetResult(); }
+            catch (Exception ex) when (ex is IOException or OperationCanceledException or UnauthorizedAccessException or InvalidDataException or System.ComponentModel.Win32Exception)
+            {
+                AppLog.Info($"Updated GUI readiness acknowledgement failed: {ex.Message}");
+                ready = false;
+            }
+            if (ready && !launched.HasExited) return new(true, false);
+            return new(false, launched.HasExited);
+        }
+        }
     }
 
     internal static async Task<bool> WaitAsync(NamedPipeServerStream server, int expectedProcessId, CancellationToken token)
@@ -54,7 +81,7 @@ internal static class AppUpdateGuiReadiness
             await writer.FlushAsync(token).ConfigureAwait(false);
             return true;
         }
-        catch (Exception ex) when (ex is IOException or OperationCanceledException or UnauthorizedAccessException) { return false; }
+        catch (Exception ex) when (ex is IOException or OperationCanceledException or UnauthorizedAccessException or InvalidDataException) { return false; }
     }
 
     internal static async Task SignalAsync(string? name)

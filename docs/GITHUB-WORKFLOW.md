@@ -77,7 +77,7 @@ requirements tracked in the issues.
 
 Owner-approved Beta tags may use unmerged source ONLY after exact-source PR checks
 pass. The workflow checks that proof before building. Beta is a prerelease,
-never latest stable, with version-named EXE, manifest and regular/critical notice
+never latest stable, with the fixed-name EXE, manifest and regular/critical notice
 configuration. Beta 2 waits until the owner has opened/tested Beta 1. This does
 not permit stable/RC tags off main, merging PR #13 or changing existing releases.
 See [Beta acceptance](APPLICATION-UPDATES.md). The older destination/first-stable

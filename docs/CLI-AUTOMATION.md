@@ -108,9 +108,11 @@ check reads metadata only; status stays offline. Explicit elevated
 The unreleased install verb remains an alias. CLI never opens a GUI/browser,
 replays upgrade arguments or asks for hidden input.
 
-New version-named EXEs stay beside the current EXE; no Program Files relocation,
-original overwrite/rename or numbered copies. An existing exact file is verified
-for reuse; unsafe/mismatched locations fail rather than silently relocating.
+New stable/Beta releases use the fixed `Win-Upgrade-Tool-by-PcNinja.exe` name.
+Same-name replacement is atomic after a verified predecessor snapshot; archives
+use verified four-part Windows FileVersion and SHA-256 collision names. No
+Program Files relocation or numbered copies. Older clients need a manual
+one-time fixed-name migration. Existing mismatched files are never overwritten.
 Beta and stable channels remain isolated. JSON release includes importance,
 message and exact GitHub notes URL. Critical never grants implicit consent.
 

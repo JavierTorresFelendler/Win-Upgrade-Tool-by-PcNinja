@@ -2,14 +2,20 @@
 
 Updated: 2026-11-05. This is sanitized project context, not a backup of Codex chats.
 
-## In progress: single-instance GUI and update-folder cleanup (PR #31, issue #30)
+## In progress: single-instance GUI and fixed-name EXE updater (PR #31, issue #30)
 
-Branch `feature/single-instance`, draft. No release build, tag or publication is
-authorized before every applicable code, CI and owner-VM gate passes.
+Branch `feature/single-instance`, draft. PR #31 is open at remote commit
+`07efa4bed62c82a0c7efd72819853e62450ca657`; its PR validation check passed for
+that commit only. The fixed-name updater work described below is currently local
+and uncommitted, so that remote check does not validate it. No release build,
+tag or publication is authorized before every applicable code, CI, signing and
+owner-VM gate passes.
 
 ### Single-instance GUI
 
-- Scope: GUI only. CLI, `AppOperationGate` and the update helper are unchanged.
+- The single-instance guard remains GUI-only; CLI operation-gate semantics are
+  unchanged. The update helper has separate owner-directed lifecycle changes
+  documented below.
 - Shared `shared/PcNinjaSingleInstance.cs` (C# 5, intended to stay byte-identical
   across PcNinja repositories) linked into the GUI; app id `WinUpgradeTool`.
 - Review findings of 2026-11-05 addressed in the second revision:
@@ -41,11 +47,14 @@ authorized before every applicable code, CI and owner-VM gate passes.
   nothing ever removed it and a standard user cannot open or delete it. Not caused
   by the single-instance change.
 - Fix: `Last-AppUpdate.json` moved to `%ProgramData%\PcNinja\Win11UpgradeAssistant`
-  (CLI still reads the old location as fallback). At GUI start, after the window is
-  shown, a background task takes the update gate (the helper holds it until it
-  exits), removes exact finished operation files and folders, the legacy result
-  and the staging folder. Unknown/locked content is kept and logged; retried for
-  ~2 minutes and again at the next start. Also cleans folders left by 1.2.
+  (CLI still reads the old location as fallback). After the window is painted,
+  the GUI confirms any pending CLI transaction against its fixed-name executable
+  and verified predecessor snapshot, then starts a bounded independent internal
+  cleanup worker. It takes the update gate (the helper holds it until it exits),
+  removes exact finished operation files and folders, the legacy result and the
+  staging folder. Unknown/locked or transaction-uncertain content is kept and
+  logged; retries run for ~2 minutes and cleanup is attempted again at the next
+  GUI start. Older folders without transaction proof remain retained.
 - Smoke check `CheckFinishedStagingCleanup` (elevated fixture) covers removal,
   a locked helper, unknown content and "only app files remain".
 
@@ -55,31 +64,46 @@ authorized before every applicable code, CI and owner-VM gate passes.
   normal/minimized/maximized/behind another window, modal dialog, standard to
   elevated relaunch, rapid repeated launches, relaunch while closing, restart after
   close/crash; a controlled self-update test (parent exits, successor ready, OLD
-  archive, folder ends with only the two EXEs, failed relaunch keeps the original).
+  versioned predecessor archive, no updater work folder remains, and failed
+  relaunch keeps the original; on a fresh folder only the current and predecessor
+  EXEs should remain).
 - Before release: version, release notes and updater-compatible asset name.
 
-### New EXE update lifecycle requirements (owner comment, 2026-11-05)
+### EXE updater implementation and remaining gates (owner directive, 2026-11-05)
 
-- The owner has requested an updater lifecycle based on one fixed, unversioned
-  active EXE name, atomic/recoverable same-name replacement, and predecessor
-  archives named from verified four-part Windows FileVersion (hash-qualified
-  when names collide), with strict file/ACL/reparse/hardlink protections,
-  migration/cleanup, and readiness/rollback tests.
-- This PR does not implement that migration: the current updater still stages
-  and publishes the versioned release asset beside the running EXE, then archives
-  the predecessor after GUI readiness. Existing stable/Beta clients and immutable
-  published assets need explicit compatibility coverage. EXE only; no MSI work.
-- Treat this as a release blocker, not as satisfied by the single-instance or
-  staging-cleanup changes below. Do not tag or publish until the fixed-name
-  lifecycle and compatibility requirements are implemented and verified.
+- Implemented in the local worktree: new stable/Beta manifests and publisher
+  identity use the fixed `Win-Upgrade-Tool-by-PcNinja.exe`; historical release
+  assets remain unchanged. The updater captures and verifies the predecessor's
+  four-part Windows FileVersion, creates deterministic versioned/hash-qualified
+  archives, supports versioned-to-fixed bootstrap and repeated fixed-name
+  replacement, retains snapshots/transaction state, and distinguishes rollback
+  from uncertain/live successor readiness. Cleanup requires a `successor-ready`
+  transaction; `publishing` and `awaiting-gui` state cannot authorize archival.
+  A bounded independent cleanup worker runs after the GUI is painted. No MSI work
+  was added.
+- Compatibility remains strict: older binaries' versioned asset checks are not
+  weakened; their one-time migration is a manual download/open. Published
+  versioned assets/tags, including stable 1.2, remain immutable.
+- Not yet complete or proven: legacy staging without transaction proof is
+  conservatively retained, so migration/cleanup of every older operation layout
+  is incomplete. Schema-v2 requests without predecessor FileVersion metadata
+  remain accepted; the helper recaptures it from the verified old file, and a
+  request-validation check covers the legacy shape, but full handoff recapture
+  remains untested. Required elevated filesystem/publication/rollback/cleanup
+  fixtures did not run under this token; NTFS journal proof also skipped. Actual
+  helper/EXE replacement, Windows GUI close/relaunch and owner VM acceptance
+  remain open.
+- The product is unsigned. Signing requirements are not satisfied. No official
+  release is ready or authorized; do not tag, publish, replace assets or claim
+  release readiness.
 
 ### Local verification on 2026-11-05
 
-- `dotnet build tests\PcNinja.Win11Upgrade.SmokeTests\PcNinja.Win11Upgrade.SmokeTests.csproj -c Debug -warnaserror` and `dotnet run --project tests\PcNinja.Win11Upgrade.SmokeTests\PcNinja.Win11Upgrade.SmokeTests.csproj -c Debug --no-build` passed. NTFS journal proof and elevated updater filesystem/cleanup fixtures skipped because the required facilities/token were unavailable.
-- `dotnet build src\PcNinja.Win11UpgradeAssistant\PcNinja.Win11UpgradeAssistant.csproj -c Debug -warnaserror` passed with 0 warnings/errors.
-- `dotnet build tests\PcNinja.Win11Upgrade.GuiChecks\PcNinja.Win11Upgrade.GuiChecks.csproj -c Debug -warnaserror` and `dotnet run --project tests\PcNinja.Win11Upgrade.GuiChecks\PcNinja.Win11Upgrade.GuiChecks.csproj -c Debug --no-build` passed.
-- `tests\Verify-Cli.ps1` could not run because this machine's PowerShell execution policy blocks scripts. Direct redirected-output CLI checks passed for version 1.2.0, offline app-update status, and consent-required refusal; no download or replacement was started. `git diff --check` passed.
-- These local checks do not replace exact-head hosted CI, the elevated filesystem/journal fixtures, or the owner VM UI/self-update acceptance above.
+- Passed with warnings as errors: `dotnet build src\PcNinja.Win11UpgradeAssistant\PcNinja.Win11UpgradeAssistant.csproj -c Debug -warnaserror --no-restore`, and the same command for `tests\PcNinja.Win11Upgrade.CliChecks\PcNinja.Win11Upgrade.CliChecks.csproj`, `tests\PcNinja.Win11Upgrade.SmokeTests\PcNinja.Win11Upgrade.SmokeTests.csproj`, and `tests\PcNinja.Win11Upgrade.GuiChecks\PcNinja.Win11Upgrade.GuiChecks.csproj`.
+- Passed: `dotnet run --project tests\PcNinja.Win11Upgrade.CliChecks\PcNinja.Win11Upgrade.CliChecks.csproj -c Debug --no-build`, SmokeTests and GuiChecks with `-c Debug --no-build`. CLI checks skipped the elevated fixed-name publication/rollback fixture; SmokeTests skipped elevated protected updater filesystem/cleanup fixtures and NTFS journal proof.
+- Passed after correcting a CLI help line-wrap mismatch: `powershell -NoProfile -ExecutionPolicy Bypass -File tests\Verify-Cli.ps1 -ExePath src\PcNinja.Win11UpgradeAssistant\bin\Debug\net8.0-windows\win-x64\Windows-Upgrade-Assistant-By-PcNinja.exe -ExpectedVersion 1.2.0`.
+- `tests\Verify-AppUpdatePackaging.ps1` could not run in Windows PowerShell 5 because `System.Text.Json.JsonDocumentOptions` is unavailable; `pwsh` is not installed. No network, app replacement, Windows Setup or reboot was performed. `git diff --check` passed after the latest code/help edit.
+- The local checks do not validate the current PR head: the edits remain uncommitted/unpushed. Hosted CI must run on the exact new head after checkpointing, followed by elevated fixture and owner-VM evidence.
 
 ## Published and verified: stable 1.2
 

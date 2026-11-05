@@ -32,14 +32,16 @@ internal static class ApplicationUpdateChecks
         Require(AppUpdateIdentity.Product == "Windows Upgrade Tool by PcNinja" &&
             AppUpdateIdentity.Repository == "JavierTorresFelendler/Win-Upgrade-Tool-by-PcNinja",
             "Final product/repository branding changed.");
+        Require(AppUpdateIdentity.AssetName == "Win-Upgrade-Tool-by-PcNinja.exe",
+            "The active updater EXE must use the fixed unversioned filename.");
         foreach (var (version, name) in new[]
         {
-            ("1.0.0", "Win-Upgrade-Tool-by-PcNinja-v.1.exe"),
-            ("1.1.0", "Win-Upgrade-Tool-by-PcNinja-v.1.1.exe"),
-            ("1.2.0", "Win-Upgrade-Tool-by-PcNinja-v.1.2.exe"),
-            ("1.0.1", "Win-Upgrade-Tool-by-PcNinja-v.1.0.1.exe"),
-            ("2.0.0", "Win-Upgrade-Tool-by-PcNinja-v.2.exe"),
-            ("1.1.0-beta.5", "Windows-Upgrade-Assistant-By-PcNinja-V1.1-Beta5.exe"),
+            ("1.0.0", "Win-Upgrade-Tool-by-PcNinja.exe"),
+            ("1.1.0", "Win-Upgrade-Tool-by-PcNinja.exe"),
+            ("1.2.0", "Win-Upgrade-Tool-by-PcNinja.exe"),
+            ("1.0.1", "Win-Upgrade-Tool-by-PcNinja.exe"),
+            ("2.0.0", "Win-Upgrade-Tool-by-PcNinja.exe"),
+            ("1.1.0-beta.5", "Win-Upgrade-Tool-by-PcNinja.exe"),
             ("1.1.0-rc.8", "Windows-Upgrade-Assistant-By-PcNinja-V1.1-RC8.exe")
         }) Require(AppUpdateIdentity.AssetNameFor(version) == name, "Stable-short/legacy-preview filename mapping changed.");
         var ordered = new[] { "1.0.0-alpha", "1.0.0-alpha.1", "1.0.0-alpha.beta", "1.0.0-beta", "1.0.0-beta.2",
@@ -86,24 +88,24 @@ internal static class ApplicationUpdateChecks
     private static async Task CheckDiscoveryAsync()
     {
         var firstStable = await CheckFixtureAsync(Manifest("1.0.0"), "1.0.0-rc.1");
-        Require(firstStable.State == AppUpdateCheckState.Available && firstStable.Release?.AssetName == "Win-Upgrade-Tool-by-PcNinja-v.1.exe",
-            "First stable V1 did not bind its exact short-name asset.");
+        Require(firstStable.State == AppUpdateCheckState.Available && firstStable.Release?.AssetName == AppUpdateIdentity.AssetName,
+            "First stable V1 did not bind its exact fixed-name asset.");
         var nextStable = await CheckFixtureAsync(Manifest("1.1.0"), "1.0.0");
-        Require(nextStable.State == AppUpdateCheckState.Available && nextStable.Release?.AssetName == "Win-Upgrade-Tool-by-PcNinja-v.1.1.exe",
-            "Stable V1 -> V1.1 did not bind the next short-name asset.");
+        Require(nextStable.State == AppUpdateCheckState.Available && nextStable.Release?.AssetName == AppUpdateIdentity.AssetName,
+            "Stable V1 -> V1.1 did not bind the fixed-name asset.");
         var v12 = Manifest("1.2.0");
         var v1Upgrade = await CheckFixtureAsync(v12, "1.0.0");
         Require(v1Upgrade.State == AppUpdateCheckState.Available && v1Upgrade.Release?.Version == "1.2.0" &&
-            v1Upgrade.Release.AssetName == "Win-Upgrade-Tool-by-PcNinja-v.1.2.exe",
-            "Installed V1 did not offer the exact V1.2 stable update.");
+            v1Upgrade.Release.AssetName == AppUpdateIdentity.AssetName,
+            "Installed V1 did not offer the exact V1.2 fixed-name stable update.");
         Require((await CheckFixtureAsync(v12, "1.2.0")).State == AppUpdateCheckState.UpToDate,
             "V1.2 offered itself as an update.");
         Require((await CheckFixtureAsync(v12, "1.3.0")).State == AppUpdateCheckState.UpToDate,
             "V1.2 offered a downgrade to a newer installed client.");
-        var wrongV1Name = v12 with { AssetName = "Win-Upgrade-Tool-by-PcNinja-v.1.exe",
-            AssetUrl = AssetUrl(v12.Tag, "Win-Upgrade-Tool-by-PcNinja-v.1.exe") };
-        Require((await CheckFixtureAsync(wrongV1Name, "1.0.0")).State == AppUpdateCheckState.Unavailable,
-            "A V1.2 release using only the V1 filename silently changed the updater contract.");
+        var oldVersionedName = v12 with { AssetName = "Win-Upgrade-Tool-by-PcNinja-v.1.2.exe",
+            AssetUrl = AssetUrl(v12.Tag, "Win-Upgrade-Tool-by-PcNinja-v.1.2.exe") };
+        Require((await CheckFixtureAsync(oldVersionedName, "1.0.0")).State == AppUpdateCheckState.Unavailable,
+            "A new updater accepted a versioned historical asset instead of the exact fixed filename.");
         Require((await CheckFixtureAsync(Manifest("1.0.0"), "1.1.0-beta.5")).State == AppUpdateCheckState.NoBetaRelease,
             "First stable silently downgraded/switched an existing Beta.");
         var beta = Manifest("1.1.0-beta.2");

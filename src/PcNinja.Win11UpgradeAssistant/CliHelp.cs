@@ -368,7 +368,7 @@ COMMAND: app-update
 
 Download and run a new portable assistant, NOT a Windows update or installer.
 
-Usage (substitute the exact version-named EXE you are running):
+Usage (substitute the exact EXE you are running):
   Windows-Upgrade-Assistant-By-PcNinja-V1.1-Beta1.exe app-update check [--json]
   Windows-Upgrade-Assistant-By-PcNinja-V1.1-Beta1.exe app-update status [--json]
   Windows-Upgrade-Assistant-By-PcNinja-V1.1-Beta1.exe app-update run --yes [--json]
@@ -377,10 +377,12 @@ check reads only pinned GitHub release metadata/manifest. Beta executables selec
 numbered Beta releases; stable/RC executables select stable only. Drafts, other
 repositories and older/equal versions are not offered. status stays offline.
 
-run requires Administrator and explicit --yes. The exact version-named EXE is
-verified and saved BESIDE THE RUNNING EXE, not the current shell directory.
-No Program Files relocation, original replacement or numbered downloaded Copy N.
-An existing exact-name file is validated for reuse; a mismatch is not overwritten.
+run requires Administrator and explicit --yes. The exact fixed-name release EXE
+is verified and saved BESIDE THE RUNNING EXE, not the current shell directory.
+The canonical active filename is Win-Upgrade-Tool-by-PcNinja.exe. Same-name
+updates use atomic replacement with a verified recovery snapshot; no numbered
+downloaded Copy N is created. An existing exact-name file is validated for reuse;
+a mismatch is not overwritten.
 Unsupported/read-only folders fail rather than silently choosing another location.
 The install verb remains an alias for run; no software is installed.
 
@@ -393,10 +395,14 @@ verified. Unsigned trust depends on the publishing GitHub account/manifest; a
 checksum or critical tag is not an independent digital signature.
 
 A verified helper waits for this exact parent to exit. GUI reopens the new EXE
-with no arguments; CLI never opens a GUI or replays commands. CLI keeps the old
-filename. After confirmed new GUI readiness, only its exact predecessor is marked
-OLD-, then OLD.V1-/OLD.V2- on collisions, without overwriting any existing file.
-Local last-update status includes archiveStatus and archivedPath.
+with no arguments; CLI never opens a GUI or replays commands. After confirmed GUI
+readiness, the predecessor is archived as
+Win-Upgrade-Tool-by-PcNinja-v<FileVersion>.exe, where FileVersion is the verified
+four-part Windows file version. A different predecessor hash uses a SHA-256
+suffix; unrelated archives are never overwritten. Failed readiness restores the
+same-name predecessor only when the successor is confirmed gone; otherwise all
+recovery copies are retained. Local last-update status includes archiveStatus,
+archivedPath and any deferred archival reason.
 APP_UPDATE_HANDOFF_STARTED means handed off, NOT running yet. Inspect subsequent
 app-update status and the new copy's --version. readyForRestart and setupStarted
 are always false. No Windows upgrade/reboot is started.
@@ -404,6 +410,11 @@ are always false. No Windows upgrade/reboot is started.
 Exit groups: 0 result/handoff, 2 invalid arguments, 3 blocked, 4 check/verification/
 helper failure, 5 permission, 6 cancelled. Only this tool's own active operations
 are serialized. External Setup and pending restart flags do not block application updates.
+
+Older published binaries and their versioned release assets are immutable and
+keep their exact filename checks. Older clients cannot consume a new fixed-name manifest;
+download and open the fixed-name EXE manually once to migrate, then use
+the updater for subsequent releases.
 """;
 
     private const string LogPath = """

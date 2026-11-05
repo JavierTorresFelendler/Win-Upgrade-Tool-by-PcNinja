@@ -8,66 +8,95 @@ internal static class PortablePublishChecks
     {
         using var identity = WindowsIdentity.GetCurrent();
         if (!new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator))
-        { Console.WriteLine("SKIP: Elevated same-folder publish/reuse/launch-lock fixture; no actual helper or executable is run."); return; }
+        { Console.WriteLine("SKIP: Elevated fixed-name publish/rollback fixture; no actual helper or executable is run."); return; }
         var parent = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "PcNinja-AppUpdate-Fixture-" + Guid.NewGuid().ToString("N")));
         if (Path.GetDirectoryName(parent) != Path.TrimEndingDirectorySeparator(Path.GetFullPath(Path.GetTempPath())))
             throw new Exception("Unsafe temporary publisher fixture.");
         Directory.CreateDirectory(parent);
         try
         {
-            var asset = AppUpdateIdentity.AssetNameFor(info.Version);
-            var tag = "v" + info.Version;
-            var release = new AppUpdateManifest(1, AppUpdateIdentity.Product, AppUpdateIdentity.Repository,
-                AppUpdateIdentity.ChannelFor(info.Version), info.Version, tag, asset,
-                $"https://github.com/{AppUpdateIdentity.Repository}/releases/download/{tag}/{asset}", info.SizeBytes,
-                info.Sha256, $"https://github.com/{AppUpdateIdentity.Repository}/releases/tag/{tag}");
-            var original = Path.Combine(parent, "original-retained.exe");
+            var release = MakeRelease(info);
+            var legacyName = "Win-Upgrade-Tool-by-PcNinja-v.1.2.exe";
+            var original = Path.Combine(parent, legacyName);
             File.Copy(builtHost, original);
-            string target;
-            using (var workspace = AppUpdateWorkspace.CreateFixture(parent, Guid.NewGuid().ToString("N"), info.SizeBytes, info.SizeBytes))
+            var target = Path.Combine(parent, AppUpdateIdentity.AssetName);
+            var id = Guid.NewGuid().ToString("N");
+            AppUpdateArchive archived;
+            using (var workspace = AppUpdateWorkspace.CreateFixture(parent, id, info.SizeBytes, info.SizeBytes))
             {
                 File.Copy(builtHost, workspace.CandidatePath);
-                target = workspace.TargetPath(release);
+                var request = MakeRequest(workspace, original, legacyName, info, release);
                 var callbackCount = 0;
-                var request = new AppUpdateRequest(2, Path.GetFileName(workspace.DirectoryPath), DateTimeOffset.UtcNow,
-                    Environment.ProcessId + 10000, DateTime.UtcNow.AddMinutes(-1).Ticks,
-                    original, info.Sha256, info.SignerThumbprint, release, true);
-                AppUpdateInstaller.ApplyVerified(workspace, request, launchedPath =>
+                var applied = AppUpdateInstaller.ApplyVerified(workspace, request, launchedPath =>
                 {
                     callbackCount++;
-                    Require(launchedPath == target, "Helper apply chose a different launch path.");
-                    Require(File.Exists(original) && File.Exists(target) && Path.GetDirectoryName(target) == parent, "New version moved away from its source directory.");
+                    Require(launchedPath == target && File.Exists(target) && File.Exists(original),
+                        "Historical versioned-to-fixed bootstrap selected the wrong file.");
                     Reject(() => File.WriteAllText(target, "must not change verified bytes"));
                     Reject(() => File.Move(target, target + ".renamed"));
                     Reject(() => Directory.Move(parent, parent + ".renamed"));
+                    return new(true, false);
                 });
-                Require(callbackCount == 1, "App-only helper apply did not reach its injected launch exactly once.");
-                if (AppUpdateInstaller.ArchivePrevious(workspace, request, false).Status != "not-requested" || !File.Exists(original))
-                    throw new Exception("Missing GUI readiness renamed the predecessor.");
-                if (AppUpdateInstaller.ArchivePrevious(workspace, request with { RelaunchGui = false }, true).Status != "not-requested")
-                    throw new Exception("CLI without GUI relaunch archived an unconfirmed predecessor.");
+                Require(callbackCount == 1 && applied.Ready, "The injected readiness result was not honored.");
+                var archiveResult = AppUpdateInstaller.ArchivePrevious(workspace, request, true);
+                var expectedArchive = Path.Combine(parent, AppUpdateWorkspace.ArchiveName(info.FileVersion));
+                Require(archiveResult.Status == "archived" && archiveResult.Path == expectedArchive &&
+                    !File.Exists(original) && AppUpdateWorkspace.InspectExecutable(expectedArchive).Sha256 == info.Sha256,
+                    "The historical predecessor was not atomically archived under its verified FileVersion.");
+                archived = new(archiveResult.Status, archiveResult.Path!);
             }
-            using (var reused = AppUpdateWorkspace.CreateFixture(parent, Guid.NewGuid().ToString("N"), info.SizeBytes, info.SizeBytes))
+
+            for (var update = 0; update < 2; update++)
             {
-                reused.CopyExistingCandidate(release, info.SignerThumbprint);
-                using (reused.PublishAndHold(release, info.SignerThumbprint)) { }
-                reused.CleanupUncommitted();
-                Require(File.Exists(original) && File.Exists(target) && Directory.GetFiles(parent, "*.exe").Length == 2,
-                    "Reuse removed the original or created a collision/numbered executable.");
+                using var workspace = AppUpdateWorkspace.CreateFixture(parent, Guid.NewGuid().ToString("N"), info.SizeBytes, info.SizeBytes);
+                workspace.CopyExistingCandidate(release, info.SignerThumbprint);
+                var request = MakeRequest(workspace, target, AppUpdateIdentity.AssetName, info, release);
+                var applied = AppUpdateInstaller.ApplyVerified(workspace, request, launchedPath =>
+                {
+                    Require(launchedPath == target, "Same-name update launched a noncanonical path.");
+                    Reject(() => File.WriteAllText(target, "must not change successor bytes"));
+                    Reject(() => File.Move(target, target + ".renamed"));
+                    return new(true, false);
+                });
+                Require(applied.Ready && AppUpdateWorkspace.InspectExecutable(target).Sha256 == info.Sha256,
+                    "Repeated fixed-name replacement failed exact successor verification.");
+                var result = AppUpdateInstaller.ArchivePrevious(workspace, request, true);
+                Require(result.Status == "reused" && result.Path == archived.Path &&
+                    !File.Exists(workspace.PreviousPath), "Identical predecessor archive was not reused safely.");
             }
-            // Change this fixture's expected release digest, not a customer's file.
+
+            using (var rollback = AppUpdateWorkspace.CreateFixture(parent, Guid.NewGuid().ToString("N"), info.SizeBytes, info.SizeBytes))
+            {
+                rollback.CopyExistingCandidate(release, info.SignerThumbprint);
+                var request = MakeRequest(rollback, target, AppUpdateIdentity.AssetName, info, release);
+                var failed = AppUpdateInstaller.ApplyVerified(rollback, request, _ => new(false, true));
+                Require(!failed.Ready && failed.SafeToRollback &&
+                    AppUpdateWorkspace.InspectExecutable(target).Sha256 == info.Sha256 &&
+                    File.Exists(rollback.FailedPath) && File.Exists(rollback.DisplacedPath),
+                    "A definitely exited failed successor did not restore and retain verifiable rollback bytes.");
+            }
+
+            using (var uncertain = AppUpdateWorkspace.CreateFixture(parent, Guid.NewGuid().ToString("N"), info.SizeBytes, info.SizeBytes))
+            {
+                uncertain.CopyExistingCandidate(release, info.SignerThumbprint);
+                var request = MakeRequest(uncertain, target, AppUpdateIdentity.AssetName, info, release);
+                var outcome = AppUpdateInstaller.ApplyVerified(uncertain, request, _ => new(false, false));
+                Require(!outcome.Ready && !outcome.SafeToRollback &&
+                    File.Exists(uncertain.PreviousPath) && File.Exists(uncertain.DisplacedPath) &&
+                    AppUpdateWorkspace.InspectExecutable(target).Sha256 == info.Sha256,
+                    "Uncertain GUI readiness discarded or restored potentially live-process bytes.");
+            }
+
             using (var refused = AppUpdateWorkspace.CreateFixture(parent, Guid.NewGuid().ToString("N"), info.SizeBytes, info.SizeBytes))
             {
                 Reject(() => refused.CopyExistingCandidate(release with { Sha256 = new string('0', 64) }, info.SignerThumbprint));
-                Require(AppUpdateWorkspace.InspectExecutable(target).Sha256 == info.Sha256, "Mismatch handling overwrote the existing version.");
-                var request = new AppUpdateRequest(2, Path.GetFileName(refused.DirectoryPath), DateTimeOffset.UtcNow,
-                    Environment.ProcessId + 10000, DateTime.UtcNow.AddMinutes(-1).Ticks, original, info.Sha256, null, release, true);
-                using (var held = AppUpdateWorkspace.HoldOriginal(original, info.Sha256))
-                    Require(AppUpdateInstaller.ArchivePrevious(refused, request, true).Status == "retained", "Locked predecessor housekeeping failed the update.");
-                var archived = AppUpdateInstaller.ArchivePrevious(refused, request, true);
-                Require(archived.Status == "renamed" && archived.Path == Path.Combine(parent, "OLD-" + Path.GetFileName(original)), "Confirmed GUI did not archive the exact predecessor.");
+                Require(AppUpdateWorkspace.InspectExecutable(target).Sha256 == info.Sha256,
+                    "Mismatch handling overwrote the current fixed-name EXE.");
             }
-            Console.WriteLine("PASS: Real elevated same-folder versioned publish, existing-file reuse, no overwrite/rename/Copy N, original preservation and no-write/no-delete launch guard. Temporary test-host bytes only; no helper/executable/Setup launched.");
+            CheckTransactionCleanup(builtHost, info);
+            Require(Directory.GetFiles(parent, "*.exe").Length == 2,
+                "The portable folder did not settle to one canonical EXE plus its predecessor archive.");
+            Console.WriteLine("PASS: Elevated historical-name bootstrap, two repeated fixed-name atomic replacements, hash-verified version archive/reuse, definite rollback and uncertain-readiness retention. Test-host bytes only; no helper/executable/Setup launched.");
         }
         finally
         {
@@ -78,7 +107,65 @@ internal static class PortablePublishChecks
             Directory.Delete(resolved, recursive: true);
         }
     }
+
+    private static AppUpdateManifest MakeRelease(AppExecutableInfo info)
+    {
+        var asset = AppUpdateIdentity.AssetNameFor(info.Version);
+        var tag = "v" + info.Version;
+        return new(1, AppUpdateIdentity.Product, AppUpdateIdentity.Repository,
+            AppUpdateIdentity.ChannelFor(info.Version), info.Version, tag, asset,
+            $"https://github.com/{AppUpdateIdentity.Repository}/releases/download/{tag}/{asset}", info.SizeBytes,
+            info.Sha256, $"https://github.com/{AppUpdateIdentity.Repository}/releases/tag/{tag}");
+    }
+
+    private static AppUpdateRequest MakeRequest(AppUpdateWorkspace workspace, string original, string originalName,
+        AppExecutableInfo info, AppUpdateManifest release) =>
+        new(2, Path.GetFileName(workspace.DirectoryPath), DateTimeOffset.UtcNow,
+            Environment.ProcessId + 10000, DateTime.UtcNow.AddMinutes(-1).Ticks,
+            original, info.Sha256, info.SignerThumbprint, release, true, info.FileVersion);
+
+    private static void CheckTransactionCleanup(string builtHost, AppExecutableInfo info)
+    {
+        var id = Guid.NewGuid().ToString("N");
+        var parent = Path.GetFullPath(Path.Combine(Path.GetTempPath(), "PcNinja-AppUpdate-Fixture-" + Guid.NewGuid().ToString("N")));
+        Directory.CreateDirectory(parent);
+        try
+        {
+            var target = Path.Combine(parent, AppUpdateIdentity.AssetName);
+            File.Copy(builtHost, target);
+            using (var workspace = AppUpdateWorkspace.CreateFixture(parent, id, info.SizeBytes, info.SizeBytes))
+            {
+                workspace.SnapshotOriginal(target, info.Sha256);
+                workspace.WriteTransactionState(new AppUpdateTransactionState(1, id, "awaiting-gui",
+                    info.Sha256, info.Sha256, info.FileVersion, AppUpdateIdentity.AssetName, null));
+            }
+            var pending = AppUpdateWorkspace.RemoveFinishedStagingFixture(parent);
+            var previous = Path.Combine(parent, AppUpdateWorkspace.StateDirectoryName, id, "previous.exe");
+            Require(!pending.StagingRemoved && File.Exists(previous) &&
+                pending.Retained.Any(item => item.StartsWith(id + ":", StringComparison.Ordinal)),
+                "Cleanup archived or removed a predecessor before successor GUI readiness.");
+            AppUpdateInstaller.ConfirmPendingGuiStartup(target);
+            using (var workspace = AppUpdateWorkspace.OpenFixture(parent, id))
+                Require(workspace.ReadTransactionState<AppUpdateTransactionState>().Status == "successor-ready",
+                    "A fully initialized canonical GUI did not authenticate the pending transaction.");
+            var finished = AppUpdateWorkspace.RemoveFinishedStagingFixture(parent);
+            var archive = Path.Combine(parent, AppUpdateWorkspace.ArchiveName(info.FileVersion));
+            Require(finished.StagingRemoved && File.Exists(Path.Combine(parent, AppUpdateIdentity.AssetName)) &&
+                AppUpdateWorkspace.InspectExecutable(archive).Sha256 == info.Sha256 &&
+                Directory.GetFiles(parent, "*.exe").Length == 2,
+                "Readiness-proven cleanup did not archive the predecessor and remove only updater staging.");
+        }
+        finally
+        {
+            if (Path.GetDirectoryName(parent) != Path.TrimEndingDirectorySeparator(Path.GetFullPath(Path.GetTempPath())) ||
+                !Path.GetFileName(parent).StartsWith("PcNinja-AppUpdate-Fixture-", StringComparison.Ordinal))
+                throw new Exception("Unsafe transaction fixture cleanup target.");
+            Directory.Delete(parent, recursive: true);
+        }
+    }
+
     private static void Require(bool ok, string message) { if (!ok) throw new Exception(message); }
+
     private static void Reject(Action action)
     {
         try { action(); }
