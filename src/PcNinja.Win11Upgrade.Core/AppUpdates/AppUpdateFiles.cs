@@ -565,7 +565,7 @@ public sealed class AppUpdateWorkspace : IDisposable
         input.Position = 0;
         using var security = new NativeSecurity(PrivateFileSddl);
         var attributes = security.Attributes;
-        using var snapshot = CreateFileWithSecurity(PreviousPath, GenericWrite | ReadControl | ReadAttributes, 0,
+        using var snapshot = CreateFileWithSecurity(PreviousPath, GenericRead | GenericWrite | ReadControl | ReadAttributes, 0,
             ref attributes, 1, OpenReparsePoint, IntPtr.Zero);
         if (snapshot.IsInvalid) throw NativeFailure("Could not create the private predecessor recovery snapshot.");
         VerifyRegularFile(snapshot, PreviousPath);
@@ -574,9 +574,11 @@ public sealed class AppUpdateWorkspace : IDisposable
         {
             input.CopyTo(output);
             output.Flush(flushToDisk: true);
+            // FileStream owns the handle: verify while it is still open, using
+            // the same exclusive read/write handle that received the bytes.
+            if (!HashHandle(snapshot).Equals(expectedHash, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException("The predecessor recovery snapshot failed its SHA-256 verification.");
         }
-        if (!HashHandle(snapshot).Equals(expectedHash, StringComparison.OrdinalIgnoreCase))
-            throw new InvalidDataException("The predecessor recovery snapshot failed its SHA-256 verification.");
     }
 
     public IDisposable ReplaceCurrentAndHold(AppUpdateManifest release, string? signer, string expectedParentHash)

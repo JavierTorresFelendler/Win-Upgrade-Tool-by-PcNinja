@@ -26,6 +26,7 @@ internal static class PortablePublishChecks
             {
                 File.Copy(builtHost, workspace.CandidatePath);
                 var request = MakeRequest(workspace, original, legacyName, info, release);
+                workspace.SnapshotOriginal(original, info.Sha256);
                 var callbackCount = 0;
                 var applied = AppUpdateInstaller.ApplyVerified(workspace, request, launchedPath =>
                 {
@@ -53,6 +54,7 @@ internal static class PortablePublishChecks
                 using var workspace = AppUpdateWorkspace.CreateFixture(parent, Guid.NewGuid().ToString("N"), info.SizeBytes, info.SizeBytes);
                 workspace.CopyExistingCandidate(release, info.SignerThumbprint);
                 var request = MakeRequest(workspace, target, AppUpdateIdentity.AssetName, info, release);
+                workspace.SnapshotOriginal(target, info.Sha256);
                 var applied = AppUpdateInstaller.ApplyVerified(workspace, request, launchedPath =>
                 {
                     Require(launchedPath == target, "Same-name update launched a noncanonical path.");
@@ -74,6 +76,7 @@ internal static class PortablePublishChecks
             {
                 rollback.CopyExistingCandidate(release, info.SignerThumbprint);
                 var request = MakeRequest(rollback, target, AppUpdateIdentity.AssetName, info, release);
+                rollback.SnapshotOriginal(target, info.Sha256);
                 var failed = AppUpdateInstaller.ApplyVerified(rollback, request, _ => new(false, true));
                 Require(!failed.Ready && failed.SafeToRollback &&
                     AppUpdateWorkspace.InspectExecutable(target).Sha256 == info.Sha256 &&
@@ -85,6 +88,7 @@ internal static class PortablePublishChecks
             {
                 uncertain.CopyExistingCandidate(release, info.SignerThumbprint);
                 var request = MakeRequest(uncertain, target, AppUpdateIdentity.AssetName, info, release);
+                uncertain.SnapshotOriginal(target, info.Sha256);
                 var outcome = AppUpdateInstaller.ApplyVerified(uncertain, request, _ => new(false, false));
                 Require(!outcome.Ready && !outcome.SafeToRollback &&
                     File.Exists(uncertain.PreviousPath) && File.Exists(uncertain.DisplacedPath) &&

@@ -2,6 +2,19 @@
 
 Updated: 2026-11-05. This is sanitized project context, not a backup of Codex chats.
 
+## VM candidate follow-up (2026-11-05)
+
+The owner requested completion through a downloadable VM test candidate. This
+authorizes fixes and test builds on PR #31; it does not authorize a merge or release.
+Investigating failed run `41991072509` found that the elevated publisher fixture
+omitted the predecessor snapshot made by the real helper before `ApplyVerified`.
+It now follows that sequence for bootstrap, repeated replacement and rollback.
+The snapshot implementation also hashed a write-only handle after its owning
+FileStream had closed it. It now verifies through the same exclusive read/write
+handle after flushing and before disposal. Local CLI and offline packaging,
+workflow and publication-policy fixtures pass; elevated evidence awaits exact-head
+CI. Runtime GUI focus/UAC and actual single-file handoff remain VM acceptance.
+
 ## In progress: single-instance GUI and fixed-name EXE updater (PR #31, issue #30)
 
 Branch `feature/single-instance`, draft. PR #31 remains open and in draft.

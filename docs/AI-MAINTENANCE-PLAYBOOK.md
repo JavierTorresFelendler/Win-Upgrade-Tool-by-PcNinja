@@ -337,6 +337,13 @@ No recommendation or synthetic command proves a supported real Server upgrade.
 
 ## Application updates are not Windows upgrades
 
+Recovery snapshot checks must use a readable handle while it is still alive.
+`FileStream(SafeFileHandle, ...)` owns and closes that handle; flush, then hash
+the exclusive read/write snapshot handle before disposing the stream. Publisher
+fixtures must create the predecessor snapshot before `ApplyVerified`, matching
+the production helper, or repeated-update/rollback failures can merely report a
+missing recovery file and hide the actual snapshot path.
+
 Read `Core/AppUpdates/`, `MainForm.AppUpdates.cs`, `CliAppUpdates.cs` and
 `AppUpdateInstaller.cs` together. Discovery may run in the background, but
 downloading/replacing the application always needs explicit consent. Never reuse
