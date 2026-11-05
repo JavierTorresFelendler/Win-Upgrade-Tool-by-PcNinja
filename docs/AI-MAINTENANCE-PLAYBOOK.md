@@ -337,6 +337,22 @@ No recommendation or synthetic command proves a supported real Server upgrade.
 
 ## Application updates are not Windows upgrades
 
+Validate the release API tag, channel and draft state before comparing versions.
+If it is equal/older, return up to date without fetching assets or exposing an
+install candidate. Historical immutable releases may use old filenames; do not
+reinterpret those names as allowable new update assets. Every newer release
+must still pass full exact manifest/asset/version/hash/size/signer validation.
+
+For controlled single-file lifecycle evidence, run actual helper READY/GO and
+native GUI readiness on an elevated disposable Windows environment, then verify
+exact archived bytes and final folder contents. Repeat with source and target
+already sharing the canonical name and close the successor before waiting for
+cleanup. Helper process exit/state, not standard-pipe EOF, proves helper
+completion: the live GUI can inherit those handles. Fixture teardown may need
+bounded retries/read-only normalization on its own validated random temp tree;
+never extend that exception to arbitrary customer files or production recovery.
+Hosted GUI lifecycle evidence is separate from client foreground/UAC testing.
+
 Recovery snapshot checks must use a readable handle while it is still alive.
 `FileStream(SafeFileHandle, ...)` owns and closes that handle; flush, then hash
 the exclusive read/write snapshot handle before disposing the stream. Publisher

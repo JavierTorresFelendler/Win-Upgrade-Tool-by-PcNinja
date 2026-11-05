@@ -4,6 +4,14 @@ Updated: 2026-11-05. This is sanitized project context, not a backup of Codex ch
 
 ## Authorized: official 1.3.0 preparation and publication
 
+Release-source checkpoint `f155c65bb4fa5fe14f65ae9805d89a36ffdab327` passed
+every PR step in run `42035942724`, including both real single-file helper/GUI
+cycles, immediate-close cleanup, exact final contents and test housekeeping.
+These controlled elevated tests cover RC-to-stable and stable-to-newer-stable
+replacement; they do not prove every customer focus/UAC/display configuration.
+The remaining source edit records evidence only; rerun required PR checks, merge
+normally and tag the reviewed main source for the protected release build.
+
 Owner tested PR31 source `7b2a354` in a Windows 10 Pro x64 VM (build
 19045.6456) and reports no visible problems apart from app-update discovery.
 The supplied log identifies the exact tested merge `bdd6883` and successful
