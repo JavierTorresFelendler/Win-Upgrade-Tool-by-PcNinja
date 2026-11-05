@@ -25,16 +25,25 @@ internal static class Program
             return CliRunner.RunAsync(args).GetAwaiter().GetResult();
         }
 
-        // GUI is single-instance per Windows session. A second launch focuses the
-        // running window instead (before UAC, so no needless elevation prompt).
+        // GUI is single-instance per Windows session. A second launch asks the
+        // running window to come forward and waits for its acknowledgement. The
+        // probe runs before UAC, so an open app causes no second elevation prompt.
+        PcNinjaSingleInstance.DiagnosticSink = AppLog.Info;
         if (!IsAdministrator())
-            return PcNinjaSingleInstance.TryActivateExisting(SingleInstanceAppId) ? 0 : RestartGuiAsAdministrator();
-        using var singleInstance = PcNinjaSingleInstance.Acquire(SingleInstanceAppId);
+        {
+            PcNinjaSingleInstance.TryActivateExisting(SingleInstanceAppId, null, out var probe);
+            if (probe == PcNinjaSingleInstanceOutcome.ActivatedExisting) return 0;
+            if (probe == PcNinjaSingleInstanceOutcome.ExistingNotResponding) return ShowAlreadyRunning();
+            return RestartGuiAsAdministrator();
+        }
+        var singleInstance = PcNinjaSingleInstance.Acquire(SingleInstanceAppId, null, out var instance);
         if (singleInstance is null)
         {
-            AppLog.Info("Another GUI instance is already running; it was brought to the foreground.");
-            return 0;
+            AppLog.Info($"Second GUI launch: {instance}.");
+            return instance == PcNinjaSingleInstanceOutcome.ExistingNotResponding ? ShowAlreadyRunning() : 0;
         }
+        if (instance == PcNinjaSingleInstanceOutcome.GuardUnavailable)
+            AppLog.Info("Single-instance guard unavailable; starting without it (operations remain protected by AppOperationGate).");
 
         ApplicationConfiguration.Initialize();
         Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
@@ -51,7 +60,22 @@ internal static class Program
                 form.Update(); // Paint the initialized window before acknowledging startup.
                 await AppUpdateGuiReadiness.SignalAsync(readinessPipe);
             }));
-        Application.Run(form);
+        try { Application.Run(form); }
+        finally
+        {
+            // Release ownership as soon as the window is gone, so a relaunch during
+            // shutdown is handed over instead of waiting on a closing instance.
+            singleInstance.Dispose();
+        }
+        return 0;
+    }
+
+    private static int ShowAlreadyRunning()
+    {
+        MessageBox.Show(
+            $"{ProductIdentity.Name} is already running but is not responding.\n\n" +
+            "Wait a moment and try again, or close it from Task Manager.",
+            ProductIdentity.Name, MessageBoxButtons.OK, MessageBoxIcon.Information);
         return 0;
     }
 
