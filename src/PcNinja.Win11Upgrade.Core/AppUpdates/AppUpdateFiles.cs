@@ -474,6 +474,11 @@ public sealed class AppUpdateWorkspace : IDisposable
     private static void SetArchivedFileAcl(string path, string expectedHash)
     {
         using var file = OpenRegularFile(path, ReadControl | ReadAttributes | 0x00040000 | 0x00080000, 1);
+        SetArchivedFileAcl(file, expectedHash);
+    }
+
+    private static void SetArchivedFileAcl(SafeFileHandle file, string expectedHash)
+    {
         if (!HashHandle(file).Equals(expectedHash, StringComparison.OrdinalIgnoreCase))
             throw new InvalidDataException("A predecessor archive changed before its permissions were set.");
         using var security = new NativeSecurity(PublicFileSddl);
@@ -689,7 +694,8 @@ public sealed class AppUpdateWorkspace : IDisposable
         using var anchors = AnchorLocalChain(parent);
         var archive = Path.Combine(parent, archiveVersion);
         string status;
-        using (var source = OpenRegularFile(full, GenericRead | DeleteAccess | ReadControl | ReadAttributes, 1))
+        using (var source = OpenRegularFile(full, GenericRead | DeleteAccess | ReadControl | ReadAttributes |
+            0x00040000 | 0x00080000, 1))
         {
             if (privateSource)
                 ValidateControlledDescriptor(ReadDescriptor(source), privateScope: true, requireProtected: true);
@@ -701,6 +707,8 @@ public sealed class AppUpdateWorkspace : IDisposable
                 archive = Path.Combine(parent, ArchiveName(fileVersion, expectedHash));
                 status = TryArchive(source, archive, expectedHash);
             }
+            if (verifyExecutable && status == "archived")
+                SetArchivedFileAcl(source, expectedHash);
         }
         if (status == "occupied")
             throw new IOException("Both deterministic predecessor archive names are occupied by different bytes; recovery files were retained.");
@@ -710,7 +718,7 @@ public sealed class AppUpdateWorkspace : IDisposable
             if (!actualArchive.Sha256.Equals(expectedHash, StringComparison.OrdinalIgnoreCase) ||
                 actualArchive.FileVersion != fileVersion)
                 throw new InvalidDataException("The predecessor archive failed executable identity verification.");
-            SetArchivedFileAcl(archive, expectedHash);
+            if (status != "archived") SetArchivedFileAcl(archive, expectedHash);
         }
         else using (var verifiedArchive = OpenRegularFile(archive, GenericRead | ReadControl | ReadAttributes, 1))
             if (!HashHandle(verifiedArchive).Equals(expectedHash, StringComparison.OrdinalIgnoreCase))
