@@ -235,6 +235,16 @@ All paths below are relative to the repository root.
   combination. Also test the compiled portable CLI and client UI independently;
   successful fixtures are not proof of BigFix agent wiring or live quiet upgrades.
 
+### 8. Keep shared C# 5 source compatible with nullable-enabled consumers
+
+- Shared source that must compile with legacy C# 5 cannot express modern nullable
+  annotations. When a nullable-enabled SDK project links it, suppress only the
+  expected nullable diagnostics for its intentionally null/default API states;
+  do not disable nullable analysis for the consumer project.
+- Keep actual platform-derived values guarded: for example, reject a missing
+  current-user SID before dereferencing it. Verify the linked source with the
+  repository's `-warnaserror` smoke and GUI builds.
+
 ## Safe verification recipe
 
 Run from the repository root on a Windows client with the .NET 8 SDK. Read the

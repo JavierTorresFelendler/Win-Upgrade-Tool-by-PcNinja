@@ -1,10 +1,11 @@
 # Development handoff
 
-Updated: 2026-11-04. This is sanitized project context, not a backup of Codex chats.
+Updated: 2026-11-05. This is sanitized project context, not a backup of Codex chats.
 
 ## In progress: single-instance GUI and update-folder cleanup (PR #31, issue #30)
 
-Branch `feature/single-instance`, draft. No build, tag or release is authorized.
+Branch `feature/single-instance`, draft. No release build, tag or publication is
+authorized before every applicable code, CI and owner-VM gate passes.
 
 ### Single-instance GUI
 
@@ -56,6 +57,29 @@ Branch `feature/single-instance`, draft. No build, tag or release is authorized.
   close/crash; a controlled self-update test (parent exits, successor ready, OLD
   archive, folder ends with only the two EXEs, failed relaunch keeps the original).
 - Before release: version, release notes and updater-compatible asset name.
+
+### New EXE update lifecycle requirements (owner comment, 2026-11-05)
+
+- The owner has requested an updater lifecycle based on one fixed, unversioned
+  active EXE name, atomic/recoverable same-name replacement, and predecessor
+  archives named from verified four-part Windows FileVersion (hash-qualified
+  when names collide), with strict file/ACL/reparse/hardlink protections,
+  migration/cleanup, and readiness/rollback tests.
+- This PR does not implement that migration: the current updater still stages
+  and publishes the versioned release asset beside the running EXE, then archives
+  the predecessor after GUI readiness. Existing stable/Beta clients and immutable
+  published assets need explicit compatibility coverage. EXE only; no MSI work.
+- Treat this as a release blocker, not as satisfied by the single-instance or
+  staging-cleanup changes below. Do not tag or publish until the fixed-name
+  lifecycle and compatibility requirements are implemented and verified.
+
+### Local verification on 2026-11-05
+
+- `dotnet build tests\PcNinja.Win11Upgrade.SmokeTests\PcNinja.Win11Upgrade.SmokeTests.csproj -c Debug -warnaserror` and `dotnet run --project tests\PcNinja.Win11Upgrade.SmokeTests\PcNinja.Win11Upgrade.SmokeTests.csproj -c Debug --no-build` passed. NTFS journal proof and elevated updater filesystem/cleanup fixtures skipped because the required facilities/token were unavailable.
+- `dotnet build src\PcNinja.Win11UpgradeAssistant\PcNinja.Win11UpgradeAssistant.csproj -c Debug -warnaserror` passed with 0 warnings/errors.
+- `dotnet build tests\PcNinja.Win11Upgrade.GuiChecks\PcNinja.Win11Upgrade.GuiChecks.csproj -c Debug -warnaserror` and `dotnet run --project tests\PcNinja.Win11Upgrade.GuiChecks\PcNinja.Win11Upgrade.GuiChecks.csproj -c Debug --no-build` passed.
+- `tests\Verify-Cli.ps1` could not run because this machine's PowerShell execution policy blocks scripts. Direct redirected-output CLI checks passed for version 1.2.0, offline app-update status, and consent-required refusal; no download or replacement was started. `git diff --check` passed.
+- These local checks do not replace exact-head hosted CI, the elevated filesystem/journal fixtures, or the owner VM UI/self-update acceptance above.
 
 ## Published and verified: stable 1.2
 

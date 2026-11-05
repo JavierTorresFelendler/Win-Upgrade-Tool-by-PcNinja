@@ -29,14 +29,15 @@ internal static class Program
         // running window to come forward and waits for its acknowledgement. The
         // probe runs before UAC, so an open app causes no second elevation prompt.
         PcNinjaSingleInstance.DiagnosticSink = AppLog.Info;
+        var singleInstanceOptions = new PcNinjaSingleInstanceOptions();
         if (!IsAdministrator())
         {
-            PcNinjaSingleInstance.TryActivateExisting(SingleInstanceAppId, null, out var probe);
+            PcNinjaSingleInstance.TryActivateExisting(SingleInstanceAppId, singleInstanceOptions, out var probe);
             if (probe == PcNinjaSingleInstanceOutcome.ActivatedExisting) return 0;
             if (probe == PcNinjaSingleInstanceOutcome.ExistingNotResponding) return ShowAlreadyRunning();
             return RestartGuiAsAdministrator();
         }
-        var singleInstance = PcNinjaSingleInstance.Acquire(SingleInstanceAppId, null, out var instance);
+        var singleInstance = PcNinjaSingleInstance.Acquire(SingleInstanceAppId, singleInstanceOptions, out var instance);
         if (singleInstance is null)
         {
             AppLog.Info($"Second GUI launch: {instance}.");

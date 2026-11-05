@@ -32,6 +32,8 @@
 // Use only for GUI entry points. CLI/automation modes must not be blocked by
 // an open window; protect shared operations with their own operation locks.
 
+#pragma warning disable 8618, 8625, 8603
+
 using System;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -515,7 +517,12 @@ namespace PcNinja.Shared
                     // creator: full. Medium label so unelevated launches can signal.
                     string userSid;
                     using (System.Security.Principal.WindowsIdentity identity = System.Security.Principal.WindowsIdentity.GetCurrent())
-                        userSid = identity.User.Value;
+                    {
+                        var user = identity.User;
+                        if (user == null)
+                            throw new InvalidOperationException("The current Windows user SID is unavailable.");
+                        userSid = user.Value;
+                    }
                     string sddl = "D:(A;;GA;;;SY)(A;;GA;;;BA)(A;;0x00100002;;;IU)(A;;GA;;;" + userSid + ")S:(ML;;NW;;;ME)";
                     uint size;
                     if (NativeMethods.ConvertStringSecurityDescriptorToSecurityDescriptor(sddl, 1, out descriptor, out size))
