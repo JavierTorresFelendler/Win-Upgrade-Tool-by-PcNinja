@@ -53,6 +53,8 @@ internal static class Program
         var readinessPipe = Environment.GetEnvironmentVariable(AppUpdateGuiReadiness.EnvironmentName);
         Environment.SetEnvironmentVariable(AppUpdateGuiReadiness.EnvironmentName, null);
         using var form = new MainForm();
+        // Remove leftovers of a finished app update once the window is up.
+        form.Shown += (_, _) => _ = Task.Run(AppUpdateInstaller.RemoveFinishedUpdateStagingAsync);
         if (AppUpdateGuiReadiness.IsValidName(readinessPipe))
             form.Shown += (_, _) => form.BeginInvoke(new Action(async () =>
             {

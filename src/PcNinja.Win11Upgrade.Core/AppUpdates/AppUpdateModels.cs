@@ -45,3 +45,6 @@ public enum AppUpdateCheckState { Available, UpToDate, NoStableRelease, Unavaila
 public sealed record AppUpdateCheckResult(AppUpdateCheckState State, string Message, AppUpdateManifest? Release = null);
 
 public sealed record AppUpdateProgress(long BytesReceived, long TotalBytes);
+
+/// <summary>Outcome of removing finished update staging beside the application.</summary>
+public sealed record AppUpdateStagingCleanup(int OperationsRemoved, IReadOnlyList<string> Retained, bool StagingRemoved, bool StagingPresent);

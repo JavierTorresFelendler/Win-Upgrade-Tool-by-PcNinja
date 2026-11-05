@@ -379,6 +379,9 @@ namespace PcNinja.Shared
 
                 if (activated)
                 {
+                    // Requests queued while retrying are satisfied by this activation;
+                    // a requester whose signal is drained here re-signals and is served.
+                    activationEvent.WaitOne(0);
                     Interlocked.Increment(ref activationCount);
                     if (acknowledgementHandle != IntPtr.Zero) NativeMethods.SetEvent(acknowledgementHandle);
                     try

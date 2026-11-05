@@ -2,22 +2,60 @@
 
 Updated: 2026-11-04. This is sanitized project context, not a backup of Codex chats.
 
-## In progress: single-instance GUI (issue #30, branch `feature/single-instance`)
+## In progress: single-instance GUI and update-folder cleanup (PR #31, issue #30)
 
-- Scope: GUI only. A second GUI launch signals the running instance, which restores
-  and focuses its window; the new process exits with code 0. The unelevated launch
-  probes before UAC, so an open app never triggers a second elevation prompt.
-- Implementation: shared `shared/PcNinjaSingleInstance.cs` (byte-identical in the
-  WinUpdate V1/V2 and Smart Office Installer repositories, C# 5 compatible), linked
-  into the GUI project. App id `WinUpgradeTool` (fixed; never versioned). See
-  `shared/README.md` for the contract and the unified-tool plan.
-- Unchanged: CLI mode, `AppOperationGate`, update helper. The helper launches the new
-  GUI only after the parent exits, which releases the guard.
-- Verification so far: the shared file compiles as C# 5 and latest; the integration
-  was checked for compiler errors without the Windows Desktop reference pack. Still
-  required on Windows: CI build, then a VM check of second launch while minimized,
-  maximized, behind other windows, with a modal dialog open, and a self-update.
-- Release hold: no build, tag or release is authorized by this change.
+Branch `feature/single-instance`, draft. No build, tag or release is authorized.
+
+### Single-instance GUI
+
+- Scope: GUI only. CLI, `AppOperationGate` and the update helper are unchanged.
+- Shared `shared/PcNinjaSingleInstance.cs` (C# 5, intended to stay byte-identical
+  across PcNinja repositories) linked into the GUI; app id `WinUpgradeTool`.
+- Review findings of 2026-11-05 addressed in the second revision:
+  1. *Startup race* (request before the window exists was consumed and lost):
+     the owner retries activation (10 s) and acknowledges via a `.Ack` event only
+     after a window was restored/focused; the requester waits (15 s) and
+     re-signals every second.
+  2. *Access denied* (silent exit when the event existed but was unusable): now
+     `GuardUnavailable`, the GUI starts (fail open) and a diagnostic is logged.
+     Same for a different object type squatting the name. Rationale: a silently
+     missing app is worse than a rare second window; machine operations remain
+     serialized by `AppOperationGate`.
+  Additional cases found during the redesign: an owner that is closing hands
+  over to the waiting launch (the GUI releases the guard as soon as its window
+  closes); an owner that never acknowledges yields a "not responding" message
+  instead of a silent exit; first-revision owners (no `.Ack`) are still signalled.
+- Deterministic smoke checks (`SingleInstanceChecks`) use real kernel objects in
+  one process with a simulated window activator. They cannot prove real focus,
+  UAC or cross-integrity behavior; those remain VM checks.
+- The other three repositories (WinUpdate V1/V2, Smart Office Installer PRs) still
+  carry the first revision of the shared file. It is compatible in both directions,
+  but they need the same update before their own release (owner decision).
+
+### Update-folder cleanup (owner report 2026-11-05)
+
+- Cause: the 1.2 in-app updater left the hidden, Administrators/SYSTEM-only
+  `.pcninja-updates` folder (operation folders with `candidate.exe`,
+  `UpdateHelper.exe`, `request.json`, plus `Last-AppUpdate.json`) beside the EXE;
+  nothing ever removed it and a standard user cannot open or delete it. Not caused
+  by the single-instance change.
+- Fix: `Last-AppUpdate.json` moved to `%ProgramData%\PcNinja\Win11UpgradeAssistant`
+  (CLI still reads the old location as fallback). At GUI start, after the window is
+  shown, a background task takes the update gate (the helper holds it until it
+  exits), removes exact finished operation files and folders, the legacy result
+  and the staging folder. Unknown/locked content is kept and logged; retried for
+  ~2 minutes and again at the next start. Also cleans folders left by 1.2.
+- Smoke check `CheckFinishedStagingCleanup` (elevated fixture) covers removal,
+  a locked helper, unknown content and "only app files remain".
+
+### Still required on Windows
+
+- CI on the final head; then owner VM evidence: VM OS, exact test EXE and SHA-256,
+  normal/minimized/maximized/behind another window, modal dialog, standard to
+  elevated relaunch, rapid repeated launches, relaunch while closing, restart after
+  close/crash; a controlled self-update test (parent exits, successor ready, OLD
+  archive, folder ends with only the two EXEs, failed relaunch keeps the original).
+- Before release: version, release notes and updater-compatible asset name.
 
 ## Published and verified: stable 1.2
 

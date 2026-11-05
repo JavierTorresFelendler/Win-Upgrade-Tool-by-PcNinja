@@ -18,11 +18,19 @@ in [Development status](DEVELOPMENT-STATUS.md).
 4. Only **Download and run the new version** starts transfer/verification.
 5. Save the version-named EXE beside the running tool, not the shell's working
    directory. A private hidden `.pcninja-updates/<operation-id>` staging directory
-   is below that same folder. There is no Program Files destination or fallback.
+   is below that same folder while the update runs. There is no Program Files
+   destination or fallback.
 6. Verify bytes/hash/size/product/version/publisher continuity. A verified helper
    waits for the exact old process to exit, then GUI opens the new EXE with NO
    arguments. After the initialized new window is shown/painted and acknowledges
    startup, the helper marks only this exact predecessor OLD-; bytes stay intact.
+7. Cleanup: once the helper has exited (it holds the operation gate until then),
+   the new GUI removes the finished staging: exact operation files
+   (candidate/helper/request/result.tmp), each operation folder, any pre-release
+   `Last-AppUpdate.json` and finally `.pcninja-updates` itself. Unknown or locked
+   content is never deleted and keeps the folder; the attempt is logged and
+   retried at the next GUI start. The folder ends with only the new EXE and the
+   archived OLD EXE.
 
 No installer, original replacement, numbered Copy N, service,
 scheduled task, Windows Setup or forced restart is involved. Cancellation/failure
@@ -132,9 +140,10 @@ CLI: `app-update check --json`, `app-update status --json`,
 `app-update run --yes --json`. The unreleased install verb is an alias, not an
 installer. run needs explicit elevated --yes; CLI never opens a GUI, browser or
 hidden prompt. APP_UPDATE_HANDOFF_STARTED is not proof the new process ran.
-After helper completion, correlate `operationId` in local
-`.pcninja-updates/Last-AppUpdate.json` and run the new EXE's --version. Status is
-bounded/read-only and may be null/unavailable without folder access.
+After helper completion, correlate `operationId` in
+`%ProgramData%\PcNinja\Win11UpgradeAssistant\Last-AppUpdate.json` (beside the log;
+older builds kept it in `.pcninja-updates`, still read as a fallback) and run the
+new EXE's --version. Status is bounded/read-only and may be null/unavailable.
 Every updater result has setupStarted=false and readyForRestart=false.
 
 ## Live acceptance and historical Beta notes

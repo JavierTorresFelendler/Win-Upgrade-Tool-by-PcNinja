@@ -44,6 +44,16 @@ public sealed class AppUpdateWorkspace : IDisposable
     private bool _disposed;
 
     public const string StateDirectoryName = ".pcninja-updates";
+    public const string ResultFileName = "Last-AppUpdate.json";
+
+    /// <summary>
+    /// Last app-update result, kept with the diagnostic log in ProgramData so the
+    /// portable folder ends with only the new and the archived EXE.
+    /// </summary>
+    public static string ResultPath => Path.Combine(AppLog.Folder, ResultFileName);
+
+    /// <summary>Pre-release builds kept the result inside the portable staging folder.</summary>
+    public static string LegacyResultPath(string sourceDirectory) => Path.Combine(sourceDirectory, StateDirectoryName, ResultFileName);
     public string SourceDirectory { get; }
     public string StateDirectory => Path.Combine(SourceDirectory, StateDirectoryName);
     public string DirectoryPath { get; }
@@ -143,17 +153,80 @@ public sealed class AppUpdateWorkspace : IDisposable
         EnsureAlive();
         if (!_cleanupAllowed)
             throw new InvalidOperationException("Update recovery or helper handoff is present; staging is retained.");
+        DeleteExactFiles([HelperPath, CandidatePath, RequestPath], privateScope: true);
+    }
+
+    /// <summary>
+    /// Removes finished update staging beside the application: every exact operation
+    /// folder whose helper is no longer running, the pre-release result file and then
+    /// the hidden staging folder itself. Call only while holding the application-update
+    /// operation gate (no download or helper handoff can be active). Unknown entries are
+    /// never deleted; anything locked or unexpected is retained and reported.
+    /// </summary>
+    public static AppUpdateStagingCleanup RemoveFinishedStaging(string sourceDirectory) =>
+        RemoveFinishedStagingCore(NormalizeLocalPath(sourceDirectory));
+
+    internal static AppUpdateStagingCleanup RemoveFinishedStagingFixture(string parent) =>
+        RemoveFinishedStagingCore(ValidateFixtureParent(parent));
+
+    private static AppUpdateStagingCleanup RemoveFinishedStagingCore(string parent)
+    {
+        var staging = Path.Combine(parent, StateDirectoryName);
+        if (!Directory.Exists(staging)) return new(0, [], StagingRemoved: false, StagingPresent: false);
+
+        // Validate the protected root first: no reparse points, Administrators/SYSTEM ACL.
+        using (var anchors = AnchorLocalChain(parent)) anchors.Add(OpenControlledDirectory(staging, true, create: false));
+
+        var removed = 0;
+        var retained = new List<string>();
+        foreach (var entry in Directory.EnumerateFileSystemEntries(staging).ToArray())
+        {
+            var name = Path.GetFileName(entry);
+            try
+            {
+                if (string.Equals(name, ResultFileName, StringComparison.OrdinalIgnoreCase) && !Directory.Exists(entry))
+                    DeleteExactFiles([entry], privateScope: false);
+                else if (IsOperationId(name) && Directory.Exists(entry))
+                {
+                    using (var workspace = OpenCore(name, 0, 0, create: false, parent))
+                        DeleteExactFiles([workspace.HelperPath, workspace.CandidatePath, workspace.RequestPath,
+                            Path.Combine(workspace.DirectoryPath, "result.tmp")], privateScope: false);
+                    Directory.Delete(entry, recursive: false); // Fails, and keeps it, if anything unknown remains.
+                    removed++;
+                }
+                else retained.Add($"{name}: not created by the updater");
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or
+                InvalidDataException or ArgumentException or System.ComponentModel.Win32Exception)
+            {
+                retained.Add($"{name}: {ex.Message}");
+            }
+        }
+
+        if (retained.Count > 0) return new(removed, retained, StagingRemoved: false, StagingPresent: true);
+        Directory.Delete(staging, recursive: false);
+        return new(removed, retained, StagingRemoved: true, StagingPresent: false);
+    }
+
+    private static bool IsOperationId(string name)
+    {
+        try { return NormalizeOperationId(name) == name; } // Exact lowercase "N" GUID, as created.
+        catch (ArgumentException) { return false; }
+    }
+
+    private static void DeleteExactFiles(string[] paths, bool privateScope)
+    {
         var files = new List<SafeFileHandle>();
         try
         {
             // Acquire every file exclusively before marking any for deletion. A running
             // image cannot grant GENERIC_WRITE; do not partially clean an active helper.
-            foreach (var path in new[] { HelperPath, CandidatePath, RequestPath })
+            foreach (var path in paths)
             {
                 if (!ExistsExactly(path)) continue;
                 var handle = OpenRegularFile(path, GenericRead | GenericWrite | DeleteAccess | ReadControl | ReadAttributes, 0);
                 files.Add(handle);
-                ValidateControlledDescriptor(ReadDescriptor(handle), privateScope: true, requireProtected: false);
+                ValidateControlledDescriptor(ReadDescriptor(handle), privateScope, requireProtected: false);
             }
             foreach (var file in files)
             {
@@ -294,11 +367,21 @@ public sealed class AppUpdateWorkspace : IDisposable
     public void WriteResult<T>(T result)
     {
         EnsureAlive();
-        var temporary = Path.Combine(DirectoryPath, "result.tmp");
-        using (var file = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None))
-            JsonSerializer.Serialize(file, result, RequestJson);
-        SetFileAcl(temporary, publicRead: true);
-        File.Move(temporary, Path.Combine(StateDirectory, "Last-AppUpdate.json"), overwrite: true);
+        // Outside the portable folder (see ResultPath). Random CreateNew temp name; the
+        // final move replaces a planted link itself and never writes through it.
+        Directory.CreateDirectory(AppLog.Folder);
+        var temporary = Path.Combine(AppLog.Folder, $"{ResultFileName}.{Guid.NewGuid():N}.tmp");
+        try
+        {
+            using (var file = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+                JsonSerializer.Serialize(file, result, RequestJson);
+            File.Move(temporary, ResultPath, overwrite: true);
+        }
+        catch
+        {
+            try { File.Delete(temporary); } catch (IOException) { } catch (UnauthorizedAccessException) { }
+            throw;
+        }
     }
 
     private sealed class ExecutableGuard(DirectoryAnchors parents, SafeFileHandle file) : IDisposable

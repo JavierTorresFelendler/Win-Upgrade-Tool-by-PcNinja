@@ -23,6 +23,42 @@ internal static class AppUpdateInstaller
         ?? throw new InvalidOperationException("Application path is unavailable."))!;
     internal static string DestinationFor(AppUpdateManifest release) => Path.Combine(DestinationDirectory, release.AssetName);
 
+    /// <summary>
+    /// GUI startup housekeeping: after an update only the new and the archived EXE may
+    /// remain beside the app. Removes the hidden, administrator-only staging folder once
+    /// no download or helper handoff holds the operation gate (the helper keeps it until
+    /// it exits). Bounded retries; never blocks the GUI and never fails it.
+    /// </summary>
+    internal static async Task RemoveFinishedUpdateStagingAsync()
+    {
+        for (var attempt = 1; attempt <= 60; attempt++)
+        {
+            try
+            {
+                if (!Directory.Exists(Path.Combine(DestinationDirectory, AppUpdateWorkspace.StateDirectoryName))) return;
+                AppUpdateStagingCleanup result;
+                using (AppOperationGate.EnterUpdate())
+                    result = AppUpdateWorkspace.RemoveFinishedStaging(DestinationDirectory);
+                if (result.StagingRemoved)
+                {
+                    AppLog.Info($"Removed finished application-update staging ({result.OperationsRemoved} operation(s)).");
+                    return;
+                }
+                if (attempt == 60 || attempt % 10 == 1)
+                    AppLog.Info($"Application-update staging retained for now: {string.Join("; ", result.Retained)}");
+            }
+            catch (InvalidOperationException)
+            {
+                // A download, helper handoff or Windows operation is running; try again later.
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or System.ComponentModel.Win32Exception)
+            {
+                AppLog.Info($"Application-update staging cleanup deferred: {ex.Message}");
+            }
+            await Task.Delay(TimeSpan.FromSeconds(2)).ConfigureAwait(false);
+        }
+    }
+
     internal static async Task<AppUpdateHandoffResult> InstallAsync(AppUpdateClient client,
         AppUpdateManifest release, bool relaunchGui, IProgress<AppUpdateProgress>? progress, CancellationToken token)
     {

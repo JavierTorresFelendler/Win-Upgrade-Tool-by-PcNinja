@@ -1,11 +1,16 @@
 # Changelog
 
-## Unreleased — single-instance GUI (issue #30)
+## Unreleased — single-instance GUI and update-folder cleanup (issue #30)
 
 - Opening the GUI while it is already running no longer starts a second copy;
   the running window is restored and brought to the front, without a UAC prompt.
+  A launch during startup or shutdown of the running copy is no longer lost, and
+  a copy that does not respond is reported instead of silently ignored.
 - Uses the shared `shared/PcNinjaSingleInstance.cs` guard (same file in all PcNinja
   tools). CLI mode is unchanged and remains protected by `AppOperationGate`.
+- After an in-app update, the hidden `.pcninja-updates` folder is removed; only the
+  new EXE and the archived OLD EXE remain. Folders left by 1.2 are removed too. The
+  last update result is kept with the log in ProgramData.
 
 ## 1.2.0 — clearer manual source and Server guidance
 
