@@ -4,6 +4,21 @@ Updated: 2026-11-05. This is sanitized project context, not a backup of Codex ch
 
 ## VM candidate follow-up (2026-11-05)
 
+**VM candidate checkpoint:** source `7b2a354b426181af3f9f2e2c842baa8f575a8bb3`
+passed all PR validation steps in run `42028154929` (tested merge
+`bdd6883cbf74b12a6d5b7be80ef31021e84d67e5`). Artifact ID `13414653255`
+contains the fixed-name portable EXE, 73,112,584 bytes, FileVersion 1.2.0.0,
+ProductVersion `1.2.0+bdd6883cbf74b12a6d5b7be80ef31021e84d67e5`.
+Independently downloaded EXE SHA-256 matches the artifact checksum:
+`7802d49be8fe5b17d6f465f2a1de8e6381d80adf7b38e06812929a2810bd9c4c`.
+Elevated CI passed snapshot, historical bootstrap, repeated same-name replacement,
+definite rollback, uncertain-readiness retention, normal/collision archive cleanup
+and identical/unrelated legacy-file cases. Local Core/CLI/GUI suites and offline
+packaging/workflow/policy checks passed; all three test projects built with zero
+warnings/errors using `-warnaserror`. The checks below describe investigation
+history, superseded by this checkpoint. The build remains unsigned and unpublished;
+actual helper/single-file GUI lifecycle and owner VM acceptance remain open.
+
 The owner requested completion through a downloadable VM test candidate. This
 authorizes fixes and test builds on PR #31; it does not authorize a merge or release.
 Investigating failed run `41991072509` found that the elevated publisher fixture
