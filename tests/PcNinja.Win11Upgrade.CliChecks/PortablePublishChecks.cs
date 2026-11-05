@@ -42,7 +42,9 @@ internal static class PortablePublishChecks
                 var expectedArchive = Path.Combine(parent, AppUpdateWorkspace.ArchiveName(info.FileVersion));
                 Require(archiveResult.Status == "archived" && archiveResult.Path == expectedArchive &&
                     !File.Exists(original) && AppUpdateWorkspace.InspectExecutable(expectedArchive).Sha256 == info.Sha256,
-                    "The historical predecessor was not atomically archived under its verified FileVersion.");
+                    $"The historical predecessor was not atomically archived under its verified FileVersion. " +
+                    $"Status={archiveResult.Status}; path={archiveResult.Path ?? "<none>"}; " +
+                    $"reason={archiveResult.Reason ?? "<none>"}; sourceExists={File.Exists(original)}.");
                 archived = new(archiveResult.Status, archiveResult.Path!);
             }
 
