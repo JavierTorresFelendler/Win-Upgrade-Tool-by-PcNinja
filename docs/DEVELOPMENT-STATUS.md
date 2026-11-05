@@ -29,6 +29,13 @@ This is a fixture lifetime correction, not evidence of an application failure.
 Read-only live discovery with 1.3 already reports APP_UPDATE_CURRENT against the
 historical 1.2 feed, with applicationUpdated/setupStarted/readyForRestart=false.
 
+Run `42035251436` exercised both actual helper/GUI cycles successfully, including
+native readiness, exact versioned history and independent cleanup after close.
+Only final removal of the disposable fixture folder failed on a just-exited
+mapped predecessor image. Test housekeeping now retries its validated temp-only
+target for up to 10 seconds and normalizes read-only fixture attributes. Production
+cleanup and its assertions remain unchanged. A complete new CI pass is required.
+
 ## VM candidate follow-up (2026-11-05)
 
 **VM candidate checkpoint:** source `7b2a354b426181af3f9f2e2c842baa8f575a8bb3`

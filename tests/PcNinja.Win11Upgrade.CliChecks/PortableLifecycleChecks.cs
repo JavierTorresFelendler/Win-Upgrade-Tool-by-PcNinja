@@ -66,7 +66,27 @@ internal static class PortableLifecycleChecks
                     { /* An exact fixture process may already have exited. */ }
                 }
             }
-            Directory.Delete(folder, recursive: true);
+            // Image teardown/scanners can briefly retain a just-exited mapped
+            // EXE. Retry only removal of our validated random temp fixture.
+            for (var attempt = 0; ; attempt++)
+            {
+                ValidateFolder(folder);
+                try
+                {
+                    foreach (var file in Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories))
+                    {
+                        var attributes = File.GetAttributes(file);
+                        if ((attributes & FileAttributes.ReparsePoint) != 0)
+                            throw new InvalidOperationException("Unexpected reparse point in lifecycle cleanup.");
+                        if ((attributes & FileAttributes.ReadOnly) != 0)
+                            File.SetAttributes(file, attributes & ~FileAttributes.ReadOnly);
+                    }
+                    Directory.Delete(folder, recursive: true);
+                    break;
+                }
+                catch (Exception ex) when (attempt < 39 && ex is IOException or UnauthorizedAccessException)
+                { await Task.Delay(250); }
+            }
         }
     }
 
