@@ -2,6 +2,26 @@
 
 Updated: 2026-11-05. This is sanitized project context, not a backup of Codex chats.
 
+## Authorized: official 1.3.0 preparation and publication
+
+Owner tested PR31 source `7b2a354` in a Windows 10 Pro x64 VM (build
+19045.6456) and reports no visible problems apart from app-update discovery.
+The supplied log identifies the exact tested merge `bdd6883` and successful
+11-image media enumeration; it does not prove every focus/UAC checklist item.
+Owner explicitly authorized fixing the check and publishing an official new
+version, including merge/tag/publication; no extra RC is required. This supersedes
+earlier release holds for this scope. The protected environment still requires
+human owner approval after the exact release build is ready.
+
+Preparing 1.3.0, FileVersion 1.3.0.0, fixed public/current EXE name. Discovery now
+validates the API tag/channel/draft state, then returns up to date for equal/older
+releases before any manifest/EXE request. All newer candidates retain exact pins;
+old binaries still need manual one-time migration. Added regression checks for
+historical names, request counts, invalid metadata and RC-to-stable discovery.
+Adding an opt-in real single-file helper/GUI lifecycle fixture to PR and stable
+release CI; its two fixture versions are never published. Exact-head CI and real
+lifecycle results must pass before merging/tagging. No Windows Setup is involved.
+
 ## VM candidate follow-up (2026-11-05)
 
 **VM candidate checkpoint:** source `7b2a354b426181af3f9f2e2c842baa8f575a8bb3`

@@ -2,6 +2,14 @@ using System.Reflection;
 using System.Text.Json;
 using PcNinja.Win11Upgrade.Core;
 
+if (args.Length > 0)
+{
+    if (args.Length != 4 || args[0] != "--portable-lifecycle")
+        throw new ArgumentException("Expected --portable-lifecycle <RC fixture> <stable candidate> <newer fixture>.");
+    await PortableLifecycleChecks.RunAsync(args[1], args[2], args[3]);
+    return;
+}
+
 await AppUpdateCliChecks.RunAsync();
 await AppUpdateReadinessChecks.RunAsync();
 AppUpdateHelperChecks.Run();

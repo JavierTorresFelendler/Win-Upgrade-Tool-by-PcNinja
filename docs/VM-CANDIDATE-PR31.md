@@ -35,17 +35,27 @@ its named objects are inaccessible; operation serialization remains independent.
 
 ## Updater evidence and remaining VM work
 
-The candidate still reports product version 1.2.0. The public release feed cannot
-offer it a newer fixed-name test build. Opening Check for updates is therefore
-not an end-to-end test of this change. Do not change the feed, use a downgrade,
-or bypass pinned version/channel/hash/signature checks to force it.
+The first candidate reported 1.2.0; official release preparation now uses 1.3.0.
+Equal/older published releases are reported as up to date before looking for
+their historical executable names. This result never exposes an install candidate.
+Opening Check for updates is not an end-to-end replacement test. Do not change
+the feed, use a downgrade or bypass pinned checks to force one.
 
 Elevated CI fixtures exercise actual filesystem snapshot/publication/rollback,
 two repeated fixed-name replacements, archive reuse/collisions, readiness-state
 cleanup and legacy duplicate preservation using harmless product-host bytes and
 an injected GUI-readiness result. They do not launch the actual helper/successor.
 
-A controlled newer-version lifecycle test remains needed before release: both
+A controlled newer-version lifecycle fixture now runs on elevated disposable
+Windows CI through `tests/Verify-PortableUpdateLifecycle.ps1`. It builds an RC
+predecessor and a newer stable fixture from the same source, then launches the
+actual portable helper/GUI through READY/GO and native readiness, first from a
+historical name and then from the fixed name. It checks exact final directories
+and closes the second successor immediately after helper completion. Fixture
+versions are never published. Success must be recorded for the exact release
+source; CI does not prove customer display/focus/UAC behavior.
+
+Before release verify the fixture evidence and owner VM report for both
 historical-name to fixed-name migration and fixed-name to fixed-name replacement,
 actual helper READY/GO, native successor GUI readiness, failed/uncertain launch,
 immediate GUI close, and cleanup after the helper exits. Expected fresh-folder

@@ -93,6 +93,12 @@ jobs:
           dotnet run --project tests/PcNinja.Win11Upgrade.CliChecks/PcNinja.Win11Upgrade.CliChecks.csproj -c Release --no-build
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Real portable helper and GUI lifecycle (no Windows Setup)
+        if: env.RELEASE_CHANNEL == 'stable'
+        shell: pwsh
+        run: |
+          & ./tests/Verify-PortableUpdateLifecycle.ps1 -CandidatePath (Join-Path artifacts 'Windows-Upgrade-Assistant-By-PcNinja.exe') -ExpectedVersion $env:PRODUCT_VERSION
+
       - name: Prepare and verify release assets
         shell: pwsh
         run: |

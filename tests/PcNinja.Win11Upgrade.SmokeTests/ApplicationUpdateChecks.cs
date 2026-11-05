@@ -106,6 +106,22 @@ internal static class ApplicationUpdateChecks
             AssetUrl = AssetUrl(v12.Tag, "Win-Upgrade-Tool-by-PcNinja-v.1.2.exe") };
         Require((await CheckFixtureAsync(oldVersionedName, "1.0.0")).State == AppUpdateCheckState.Unavailable,
             "A new updater accepted a versioned historical asset instead of the exact fixed filename.");
+        foreach (var installed in new[] { "1.2.0", "1.2.0+vm.build", "1.3.0" })
+        {
+            var historical = await CheckFixtureAsync(oldVersionedName, installed, expectedRequestCount: 1);
+            Require(historical.State == AppUpdateCheckState.UpToDate && historical.Release is null,
+                "An equal/older historical release caused a naming error or exposed a download candidate.");
+        }
+        foreach (var invalid in new Action<JsonObject>[]
+        {
+            root => root["draft"] = true, root => root["prerelease"] = true,
+            root => root["tag_name"] = "v1.2.0+unpublished", root => root["tag_name"] = "vbad"
+        }) Require((await CheckFixtureAsync(oldVersionedName, "1.3.0", apiChange: invalid,
+            expectedRequestCount: 1)).State == AppUpdateCheckState.Unavailable,
+            "The non-newer release shortcut bypassed tag/channel/draft validation.");
+        var stable13 = await CheckFixtureAsync(Manifest("1.3.0"), "1.3.0-rc.1");
+        Require(stable13.State == AppUpdateCheckState.Available && stable13.Release?.Version == "1.3.0",
+            "The RC client did not offer its newer fixed-name stable successor.");
         Require((await CheckFixtureAsync(Manifest("1.0.0"), "1.1.0-beta.5")).State == AppUpdateCheckState.NoBetaRelease,
             "First stable silently downgraded/switched an existing Beta.");
         var beta = Manifest("1.1.0-beta.2");
@@ -188,7 +204,8 @@ internal static class ApplicationUpdateChecks
     }
 
     private static async Task<AppUpdateCheckResult> CheckFixtureAsync(AppUpdateManifest release, string installed,
-        Action<JsonObject>? apiChange = null, byte[]? manifestBytes = null, bool redirectManifest = false, bool redirectApi = false)
+        Action<JsonObject>? apiChange = null, byte[]? manifestBytes = null, bool redirectManifest = false, bool redirectApi = false,
+        int? expectedRequestCount = null)
     {
         manifestBytes ??= JsonSerializer.SerializeToUtf8Bytes(release, CamelJson);
         var api = JsonSerializer.SerializeToNode(new
@@ -219,7 +236,10 @@ internal static class ApplicationUpdateChecks
         });
         using var http = new HttpClient(handler);
         using var client = new AppUpdateClient(http);
-        return await client.CheckAsync(installed, CancellationToken.None);
+        var result = await client.CheckAsync(installed, CancellationToken.None);
+        if (expectedRequestCount is { } expected)
+            Require(handler.Requests.Count == expected, "Discovery fetched unexpected manifest/executable bytes.");
+        return result;
     }
 
     private static async Task CheckDownloadsAsync()

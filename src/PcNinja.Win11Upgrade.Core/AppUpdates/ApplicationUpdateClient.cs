@@ -52,11 +52,16 @@ public sealed class AppUpdateClient : IDisposable
                     : new(AppUpdateCheckState.NoStableRelease, "No stable application release has been published yet.");
             var root = selected.Value;
             var tag = root.GetProperty("tag_name").GetString() ?? "";
-            if (!tag.StartsWith('v') || !ReleaseVersion.TryParse(tag[1..], out var available) ||
+            if (!tag.StartsWith('v') || tag.Contains('+') || !ReleaseVersion.TryParse(tag[1..], out var available) ||
                 root.GetProperty("draft").GetBoolean() ||
                 root.GetProperty("prerelease").GetBoolean() != installed.IsBeta ||
                 (installed.IsBeta ? !available!.IsBeta : !available!.IsStable))
                 throw new InvalidDataException("The release is outside this application's update channel.");
+            // A release that cannot upgrade this client needs no executable or
+            // manifest. Historical releases retain their immutable versioned
+            // names; they are never candidates for fixed-name download/install.
+            if (available.CompareTo(installed) <= 0)
+                return new(AppUpdateCheckState.UpToDate, "No newer application version is available in this channel.");
             var asset = FindAsset(root, tag, AppUpdateIdentity.AssetNameFor(tag[1..]), AppUpdateIdentity.MaximumBytes);
             var manifestAsset = FindAsset(root, tag, AppUpdateIdentity.ManifestName, MaximumJsonBytes);
             using var manifestResponse = await GetAsync(new Uri(manifestAsset.Url), true, deadline.Token).ConfigureAwait(false);
@@ -71,9 +76,7 @@ public sealed class AppUpdateClient : IDisposable
                 manifest.AssetUrl != asset.Url || manifest.SizeBytes != asset.Size)
                 throw new InvalidDataException("The update manifest does not match its published release assets.");
             VerifyOptionalDigest(asset.Digest, manifest.Sha256);
-            return available.CompareTo(installed) > 0
-                ? new(AppUpdateCheckState.Available, $"Application update {manifest.Version} is available.", manifest)
-                : new(AppUpdateCheckState.UpToDate, "No newer application version is available in this channel.");
+            return new(AppUpdateCheckState.Available, $"Application update {manifest.Version} is available.", manifest);
         }
         catch (OperationCanceledException) when (!token.IsCancellationRequested)
         { return new(AppUpdateCheckState.Unavailable, "The application update check timed out. Normal tool use can continue."); }

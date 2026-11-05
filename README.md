@@ -18,23 +18,23 @@ project-specific decisions and working procedures across assistants and machines
 
 ## Download
 
-[Download 1.2 portable EXE](https://github.com/JavierTorresFelendler/Win-Upgrade-Tool-by-PcNinja/releases/download/v1.2.0/Win-Upgrade-Tool-by-PcNinja-v.1.2.exe)
-or view its [release notes and checksums](https://github.com/JavierTorresFelendler/Win-Upgrade-Tool-by-PcNinja/releases/tag/v1.2.0).
+[Download 1.3 portable EXE](https://github.com/JavierTorresFelendler/Win-Upgrade-Tool-by-PcNinja/releases/download/v1.3.0/Win-Upgrade-Tool-by-PcNinja.exe)
+or view its [release notes and checksums](https://github.com/JavierTorresFelendler/Win-Upgrade-Tool-by-PcNinja/releases/tag/v1.3.0).
 
-The current stable line is 1.2 (`1.2.0`). The Releases page is authoritative for
+Version 1.3 uses technical version `1.3.0`. The Releases page is authoritative for
 publication status. Download a published build only
 from this repository's [Releases](https://github.com/JavierTorresFelendler/Win-Upgrade-Tool-by-PcNinja/releases)
-page; a PR artifact is a test build, not an official release. Version 1.2 uses:
+page; a PR artifact is a test build, not an official release. Version 1.3 uses:
 
 ```text
-Win-Upgrade-Tool-by-PcNinja-v.1.2.exe
+Win-Upgrade-Tool-by-PcNinja.exe
 ```
 
 The portable x64 EXE contains both the graphical application and the CLI. No
 PowerShell or CMD files are required.
 
-Public V1 remains technical version `1.0.0`; 1.2 uses `1.2.0` and file version
-`1.2.0.0`. Full version/commit metadata remains in
+Public V1 remains technical version `1.0.0`; 1.3 uses `1.3.0` and file version
+`1.3.0.0`. Full version/commit metadata remains in
 file properties, diagnostic logs, `version` and `status --json`. The GUI title
 stays **Windows Upgrade Tool by PcNinja**. Historical RC/Beta assets keep
 their original names and bytes. See [product identity](docs/PRODUCT-IDENTITY.md).
